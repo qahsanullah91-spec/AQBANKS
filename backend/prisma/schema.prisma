@@ -1,0 +1,363 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String      @id @default(uuid())
+  email        String      @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  isActive     Boolean     @default(true)
+  userRoles    UserRole[]
+  auditEvents  AuditEvent[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@map("users")
+}
+
+model Role {
+  id              String           @id @default(uuid())
+  name            String           @unique // ADMIN, FINANCE_MANAGER, LOGISTICS_COORDINATOR, AUDITOR, VIEWER
+  description     String
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id              String           @id @default(uuid())
+  code            String           @unique // invoice:create, ledger:post, etc.
+  description     String
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String
+  roleId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Customer {
+  id            String    @id @default(uuid())
+  companyName   String
+  contactPerson String?
+  email         String?
+  phone         String?
+  addressLine1  String?
+  addressLine2  String?
+  country       String?
+  isCustomer    Boolean   @default(true)
+  isVendor      Boolean   @default(false)
+  invoices      Invoice[]
+  payments      Payment[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("customers")
+}
+
+model CompanyProfile {
+  id           String        @id @default(uuid())
+  orgName      String        @default("AQ Companies")
+  legalName    String        @default("SKY ARIANA LTD")
+  taxId        String?
+  email        String        @default("info@skyariana.com")
+  website      String        @default("www.skyariana.com")
+  phone        String?
+  address      String?
+  currency     String        @default("USD")
+  bankAccounts BankAccount[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("company_profiles")
+}
+
+model BankAccount {
+  id                     String              @id @default(uuid())
+  companyProfileId       String?
+  companyProfile         CompanyProfile?     @relation(fields: [companyProfileId], references: [id])
+  bankName               String
+  beneficiaryName        String
+  accountNumberEncrypted String
+  accountNumberMasked    String
+  swiftCode              String
+  correspondentBank      String?
+  correspondentSwift     String?
+  currency               String              @default("USD")
+  isPrimary              Boolean             @default(true)
+  invoices               Invoice[]
+  versions               BankDetailVersion[]
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  @@map("bank_accounts")
+}
+
+model BankDetailVersion {
+  id            String      @id @default(uuid())
+  bankAccountId String
+  bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  snapshotData  String // JSON string
+  effectiveDate DateTime
+  createdBy     String?
+  createdAt     DateTime    @default(now())
+
+  @@map("bank_detail_versions")
+}
+
+model FinancialAccount {
+  id                 String              @id @default(uuid())
+  name               String
+  accountNumber      String?
+  currency           String              @default("USD")
+  openingBalance     Decimal             @default(0)
+  currentBalance     Decimal             @default(0)
+  ledgerTransactions LedgerTransaction[]
+  payments           Payment[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@map("financial_accounts")
+}
+
+model LedgerTransaction {
+  id                   String              @id @default(uuid())
+  financialAccountId   String
+  financialAccount     FinancialAccount    @relation(fields: [financialAccountId], references: [id])
+  effectiveDate        DateTime
+  postedAt             DateTime            @default(now())
+  reference            String?
+  description          String
+  category             String // BALANCE, CREDIT, DEBIT
+  debitAmount          Decimal             @default(0)
+  creditAmount         Decimal             @default(0)
+  runningBalance       Decimal             @default(0)
+  currency             String              @default("USD")
+  reconciliationStatus String              @default("UNRECONCILED") // UNRECONCILED, RECONCILED, DISCREPANCY
+  reversalOfId         String?             @unique
+  reversalOf           LedgerTransaction?  @relation("TransactionReversal", fields: [reversalOfId], references: [id])
+  reversal             LedgerTransaction?  @relation("TransactionReversal")
+  isReversal           Boolean             @default(false)
+  notes                String?
+  createdAt            DateTime            @default(now())
+
+  @@index([effectiveDate, postedAt])
+  @@map("ledger_transactions")
+}
+
+model Invoice {
+  id                 String              @id @default(uuid())
+  customerId         String
+  customer           Customer            @relation(fields: [customerId], references: [id])
+  invoiceNumber      String              @unique // Unique system number e.g. PI-2026-0001
+  sourceInvoiceRef   String? // Workbook reference e.g. "001"
+  issueDate          DateTime
+  dueDate            DateTime?
+  currency           String              @default("USD")
+  subtotal           Decimal             @default(0)
+  taxAmount          Decimal             @default(0)
+  totalAmount        Decimal             @default(0)
+  status             String              @default("DRAFT") // DRAFT, ISSUED, VOID
+  paymentStatus      String              @default("UNPAID") // UNPAID, PARTIALLY_PAID, PAID, OVERDUE
+  paymentTerms       String              @default("100% Advance Payment")
+  bankAccountId      String?
+  bankAccount        BankAccount?        @relation(fields: [bankAccountId], references: [id])
+  issuedAt           DateTime?
+  voidedAt           DateTime?
+  voidReason         String?
+  lines              InvoiceLine[]
+  snapshots          InvoiceSnapshot[]
+  shipmentInvoices   ShipmentInvoice[]
+  paymentAllocations PaymentAllocation[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([invoiceNumber])
+  @@index([sourceInvoiceRef])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id            String  @id @default(uuid())
+  invoiceId     String
+  invoice       Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  lineNumber    Int
+  description   String
+  quantity      Decimal // Net weight in KG
+  unitOfMeasure String  @default("KG")
+  unitPrice     Decimal // C&F Unit price in USD
+  lineTotal     Decimal // quantity * unitPrice
+  createdAt     DateTime @default(now())
+
+  @@map("invoice_lines")
+}
+
+model InvoiceSnapshot {
+  id           String   @id @default(uuid())
+  invoiceId    String
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  snapshotJson String // Immutable frozen JSON of lines, banking, and consignee
+  issuedBy     String?
+  issuedAt     DateTime @default(now())
+
+  @@map("invoice_snapshots")
+}
+
+model Shipment {
+  id                     String                  @id @default(uuid())
+  shipmentRef            String                  @unique // e.g. SHP-9001
+  containerNumber        String?
+  billOfLading           String?
+  origin                 String?
+  destination            String?
+  carrier                String?
+  shipmentDate           DateTime?
+  estimatedArrivalDate   DateTime?
+  actualArrivalDate      DateTime?
+  status                 String                  @default("BOOKED") // BOOKED, AT_ORIGIN_PORT, IN_TRANSIT, CUSTOMS_CLEARANCE, DELIVERED, CANCELLED
+  notes                  String?
+  shipmentInvoices       ShipmentInvoice[]
+  statusHistory          ShipmentStatusHistory[]
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+
+  @@map("shipments")
+}
+
+model ShipmentInvoice {
+  id                String   @id @default(uuid())
+  shipmentId        String
+  invoiceId         String
+  allocatedWeightKg Decimal?
+  notes             String?
+  shipment          Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  invoice           Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+
+  @@unique([shipmentId, invoiceId])
+  @@map("shipment_invoices")
+}
+
+model ShipmentStatusHistory {
+  id         String   @id @default(uuid())
+  shipmentId String
+  shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  oldStatus  String?
+  newStatus  String
+  changedBy  String?
+  reason     String?
+  changedAt  DateTime @default(now())
+
+  @@map("shipment_status_history")
+}
+
+model Payment {
+  id                 String              @id @default(uuid())
+  customerId         String
+  customer           Customer            @relation(fields: [customerId], references: [id])
+  financialAccountId String
+  financialAccount   FinancialAccount    @relation(fields: [financialAccountId], references: [id])
+  paymentDate        DateTime
+  reference          String?
+  paymentMethod      String              @default("WIRE_TRANSFER")
+  totalAmount        Decimal
+  allocatedAmount    Decimal             @default(0)
+  unallocatedAmount  Decimal             @default(0)
+  currency           String              @default("USD")
+  notes              String?
+  allocations        PaymentAllocation[]
+  createdAt          DateTime            @default(now())
+
+  @@map("payments")
+}
+
+model PaymentAllocation {
+  id          String   @id @default(uuid())
+  paymentId   String
+  invoiceId   String
+  amount      Decimal
+  notes       String?
+  allocatedAt DateTime @default(now())
+  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("payment_allocations")
+}
+
+model Import {
+  id           String      @id @default(uuid())
+  filename     String
+  fileHash     String
+  status       String // DRY_RUN, COMMITTED, ROLLED_BACK
+  totalRows    Int
+  acceptedRows Int
+  rejectedRows Int
+  summaryJson  String // Complete metrics & sheet totals
+  executedBy   String?
+  rows         ImportRow[]
+  createdAt    DateTime    @default(now())
+
+  @@map("imports")
+}
+
+model ImportRow {
+  id          String   @id @default(uuid())
+  importId    String
+  import      Import   @relation(fields: [importId], references: [id], onDelete: Cascade)
+  sourceSheet String
+  sourceRow   Int
+  entityType  String
+  entityId    String?
+  rawDataJson String
+  status      String // SUCCESS, WARNING, ERROR
+  message     String?
+  createdAt   DateTime @default(now())
+
+  @@map("import_rows")
+}
+
+model AuditEvent {
+  id            String   @id @default(uuid())
+  actorId       String?
+  actor         User?    @relation(fields: [actorId], references: [id])
+  action        String // LOGIN, INVOICE_ISSUE, LEDGER_POST, BANK_DETAILS_REVEAL, etc.
+  entityType    String // INVOICE, LEDGER, BANK_ACCOUNT, etc.
+  entityId      String?
+  oldValuesJson String?
+  newValuesJson String?
+  ipAddress     String?
+  createdAt     DateTime @default(now())
+
+  @@index([action])
+  @@index([entityType, entityId])
+  @@map("audit_events")
+}

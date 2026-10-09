@@ -1,0 +1,2865 @@
+{
+  "sheetNames": [
+    "Overview",
+    "Logistics & Tracking",
+    "Account & Routing Details",
+    "Account Statement",
+    "Invoice Generator",
+    "Proforma Invoices"
+  ],
+  "sheets": {
+    "Overview": {
+      "range": "A1:AH34",
+      "rowCount": 34,
+      "colCount": 34,
+      "nonEmptyRows": 14,
+      "merges": [
+        {
+          "s": {
+            "c": 1,
+            "r": 7
+          },
+          "e": {
+            "c": 1,
+            "r": 7
+          }
+        },
+        {
+          "s": {
+            "c": 2,
+            "r": 19
+          },
+          "e": {
+            "c": 3,
+            "r": 19
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 18
+          },
+          "e": {
+            "c": 3,
+            "r": 18
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 4
+          },
+          "e": {
+            "c": 3,
+            "r": 4
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 8
+          },
+          "e": {
+            "c": 1,
+            "r": 8
+          }
+        },
+        {
+          "s": {
+            "c": 5,
+            "r": 7
+          },
+          "e": {
+            "c": 5,
+            "r": 7
+          }
+        },
+        {
+          "s": {
+            "c": 2,
+            "r": 20
+          },
+          "e": {
+            "c": 3,
+            "r": 20
+          }
+        },
+        {
+          "s": {
+            "c": 5,
+            "r": 8
+          },
+          "e": {
+            "c": 5,
+            "r": 8
+          }
+        },
+        {
+          "s": {
+            "c": 5,
+            "r": 4
+          },
+          "e": {
+            "c": 5,
+            "r": 4
+          }
+        },
+        {
+          "s": {
+            "c": 2,
+            "r": 8
+          },
+          "e": {
+            "c": 3,
+            "r": 8
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 11
+          },
+          "e": {
+            "c": 3,
+            "r": 11
+          }
+        },
+        {
+          "s": {
+            "c": 5,
+            "r": 5
+          },
+          "e": {
+            "c": 5,
+            "r": 5
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 5
+          },
+          "e": {
+            "c": 3,
+            "r": 5
+          }
+        },
+        {
+          "s": {
+            "c": 2,
+            "r": 7
+          },
+          "e": {
+            "c": 3,
+            "r": 7
+          }
+        }
+      ],
+      "sampleRows": [
+        {
+          "row": 1,
+          "values": [
+            "AA1:Metric",
+            "AB1:Amount"
+          ]
+        },
+        {
+          "row": 2,
+          "values": [
+            "B2:AQ COMPANIES",
+            "F2:SKY ARIANA LTD",
+            "AA2:Total Credits (In)"
+          ]
+        },
+        {
+          "row": 3,
+          "values": [
+            "B3:Corporate Logistics & Banking Portal   |   Account: 101502******0472",
+            "AA3:Total Debits (Out)"
+          ]
+        },
+        {
+          "row": 5,
+          "values": [
+            "B5:TOTAL AVAILABLE BALANCE",
+            "F5:PENDING RECEIVABLES (INVOICED)"
+          ]
+        },
+        {
+          "row": 8,
+          "values": [
+            "B8:TOTAL CREDITS (IN)",
+            "C8:TOTAL DEBITS (OUT)",
+            "F8:TOTAL INVOICED (ALL TIME)"
+          ]
+        },
+        {
+          "row": 12,
+          "values": [
+            "B12:LATEST TRANSACTIONS",
+            "F12:SYSTEM SHORTCUTS"
+          ]
+        },
+        {
+          "row": 13,
+          "values": [
+            "B13:Date",
+            "C13:Description",
+            "D13:Amount",
+            "F13:Go to Account Statement"
+          ]
+        },
+        {
+          "row": 14,
+          "values": [
+            "F14:Go to Proforma Invoices"
+          ]
+        },
+        {
+          "row": 15,
+          "values": [
+            "F15:Create New Invoice"
+          ]
+        },
+        {
+          "row": 16,
+          "values": [
+            "F16:View Bank Routing Details"
+          ]
+        },
+        {
+          "row": 17,
+          "values": [
+            "F17:Track Active Shipments"
+          ]
+        },
+        {
+          "row": 19,
+          "values": [
+            "B19:CASH FLOW VISUALIZATION"
+          ]
+        },
+        {
+          "row": 20,
+          "values": [
+            "B20:Total Incoming"
+          ]
+        },
+        {
+          "row": 21,
+          "values": [
+            "B21:Total Outgoing"
+          ]
+        }
+      ],
+      "allRows": [
+        {
+          "row": 1,
+          "cells": [
+            {
+              "col": 26,
+              "address": "AA1",
+              "val": "Metric",
+              "formatted": "Metric",
+              "type": "s"
+            },
+            {
+              "col": 27,
+              "address": "AB1",
+              "val": "Amount",
+              "formatted": "Amount",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 2,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B2",
+              "val": "AQ COMPANIES",
+              "formatted": "AQ COMPANIES",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F2",
+              "val": "SKY ARIANA LTD",
+              "formatted": "SKY ARIANA LTD",
+              "type": "s"
+            },
+            {
+              "col": 26,
+              "address": "AA2",
+              "val": "Total Credits (In)",
+              "formatted": "Total Credits (In)",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 3,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B3",
+              "val": "Corporate Logistics & Banking Portal   |   Account: 101502******0472",
+              "formatted": "Corporate Logistics & Banking Portal   |   Account: 101502******0472",
+              "type": "s"
+            },
+            {
+              "col": 26,
+              "address": "AA3",
+              "val": "Total Debits (Out)",
+              "formatted": "Total Debits (Out)",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 5,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B5",
+              "val": "TOTAL AVAILABLE BALANCE",
+              "formatted": "TOTAL AVAILABLE BALANCE",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F5",
+              "val": "PENDING RECEIVABLES (INVOICED)",
+              "formatted": "PENDING RECEIVABLES (INVOICED)",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 8,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B8",
+              "val": "TOTAL CREDITS (IN)",
+              "formatted": "TOTAL CREDITS (IN)",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C8",
+              "val": "TOTAL DEBITS (OUT)",
+              "formatted": "TOTAL DEBITS (OUT)",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F8",
+              "val": "TOTAL INVOICED (ALL TIME)",
+              "formatted": "TOTAL INVOICED (ALL TIME)",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 12,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B12",
+              "val": "LATEST TRANSACTIONS",
+              "formatted": "LATEST TRANSACTIONS",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F12",
+              "val": "SYSTEM SHORTCUTS",
+              "formatted": "SYSTEM SHORTCUTS",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 13,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B13",
+              "val": "Date",
+              "formatted": "Date",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C13",
+              "val": "Description",
+              "formatted": "Description",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D13",
+              "val": "Amount",
+              "formatted": "Amount",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F13",
+              "val": "Go to Account Statement",
+              "formatted": "Go to Account Statement",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 14,
+          "cells": [
+            {
+              "col": 5,
+              "address": "F14",
+              "val": "Go to Proforma Invoices",
+              "formatted": "Go to Proforma Invoices",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 15,
+          "cells": [
+            {
+              "col": 5,
+              "address": "F15",
+              "val": "Create New Invoice",
+              "formatted": "Create New Invoice",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 16,
+          "cells": [
+            {
+              "col": 5,
+              "address": "F16",
+              "val": "View Bank Routing Details",
+              "formatted": "View Bank Routing Details",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 17,
+          "cells": [
+            {
+              "col": 5,
+              "address": "F17",
+              "val": "Track Active Shipments",
+              "formatted": "Track Active Shipments",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 19,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B19",
+              "val": "CASH FLOW VISUALIZATION",
+              "formatted": "CASH FLOW VISUALIZATION",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 20,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B20",
+              "val": "Total Incoming",
+              "formatted": "Total Incoming",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 21,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B21",
+              "val": "Total Outgoing",
+              "formatted": "Total Outgoing",
+              "type": "s"
+            }
+          ]
+        }
+      ],
+      "formulas": []
+    },
+    "Logistics & Tracking": {
+      "range": "A1:K49",
+      "rowCount": 49,
+      "colCount": 11,
+      "nonEmptyRows": 5,
+      "merges": [],
+      "sampleRows": [
+        {
+          "row": 2,
+          "values": [
+            "B2:Shipment & Container Tracking"
+          ]
+        },
+        {
+          "row": 3,
+          "values": [
+            "B3:AQ Companies • Active Freight Logistics"
+          ]
+        },
+        {
+          "row": 5,
+          "values": [
+            "B5:Date",
+            "C5:Shipment Ref",
+            "D5:Proforma Ref",
+            "E5:Container No",
+            "F5:B/L Number",
+            "G5:Origin -> Destination",
+            "H5:Vessel / Carrier",
+            "I5:ETA",
+            "J5:Status"
+          ]
+        },
+        {
+          "row": 6,
+          "values": [
+            "B6:10-Oct-2026",
+            "C6:SHP-9001",
+            "D6:001",
+            "E6:MSKU9023418",
+            "F6:BL-1928374",
+            "G6:Kandahar -> Nhava Sheva",
+            "H6:Maersk Line",
+            "I6:22-Oct-2026",
+            "J6:In Transit"
+          ]
+        },
+        {
+          "row": 7,
+          "values": [
+            "B7:12-Oct-2026",
+            "C7:SHP-9002",
+            "D7:002",
+            "E7:TGHU8172635",
+            "F7:BL-1928375",
+            "G7:Dogharoun -> Jebel Ali",
+            "H7:MSC",
+            "I7:18-Oct-2026",
+            "J7:At Origin Port"
+          ]
+        }
+      ],
+      "allRows": [
+        {
+          "row": 2,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B2",
+              "val": "Shipment & Container Tracking",
+              "formatted": "Shipment & Container Tracking",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 3,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B3",
+              "val": "AQ Companies • Active Freight Logistics",
+              "formatted": "AQ Companies • Active Freight Logistics",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 5,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B5",
+              "val": "Date",
+              "formatted": "Date",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C5",
+              "val": "Shipment Ref",
+              "formatted": "Shipment Ref",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D5",
+              "val": "Proforma Ref",
+              "formatted": "Proforma Ref",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E5",
+              "val": "Container No",
+              "formatted": "Container No",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F5",
+              "val": "B/L Number",
+              "formatted": "B/L Number",
+              "type": "s"
+            },
+            {
+              "col": 6,
+              "address": "G5",
+              "val": "Origin -> Destination",
+              "formatted": "Origin -> Destination",
+              "type": "s"
+            },
+            {
+              "col": 7,
+              "address": "H5",
+              "val": "Vessel / Carrier",
+              "formatted": "Vessel / Carrier",
+              "type": "s"
+            },
+            {
+              "col": 8,
+              "address": "I5",
+              "val": "ETA",
+              "formatted": "ETA",
+              "type": "s"
+            },
+            {
+              "col": 9,
+              "address": "J5",
+              "val": "Status",
+              "formatted": "Status",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 6,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B6",
+              "val": "10-Oct-2026",
+              "formatted": "10-Oct-2026",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C6",
+              "val": "SHP-9001",
+              "formatted": "SHP-9001",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D6",
+              "val": "001",
+              "formatted": "001",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E6",
+              "val": "MSKU9023418",
+              "formatted": "MSKU9023418",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F6",
+              "val": "BL-1928374",
+              "formatted": "BL-1928374",
+              "type": "s"
+            },
+            {
+              "col": 6,
+              "address": "G6",
+              "val": "Kandahar -> Nhava Sheva",
+              "formatted": "Kandahar -> Nhava Sheva",
+              "type": "s"
+            },
+            {
+              "col": 7,
+              "address": "H6",
+              "val": "Maersk Line",
+              "formatted": "Maersk Line",
+              "type": "s"
+            },
+            {
+              "col": 8,
+              "address": "I6",
+              "val": "22-Oct-2026",
+              "formatted": "22-Oct-2026",
+              "type": "s"
+            },
+            {
+              "col": 9,
+              "address": "J6",
+              "val": "In Transit",
+              "formatted": "In Transit",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 7,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B7",
+              "val": "12-Oct-2026",
+              "formatted": "12-Oct-2026",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C7",
+              "val": "SHP-9002",
+              "formatted": "SHP-9002",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D7",
+              "val": "002",
+              "formatted": "002",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E7",
+              "val": "TGHU8172635",
+              "formatted": "TGHU8172635",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F7",
+              "val": "BL-1928375",
+              "formatted": "BL-1928375",
+              "type": "s"
+            },
+            {
+              "col": 6,
+              "address": "G7",
+              "val": "Dogharoun -> Jebel Ali",
+              "formatted": "Dogharoun -> Jebel Ali",
+              "type": "s"
+            },
+            {
+              "col": 7,
+              "address": "H7",
+              "val": "MSC",
+              "formatted": "MSC",
+              "type": "s"
+            },
+            {
+              "col": 8,
+              "address": "I7",
+              "val": "18-Oct-2026",
+              "formatted": "18-Oct-2026",
+              "type": "s"
+            },
+            {
+              "col": 9,
+              "address": "J7",
+              "val": "At Origin Port",
+              "formatted": "At Origin Port",
+              "type": "s"
+            }
+          ]
+        }
+      ],
+      "formulas": []
+    },
+    "Account & Routing Details": {
+      "range": "A1:I19",
+      "rowCount": 19,
+      "colCount": 9,
+      "nonEmptyRows": 9,
+      "merges": [
+        {
+          "s": {
+            "c": 2,
+            "r": 9
+          },
+          "e": {
+            "c": 3,
+            "r": 9
+          }
+        },
+        {
+          "s": {
+            "c": 2,
+            "r": 6
+          },
+          "e": {
+            "c": 3,
+            "r": 6
+          }
+        },
+        {
+          "s": {
+            "c": 2,
+            "r": 15
+          },
+          "e": {
+            "c": 3,
+            "r": 15
+          }
+        },
+        {
+          "s": {
+            "c": 2,
+            "r": 14
+          },
+          "e": {
+            "c": 3,
+            "r": 14
+          }
+        },
+        {
+          "s": {
+            "c": 2,
+            "r": 8
+          },
+          "e": {
+            "c": 3,
+            "r": 8
+          }
+        },
+        {
+          "s": {
+            "c": 2,
+            "r": 7
+          },
+          "e": {
+            "c": 3,
+            "r": 7
+          }
+        }
+      ],
+      "sampleRows": [
+        {
+          "row": 2,
+          "values": [
+            "B2:Official Banking Details"
+          ]
+        },
+        {
+          "row": 5,
+          "values": [
+            "B5:Primary USD Account Info"
+          ]
+        },
+        {
+          "row": 7,
+          "values": [
+            "B7:Bank Name:",
+            "C7:AFGHAN UNITED BANK"
+          ]
+        },
+        {
+          "row": 8,
+          "values": [
+            "B8:Beneficiary Name:",
+            "C8:SKY ARIANA LTD"
+          ]
+        },
+        {
+          "row": 9,
+          "values": [
+            "B9:Account Number (USD):",
+            "C9:101502USD2940472"
+          ]
+        },
+        {
+          "row": 10,
+          "values": [
+            "B10:Bank SWIFT Code:",
+            "C10:AFGUAFKAXXX"
+          ]
+        },
+        {
+          "row": 13,
+          "values": [
+            "B13:Correspondent Bank Info (For SWIFT Routing)"
+          ]
+        },
+        {
+          "row": 15,
+          "values": [
+            "B15:Correspondent Bank:",
+            "C15:DA AFGHANISTAN BANK"
+          ]
+        },
+        {
+          "row": 16,
+          "values": [
+            "B16:Correspondent SWIFT:",
+            "C16:AFGBAFKA"
+          ]
+        }
+      ],
+      "allRows": [
+        {
+          "row": 2,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B2",
+              "val": "Official Banking Details",
+              "formatted": "Official Banking Details",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 5,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B5",
+              "val": "Primary USD Account Info",
+              "formatted": "Primary USD Account Info",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 7,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B7",
+              "val": "Bank Name:",
+              "formatted": "Bank Name:",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C7",
+              "val": "AFGHAN UNITED BANK",
+              "formatted": "AFGHAN UNITED BANK",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 8,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B8",
+              "val": "Beneficiary Name:",
+              "formatted": "Beneficiary Name:",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C8",
+              "val": "SKY ARIANA LTD",
+              "formatted": "SKY ARIANA LTD",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 9,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B9",
+              "val": "Account Number (USD):",
+              "formatted": "Account Number (USD):",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C9",
+              "val": "101502USD2940472",
+              "formatted": "101502USD2940472",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 10,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B10",
+              "val": "Bank SWIFT Code:",
+              "formatted": "Bank SWIFT Code:",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C10",
+              "val": "AFGUAFKAXXX",
+              "formatted": "AFGUAFKAXXX",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 13,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B13",
+              "val": "Correspondent Bank Info (For SWIFT Routing)",
+              "formatted": "Correspondent Bank Info (For SWIFT Routing)",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 15,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B15",
+              "val": "Correspondent Bank:",
+              "formatted": "Correspondent Bank:",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C15",
+              "val": "DA AFGHANISTAN BANK",
+              "formatted": "DA AFGHANISTAN BANK",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 16,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B16",
+              "val": "Correspondent SWIFT:",
+              "formatted": "Correspondent SWIFT:",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C16",
+              "val": "AFGBAFKA",
+              "formatted": "AFGBAFKA",
+              "type": "s"
+            }
+          ]
+        }
+      ],
+      "formulas": []
+    },
+    "Account Statement": {
+      "range": "A1:H49",
+      "rowCount": 49,
+      "colCount": 8,
+      "nonEmptyRows": 11,
+      "merges": [],
+      "sampleRows": [
+        {
+          "row": 2,
+          "values": [
+            "B2:Transaction History"
+          ]
+        },
+        {
+          "row": 3,
+          "values": [
+            "B3:AQ Companies • Account Statement"
+          ]
+        },
+        {
+          "row": 4,
+          "values": [
+            "B4:"
+          ]
+        },
+        {
+          "row": 5,
+          "values": [
+            "H5:Reconciled"
+          ]
+        },
+        {
+          "row": 6,
+          "values": [
+            "A6:Date",
+            "B6:Transaction ID / Ref",
+            "C6:Description",
+            "D6:Category",
+            "E6:Debit (USD)",
+            "F6:Credit (USD)",
+            "G6:Running Balance"
+          ]
+        },
+        {
+          "row": 7,
+          "values": [
+            "A7:01-Sep-2026",
+            "B7:N/A",
+            "C7:Starting Balance Prior to Transfers",
+            "D7:Balance",
+            "E7:0",
+            "F7:83.36"
+          ]
+        },
+        {
+          "row": 8,
+          "values": [
+            "A8:30-Sep-2026",
+            "B8:0464AIR261771143",
+            "C8:Inward Transfer: G.T JAYANTI AGROCHEM (INV 001)",
+            "D8:Credit",
+            "E8:0",
+            "F8:78893.36"
+          ]
+        },
+        {
+          "row": 9,
+          "values": [
+            "A9:08-Oct-2026",
+            "B9:8483AIR261778937",
+            "C9:Inward Transfer: GT INDIA PVT LTD",
+            "D9:Credit",
+            "E9:0",
+            "F9:74376.25"
+          ]
+        },
+        {
+          "row": 10,
+          "values": [
+            "A10:08-Oct-2026",
+            "B10:N/A",
+            "C10:Payment to Hayatullah Noori",
+            "D10:Debit",
+            "E10:15200",
+            "F10:0"
+          ]
+        },
+        {
+          "row": 11,
+          "values": [
+            "A11:08-Oct-2026",
+            "B11:AD 5708262",
+            "C11:Payment to Sodiqjon Aminov (Tashkent)",
+            "D11:Debit",
+            "E11:35000",
+            "F11:0"
+          ]
+        },
+        {
+          "row": 12,
+          "values": [
+            "A12:08-Oct-2026",
+            "B12:N/A",
+            "C12:Payment to NAJEB AMIN LTD",
+            "D12:Debit",
+            "E12:78893.36",
+            "F12:0"
+          ]
+        }
+      ],
+      "allRows": [
+        {
+          "row": 2,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B2",
+              "val": "Transaction History",
+              "formatted": "Transaction History",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 3,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B3",
+              "val": "AQ Companies • Account Statement",
+              "formatted": "AQ Companies • Account Statement",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 4,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B4",
+              "val": "",
+              "formatted": "",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 5,
+          "cells": [
+            {
+              "col": 7,
+              "address": "H5",
+              "val": "Reconciled",
+              "formatted": "Reconciled",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 6,
+          "cells": [
+            {
+              "col": 0,
+              "address": "A6",
+              "val": "Date",
+              "formatted": "Date",
+              "type": "s"
+            },
+            {
+              "col": 1,
+              "address": "B6",
+              "val": "Transaction ID / Ref",
+              "formatted": "Transaction ID / Ref",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C6",
+              "val": "Description",
+              "formatted": "Description",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D6",
+              "val": "Category",
+              "formatted": "Category",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E6",
+              "val": "Debit (USD)",
+              "formatted": "Debit (USD)",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F6",
+              "val": "Credit (USD)",
+              "formatted": "Credit (USD)",
+              "type": "s"
+            },
+            {
+              "col": 6,
+              "address": "G6",
+              "val": "Running Balance",
+              "formatted": "Running Balance",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 7,
+          "cells": [
+            {
+              "col": 0,
+              "address": "A7",
+              "val": "01-Sep-2026",
+              "formatted": "01-Sep-2026",
+              "type": "s"
+            },
+            {
+              "col": 1,
+              "address": "B7",
+              "val": "N/A",
+              "formatted": "N/A",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C7",
+              "val": "Starting Balance Prior to Transfers",
+              "formatted": "Starting Balance Prior to Transfers",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D7",
+              "val": "Balance",
+              "formatted": "Balance",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E7",
+              "val": 0,
+              "formatted": "",
+              "type": "n"
+            },
+            {
+              "col": 5,
+              "address": "F7",
+              "val": 83.36,
+              "formatted": "$83.36",
+              "type": "n"
+            }
+          ]
+        },
+        {
+          "row": 8,
+          "cells": [
+            {
+              "col": 0,
+              "address": "A8",
+              "val": "30-Sep-2026",
+              "formatted": "30-Sep-2026",
+              "type": "s"
+            },
+            {
+              "col": 1,
+              "address": "B8",
+              "val": "0464AIR261771143",
+              "formatted": "0464AIR261771143",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C8",
+              "val": "Inward Transfer: G.T JAYANTI AGROCHEM (INV 001)",
+              "formatted": "Inward Transfer: G.T JAYANTI AGROCHEM (INV 001)",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D8",
+              "val": "Credit",
+              "formatted": "Credit",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E8",
+              "val": 0,
+              "formatted": "",
+              "type": "n"
+            },
+            {
+              "col": 5,
+              "address": "F8",
+              "val": 78893.36,
+              "formatted": "$78,893.36",
+              "type": "n"
+            }
+          ]
+        },
+        {
+          "row": 9,
+          "cells": [
+            {
+              "col": 0,
+              "address": "A9",
+              "val": "08-Oct-2026",
+              "formatted": "08-Oct-2026",
+              "type": "s"
+            },
+            {
+              "col": 1,
+              "address": "B9",
+              "val": "8483AIR261778937",
+              "formatted": "8483AIR261778937",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C9",
+              "val": "Inward Transfer: GT INDIA PVT LTD",
+              "formatted": "Inward Transfer: GT INDIA PVT LTD",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D9",
+              "val": "Credit",
+              "formatted": "Credit",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E9",
+              "val": 0,
+              "formatted": "",
+              "type": "n"
+            },
+            {
+              "col": 5,
+              "address": "F9",
+              "val": 74376.25,
+              "formatted": "$74,376.25",
+              "type": "n"
+            }
+          ]
+        },
+        {
+          "row": 10,
+          "cells": [
+            {
+              "col": 0,
+              "address": "A10",
+              "val": "08-Oct-2026",
+              "formatted": "08-Oct-2026",
+              "type": "s"
+            },
+            {
+              "col": 1,
+              "address": "B10",
+              "val": "N/A",
+              "formatted": "N/A",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C10",
+              "val": "Payment to Hayatullah Noori",
+              "formatted": "Payment to Hayatullah Noori",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D10",
+              "val": "Debit",
+              "formatted": "Debit",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E10",
+              "val": 15200,
+              "formatted": "$15,200.00",
+              "type": "n"
+            },
+            {
+              "col": 5,
+              "address": "F10",
+              "val": 0,
+              "formatted": "",
+              "type": "n"
+            }
+          ]
+        },
+        {
+          "row": 11,
+          "cells": [
+            {
+              "col": 0,
+              "address": "A11",
+              "val": "08-Oct-2026",
+              "formatted": "08-Oct-2026",
+              "type": "s"
+            },
+            {
+              "col": 1,
+              "address": "B11",
+              "val": "AD 5708262",
+              "formatted": "AD 5708262",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C11",
+              "val": "Payment to Sodiqjon Aminov (Tashkent)",
+              "formatted": "Payment to Sodiqjon Aminov (Tashkent)",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D11",
+              "val": "Debit",
+              "formatted": "Debit",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E11",
+              "val": 35000,
+              "formatted": "$35,000.00",
+              "type": "n"
+            },
+            {
+              "col": 5,
+              "address": "F11",
+              "val": 0,
+              "formatted": "",
+              "type": "n"
+            }
+          ]
+        },
+        {
+          "row": 12,
+          "cells": [
+            {
+              "col": 0,
+              "address": "A12",
+              "val": "08-Oct-2026",
+              "formatted": "08-Oct-2026",
+              "type": "s"
+            },
+            {
+              "col": 1,
+              "address": "B12",
+              "val": "N/A",
+              "formatted": "N/A",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C12",
+              "val": "Payment to NAJEB AMIN LTD",
+              "formatted": "Payment to NAJEB AMIN LTD",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D12",
+              "val": "Debit",
+              "formatted": "Debit",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E12",
+              "val": 78893.36,
+              "formatted": "$78,893.36",
+              "type": "n"
+            },
+            {
+              "col": 5,
+              "address": "F12",
+              "val": 0,
+              "formatted": "",
+              "type": "n"
+            }
+          ]
+        }
+      ],
+      "formulas": []
+    },
+    "Invoice Generator": {
+      "range": "A1:I49",
+      "rowCount": 49,
+      "colCount": 9,
+      "nonEmptyRows": 16,
+      "merges": [
+        {
+          "s": {
+            "c": 1,
+            "r": 13
+          },
+          "e": {
+            "c": 3,
+            "r": 13
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 7
+          },
+          "e": {
+            "c": 3,
+            "r": 7
+          }
+        },
+        {
+          "s": {
+            "c": 3,
+            "r": 31
+          },
+          "e": {
+            "c": 5,
+            "r": 31
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 16
+          },
+          "e": {
+            "c": 3,
+            "r": 16
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 12
+          },
+          "e": {
+            "c": 3,
+            "r": 12
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 30
+          },
+          "e": {
+            "c": 2,
+            "r": 30
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 18
+          },
+          "e": {
+            "c": 3,
+            "r": 18
+          }
+        },
+        {
+          "s": {
+            "c": 3,
+            "r": 27
+          },
+          "e": {
+            "c": 5,
+            "r": 27
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 8
+          },
+          "e": {
+            "c": 3,
+            "r": 8
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 14
+          },
+          "e": {
+            "c": 3,
+            "r": 14
+          }
+        },
+        {
+          "s": {
+            "c": 3,
+            "r": 29
+          },
+          "e": {
+            "c": 5,
+            "r": 29
+          }
+        },
+        {
+          "s": {
+            "c": 3,
+            "r": 32
+          },
+          "e": {
+            "c": 5,
+            "r": 32
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 19
+          },
+          "e": {
+            "c": 3,
+            "r": 19
+          }
+        },
+        {
+          "s": {
+            "c": 3,
+            "r": 28
+          },
+          "e": {
+            "c": 5,
+            "r": 28
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 28
+          },
+          "e": {
+            "c": 2,
+            "r": 28
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 27
+          },
+          "e": {
+            "c": 2,
+            "r": 27
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 6
+          },
+          "e": {
+            "c": 3,
+            "r": 6
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 15
+          },
+          "e": {
+            "c": 3,
+            "r": 15
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 29
+          },
+          "e": {
+            "c": 2,
+            "r": 29
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 32
+          },
+          "e": {
+            "c": 2,
+            "r": 32
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 21
+          },
+          "e": {
+            "c": 3,
+            "r": 21
+          }
+        },
+        {
+          "s": {
+            "c": 3,
+            "r": 30
+          },
+          "e": {
+            "c": 5,
+            "r": 30
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 17
+          },
+          "e": {
+            "c": 3,
+            "r": 17
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 31
+          },
+          "e": {
+            "c": 2,
+            "r": 31
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 20
+          },
+          "e": {
+            "c": 3,
+            "r": 20
+          }
+        },
+        {
+          "s": {
+            "c": 1,
+            "r": 11
+          },
+          "e": {
+            "c": 3,
+            "r": 11
+          }
+        }
+      ],
+      "sampleRows": [
+        {
+          "row": 2,
+          "values": [
+            "B2:PROFORMA INVOICE",
+            "F2:Date:"
+          ]
+        },
+        {
+          "row": 3,
+          "values": [
+            "B3:SKY ARIANA LTD",
+            "F3:Proforma No:"
+          ]
+        },
+        {
+          "row": 4,
+          "values": [
+            "B4:info@skyariana.com | www.skyariana.com",
+            "F4:Payment Terms:",
+            "G4:100% Advance Payment"
+          ]
+        },
+        {
+          "row": 6,
+          "values": [
+            "B6:BILL TO / CONSIGNEE:"
+          ]
+        },
+        {
+          "row": 7,
+          "values": [
+            "B7:[Enter Company Name]"
+          ]
+        },
+        {
+          "row": 8,
+          "values": [
+            "B8:[Enter Address Line 1]"
+          ]
+        },
+        {
+          "row": 9,
+          "values": [
+            "B9:[Enter Address Line 2]"
+          ]
+        },
+        {
+          "row": 12,
+          "values": [
+            "B12:Item Description",
+            "E12:Total Net Wt (KG)",
+            "F12:C&F Unit Price (USD)",
+            "G12:Total Amount (USD)"
+          ]
+        },
+        {
+          "row": 24,
+          "values": [
+            "F24:GRAND TOTAL:"
+          ]
+        },
+        {
+          "row": 26,
+          "values": [
+            "B26:BANKING DETAILS FOR PAYMENT"
+          ]
+        },
+        {
+          "row": 28,
+          "values": [
+            "B28:Bank Name:"
+          ]
+        },
+        {
+          "row": 29,
+          "values": [
+            "B29:Beneficiary Name:"
+          ]
+        },
+        {
+          "row": 30,
+          "values": [
+            "B30:Account No (USD):"
+          ]
+        },
+        {
+          "row": 31,
+          "values": [
+            "B31:SWIFT Code:"
+          ]
+        },
+        {
+          "row": 32,
+          "values": [
+            "B32:Correspondent Bank:",
+            "G32:Authorized Signature"
+          ]
+        },
+        {
+          "row": 33,
+          "values": [
+            "B33:Correspondent SWIFT:"
+          ]
+        }
+      ],
+      "allRows": [
+        {
+          "row": 2,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B2",
+              "val": "PROFORMA INVOICE",
+              "formatted": "PROFORMA INVOICE",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F2",
+              "val": "Date:",
+              "formatted": "Date:",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 3,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B3",
+              "val": "SKY ARIANA LTD",
+              "formatted": "SKY ARIANA LTD",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F3",
+              "val": "Proforma No:",
+              "formatted": "Proforma No:",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 4,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B4",
+              "val": "info@skyariana.com | www.skyariana.com",
+              "formatted": "info@skyariana.com | www.skyariana.com",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F4",
+              "val": "Payment Terms:",
+              "formatted": "Payment Terms:",
+              "type": "s"
+            },
+            {
+              "col": 6,
+              "address": "G4",
+              "val": "100% Advance Payment",
+              "formatted": "100% Advance Payment",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 6,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B6",
+              "val": "BILL TO / CONSIGNEE:",
+              "formatted": "BILL TO / CONSIGNEE:",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 7,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B7",
+              "val": "[Enter Company Name]",
+              "formatted": "[Enter Company Name]",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 8,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B8",
+              "val": "[Enter Address Line 1]",
+              "formatted": "[Enter Address Line 1]",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 9,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B9",
+              "val": "[Enter Address Line 2]",
+              "formatted": "[Enter Address Line 2]",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 12,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B12",
+              "val": "Item Description",
+              "formatted": "Item Description",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E12",
+              "val": "Total Net Wt (KG)",
+              "formatted": "Total Net Wt (KG)",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F12",
+              "val": "C&F Unit Price (USD)",
+              "formatted": "C&F Unit Price (USD)",
+              "type": "s"
+            },
+            {
+              "col": 6,
+              "address": "G12",
+              "val": "Total Amount (USD)",
+              "formatted": "Total Amount (USD)",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 24,
+          "cells": [
+            {
+              "col": 5,
+              "address": "F24",
+              "val": "GRAND TOTAL:",
+              "formatted": "GRAND TOTAL:",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 26,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B26",
+              "val": "BANKING DETAILS FOR PAYMENT",
+              "formatted": "BANKING DETAILS FOR PAYMENT",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 28,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B28",
+              "val": "Bank Name:",
+              "formatted": "Bank Name:",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 29,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B29",
+              "val": "Beneficiary Name:",
+              "formatted": "Beneficiary Name:",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 30,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B30",
+              "val": "Account No (USD):",
+              "formatted": "Account No (USD):",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 31,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B31",
+              "val": "SWIFT Code:",
+              "formatted": "SWIFT Code:",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 32,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B32",
+              "val": "Correspondent Bank:",
+              "formatted": "Correspondent Bank:",
+              "type": "s"
+            },
+            {
+              "col": 6,
+              "address": "G32",
+              "val": "Authorized Signature",
+              "formatted": "Authorized Signature",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 33,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B33",
+              "val": "Correspondent SWIFT:",
+              "formatted": "Correspondent SWIFT:",
+              "type": "s"
+            }
+          ]
+        }
+      ],
+      "formulas": []
+    },
+    "Proforma Invoices": {
+      "range": "A1:I49",
+      "rowCount": 49,
+      "colCount": 9,
+      "nonEmptyRows": 12,
+      "merges": [],
+      "sampleRows": [
+        {
+          "row": 2,
+          "values": [
+            "B2:Receivables & Invoices"
+          ]
+        },
+        {
+          "row": 3,
+          "values": [
+            "B3:AQ Companies • Proforma Tracking"
+          ]
+        },
+        {
+          "row": 4,
+          "values": [
+            "B4:"
+          ]
+        },
+        {
+          "row": 6,
+          "values": [
+            "B6:Invoice Date",
+            "C6:Proforma No",
+            "D6:Buyer / Consignee",
+            "E6:Item Description",
+            "F6:Total Net Wt (KG)",
+            "G6:Expected Amount (USD)",
+            "H6:Payment Status"
+          ]
+        },
+        {
+          "row": 7,
+          "values": [
+            "B7:05-Sep-2026",
+            "C7:001",
+            "D7:G.T JAYANTI AGROCHEM INDIA PVT LTD",
+            "E7:Black Raisins (Best) - 1,385 CTNS",
+            "F7:22160",
+            "G7:79332.8",
+            "H7:PAID (See Ledger)"
+          ]
+        },
+        {
+          "row": 8,
+          "values": [
+            "B8:23-Sep-2026",
+            "C8:001",
+            "D8:G.T INDIA PVT LTD",
+            "E8:Black Raisins - 2,300 CTNS",
+            "F8:23000",
+            "G8:74750",
+            "H8:PAID (See Ledger)"
+          ]
+        },
+        {
+          "row": 9,
+          "values": [
+            "B9:23-Sep-2026",
+            "C9:002",
+            "D9:G.T INDIA PVT LTD",
+            "E9:Black Raisins - 2,295 CTNS",
+            "F9:22950",
+            "G9:74587.5",
+            "H9:Pending"
+          ]
+        },
+        {
+          "row": 10,
+          "values": [
+            "B10:23-Sep-2026",
+            "C10:002",
+            "D10:G.T JAYANTI AGROCHEM INDIA PVT LTD",
+            "E10:Black Raisins - 2,250 CTNS",
+            "F10:22500",
+            "G10:63000",
+            "H10:Pending"
+          ]
+        },
+        {
+          "row": 11,
+          "values": [
+            "B11:28-Sep-2026",
+            "C11:001",
+            "D11:MANIK TRADERS",
+            "E11:Black Raisins - 1,383 CTNS",
+            "F11:22128",
+            "G11:57533",
+            "H11:Pending"
+          ]
+        },
+        {
+          "row": 12,
+          "values": [
+            "B12:28-Sep-2026",
+            "C12:002",
+            "D12:MANIK TRADERS",
+            "E12:Black Raisins - 1,384 CTNS",
+            "F12:22144",
+            "G12:62003",
+            "H12:Pending"
+          ]
+        },
+        {
+          "row": 13,
+          "values": [
+            "B13:28-Sep-2026",
+            "C13:003",
+            "D13:MANIK TRADERS",
+            "E13:Black Raisins - 1,385 CTNS",
+            "F13:22160",
+            "G13:72020",
+            "H13:Pending"
+          ]
+        },
+        {
+          "row": 14,
+          "values": [
+            "B14:28-Sep-2026",
+            "C14:001",
+            "D14:SPDC BITES LLP",
+            "E14:Black Raisins - 1,382 CTNS",
+            "F14:22122",
+            "G14:71864",
+            "H14:Pending"
+          ]
+        }
+      ],
+      "allRows": [
+        {
+          "row": 2,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B2",
+              "val": "Receivables & Invoices",
+              "formatted": "Receivables & Invoices",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 3,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B3",
+              "val": "AQ Companies • Proforma Tracking",
+              "formatted": "AQ Companies • Proforma Tracking",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 4,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B4",
+              "val": "",
+              "formatted": "",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 6,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B6",
+              "val": "Invoice Date",
+              "formatted": "Invoice Date",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C6",
+              "val": "Proforma No",
+              "formatted": "Proforma No",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D6",
+              "val": "Buyer / Consignee",
+              "formatted": "Buyer / Consignee",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E6",
+              "val": "Item Description",
+              "formatted": "Item Description",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F6",
+              "val": "Total Net Wt (KG)",
+              "formatted": "Total Net Wt (KG)",
+              "type": "s"
+            },
+            {
+              "col": 6,
+              "address": "G6",
+              "val": "Expected Amount (USD)",
+              "formatted": "Expected Amount (USD)",
+              "type": "s"
+            },
+            {
+              "col": 7,
+              "address": "H6",
+              "val": "Payment Status",
+              "formatted": "Payment Status",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 7,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B7",
+              "val": "05-Sep-2026",
+              "formatted": "05-Sep-2026",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C7",
+              "val": "001",
+              "formatted": "001",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D7",
+              "val": "G.T JAYANTI AGROCHEM INDIA PVT LTD",
+              "formatted": "G.T JAYANTI AGROCHEM INDIA PVT LTD",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E7",
+              "val": "Black Raisins (Best) - 1,385 CTNS",
+              "formatted": "Black Raisins (Best) - 1,385 CTNS",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F7",
+              "val": 22160,
+              "formatted": "22,160",
+              "type": "n"
+            },
+            {
+              "col": 6,
+              "address": "G7",
+              "val": 79332.8,
+              "formatted": "$79,332.80",
+              "type": "n"
+            },
+            {
+              "col": 7,
+              "address": "H7",
+              "val": "PAID (See Ledger)",
+              "formatted": "PAID (See Ledger)",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 8,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B8",
+              "val": "23-Sep-2026",
+              "formatted": "23-Sep-2026",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C8",
+              "val": "001",
+              "formatted": "001",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D8",
+              "val": "G.T INDIA PVT LTD",
+              "formatted": "G.T INDIA PVT LTD",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E8",
+              "val": "Black Raisins - 2,300 CTNS",
+              "formatted": "Black Raisins - 2,300 CTNS",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F8",
+              "val": 23000,
+              "formatted": "23,000",
+              "type": "n"
+            },
+            {
+              "col": 6,
+              "address": "G8",
+              "val": 74750,
+              "formatted": "$74,750.00",
+              "type": "n"
+            },
+            {
+              "col": 7,
+              "address": "H8",
+              "val": "PAID (See Ledger)",
+              "formatted": "PAID (See Ledger)",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 9,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B9",
+              "val": "23-Sep-2026",
+              "formatted": "23-Sep-2026",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C9",
+              "val": "002",
+              "formatted": "002",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D9",
+              "val": "G.T INDIA PVT LTD",
+              "formatted": "G.T INDIA PVT LTD",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E9",
+              "val": "Black Raisins - 2,295 CTNS",
+              "formatted": "Black Raisins - 2,295 CTNS",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F9",
+              "val": 22950,
+              "formatted": "22,950",
+              "type": "n"
+            },
+            {
+              "col": 6,
+              "address": "G9",
+              "val": 74587.5,
+              "formatted": "$74,587.50",
+              "type": "n"
+            },
+            {
+              "col": 7,
+              "address": "H9",
+              "val": "Pending",
+              "formatted": "Pending",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 10,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B10",
+              "val": "23-Sep-2026",
+              "formatted": "23-Sep-2026",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C10",
+              "val": "002",
+              "formatted": "002",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D10",
+              "val": "G.T JAYANTI AGROCHEM INDIA PVT LTD",
+              "formatted": "G.T JAYANTI AGROCHEM INDIA PVT LTD",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E10",
+              "val": "Black Raisins - 2,250 CTNS",
+              "formatted": "Black Raisins - 2,250 CTNS",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F10",
+              "val": 22500,
+              "formatted": "22,500",
+              "type": "n"
+            },
+            {
+              "col": 6,
+              "address": "G10",
+              "val": 63000,
+              "formatted": "$63,000.00",
+              "type": "n"
+            },
+            {
+              "col": 7,
+              "address": "H10",
+              "val": "Pending",
+              "formatted": "Pending",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 11,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B11",
+              "val": "28-Sep-2026",
+              "formatted": "28-Sep-2026",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C11",
+              "val": "001",
+              "formatted": "001",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D11",
+              "val": "MANIK TRADERS",
+              "formatted": "MANIK TRADERS",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E11",
+              "val": "Black Raisins - 1,383 CTNS",
+              "formatted": "Black Raisins - 1,383 CTNS",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F11",
+              "val": 22128,
+              "formatted": "22,128",
+              "type": "n"
+            },
+            {
+              "col": 6,
+              "address": "G11",
+              "val": 57533,
+              "formatted": "$57,533.00",
+              "type": "n"
+            },
+            {
+              "col": 7,
+              "address": "H11",
+              "val": "Pending",
+              "formatted": "Pending",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 12,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B12",
+              "val": "28-Sep-2026",
+              "formatted": "28-Sep-2026",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C12",
+              "val": "002",
+              "formatted": "002",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D12",
+              "val": "MANIK TRADERS",
+              "formatted": "MANIK TRADERS",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E12",
+              "val": "Black Raisins - 1,384 CTNS",
+              "formatted": "Black Raisins - 1,384 CTNS",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F12",
+              "val": 22144,
+              "formatted": "22,144",
+              "type": "n"
+            },
+            {
+              "col": 6,
+              "address": "G12",
+              "val": 62003,
+              "formatted": "$62,003.00",
+              "type": "n"
+            },
+            {
+              "col": 7,
+              "address": "H12",
+              "val": "Pending",
+              "formatted": "Pending",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 13,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B13",
+              "val": "28-Sep-2026",
+              "formatted": "28-Sep-2026",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C13",
+              "val": "003",
+              "formatted": "003",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D13",
+              "val": "MANIK TRADERS",
+              "formatted": "MANIK TRADERS",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E13",
+              "val": "Black Raisins - 1,385 CTNS",
+              "formatted": "Black Raisins - 1,385 CTNS",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F13",
+              "val": 22160,
+              "formatted": "22,160",
+              "type": "n"
+            },
+            {
+              "col": 6,
+              "address": "G13",
+              "val": 72020,
+              "formatted": "$72,020.00",
+              "type": "n"
+            },
+            {
+              "col": 7,
+              "address": "H13",
+              "val": "Pending",
+              "formatted": "Pending",
+              "type": "s"
+            }
+          ]
+        },
+        {
+          "row": 14,
+          "cells": [
+            {
+              "col": 1,
+              "address": "B14",
+              "val": "28-Sep-2026",
+              "formatted": "28-Sep-2026",
+              "type": "s"
+            },
+            {
+              "col": 2,
+              "address": "C14",
+              "val": "001",
+              "formatted": "001",
+              "type": "s"
+            },
+            {
+              "col": 3,
+              "address": "D14",
+              "val": "SPDC BITES LLP",
+              "formatted": "SPDC BITES LLP",
+              "type": "s"
+            },
+            {
+              "col": 4,
+              "address": "E14",
+              "val": "Black Raisins - 1,382 CTNS",
+              "formatted": "Black Raisins - 1,382 CTNS",
+              "type": "s"
+            },
+            {
+              "col": 5,
+              "address": "F14",
+              "val": 22122,
+              "formatted": "22,122",
+              "type": "n"
+            },
+            {
+              "col": 6,
+              "address": "G14",
+              "val": 71864,
+              "formatted": "$71,864.00",
+              "type": "n"
+            },
+            {
+              "col": 7,
+              "address": "H14",
+              "val": "Pending",
+              "formatted": "Pending",
+              "type": "s"
+            }
+          ]
+        }
+      ],
+      "formulas": []
+    }
+  }
+}

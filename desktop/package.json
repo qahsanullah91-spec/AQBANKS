@@ -1,0 +1,31 @@
+{
+  "name": "aq-companies-desktop",
+  "version": "1.0.0",
+  "description": "Desktop Application Shell for AQ Companies Logistics & Financial Management System",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^32.1.2",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.aqcompanies.system",
+    "productName": "AQ Companies Logistics Portal",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "../frontend/dist/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

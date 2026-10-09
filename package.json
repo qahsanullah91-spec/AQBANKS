@@ -1,0 +1,28 @@
+{
+  "name": "aq-companies-bank",
+  "version": "1.0.0",
+  "description": "AQ Companies Logistics & Financial Management System",
+  "private": true,
+  "scripts": {
+    "backend:dev": "npm --prefix backend run dev",
+    "backend:build": "npm --prefix backend run build",
+    "backend:test": "npm --prefix backend run test",
+    "backend:seed": "npm --prefix backend run prisma:seed",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "desktop:start": "npm --prefix desktop start",
+    "build": "npm run backend:build && npm run frontend:build",
+    "test": "npm run backend:test",
+    "seed": "npm run backend:seed"
+  },
+  "keywords": [
+    "logistics",
+    "financial-management",
+    "accounting",
+    "freight-tracking",
+    "proforma-invoices",
+    "modular-monolith"
+  ],
+  "author": "AQ Companies Development Team",
+  "license": "UNLICENSED"
+}

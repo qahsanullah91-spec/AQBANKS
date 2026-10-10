@@ -39,11 +39,20 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNaviga
     <div style={{ padding: 16, color: '#f8fafc' }}>
       {/* Welcome header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div>
-          <span style={{ fontSize: 12, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Mobile Overview</span>
-          <h2 style={{ margin: 0, fontSize: 18, color: '#ffffff', fontWeight: 700 }}>
-            Hello, {user.firstName || user.email.split('@')[0]}
-          </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 40, height: 40, backgroundColor: '#0f172a', borderRadius: 10, padding: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255, 255, 255, 0.12)' }}>
+            <img
+              src="/logo.png"
+              alt="AQ Companies Logo"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          </div>
+          <div>
+            <span style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Mobile Overview</span>
+            <h2 style={{ margin: 0, fontSize: 16, color: '#ffffff', fontWeight: 700 }}>
+              Hello, {user.firstName || user.email.split('@')[0]}
+            </h2>
+          </div>
         </div>
         <button
           onClick={fetchDashboard}

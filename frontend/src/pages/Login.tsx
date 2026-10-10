@@ -37,8 +37,12 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4">
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-2xl">
         <div className="flex flex-col items-center mb-6 text-center">
-          <div className="w-14 h-14 bg-emerald-600/20 text-emerald-400 rounded-xl flex items-center justify-center mb-3 border border-emerald-500/30">
-            <Building2 className="w-8 h-8" />
+          <div className="w-24 h-24 bg-slate-950 p-2 rounded-2xl flex items-center justify-center mb-3 border border-slate-700/80 shadow-[0_0_25px_rgba(255,255,255,0.1)]">
+            <img
+              src="/logo.png"
+              alt="AQ Companies Official Logo"
+              className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]"
+            />
           </div>
           <h1 className="text-2xl font-bold text-white tracking-wide">AQ COMPANIES</h1>
           <p className="text-xs uppercase tracking-widest text-slate-400 mt-1">Logistics & Financial Management Portal</p>

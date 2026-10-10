@@ -112,9 +112,13 @@ export const App: React.FC = () => {
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 shrink-0">
-              <Building2 className="w-5 h-5" />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-slate-950 p-1 flex items-center justify-center border border-slate-700/60 shadow-md shrink-0">
+              <img
+                src="/logo.png"
+                alt="AQ Companies Official Logo"
+                className="w-full h-full object-contain filter drop-shadow-[0_0_4px_rgba(255,255,255,0.3)]"
+              />
             </div>
             <div className="truncate">
               <span className="font-extrabold text-xs sm:text-sm tracking-wide text-white block sm:inline">
@@ -185,6 +189,21 @@ export const App: React.FC = () => {
             <span className="mt-1 inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
               {currentUser.roles.join(', ')}
             </span>
+          </div>
+
+          {/* Sidebar Brand Card */}
+          <div className="hidden md:flex items-center gap-3 p-3.5 border-b border-slate-800 bg-slate-950/40">
+            <div className="w-10 h-10 rounded-xl bg-slate-950 p-1 flex items-center justify-center border border-slate-700/60 shadow-inner shrink-0">
+              <img
+                src="/logo.png"
+                alt="AQ Companies Official Logo"
+                className="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(255,255,255,0.35)]"
+              />
+            </div>
+            <div className="truncate">
+              <div className="font-extrabold text-xs text-white tracking-wider">AQ COMPANIES</div>
+              <div className="text-[10px] text-emerald-400 font-mono">FINANCE & LOGISTICS</div>
+            </div>
           </div>
 
           <div className="flex-1 py-3 px-2 sm:px-3 space-y-1 overflow-y-auto">

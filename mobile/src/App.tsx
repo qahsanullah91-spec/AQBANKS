@@ -103,8 +103,14 @@ export const App: React.FC = () => {
         top: 0,
         zIndex: 50
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 18 }}>🚢</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 32, height: 32, backgroundColor: '#020617', borderRadius: 8, padding: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255, 255, 255, 0.15)', boxShadow: '0 0 10px rgba(255,255,255,0.06)' }}>
+            <img
+              src="/logo.png"
+              alt="AQ Companies Logo"
+              style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.4))' }}
+            />
+          </div>
           <div>
             <span style={{ fontSize: 14, fontWeight: 800, color: '#ffffff', letterSpacing: 0.5 }}>AQ COMPANIES</span>
             <span style={{ display: 'block', fontSize: 10, color: '#10b981', fontWeight: 600 }}>● SECURE GATEWAY</span>

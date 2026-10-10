@@ -33,8 +33,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   return (
     <div style={{ padding: 24, backgroundColor: '#020617', minHeight: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
       <div style={{ textAlign: 'center', marginBottom: 28 }}>
-        <div style={{ width: 60, height: 60, backgroundColor: 'rgba(16, 185, 129, 0.15)', borderRadius: 16, margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-          <span style={{ fontSize: 28 }}>🚢</span>
+        <div style={{ width: 80, height: 80, backgroundColor: '#0f172a', borderRadius: 20, margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255, 255, 255, 0.15)', boxShadow: '0 0 20px rgba(255,255,255,0.08)' }}>
+          <img
+            src="/logo.png"
+            alt="AQ Companies Logo"
+            style={{ width: '80%', height: '80%', objectFit: 'contain', filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.4))' }}
+          />
         </div>
         <h1 style={{ color: '#ffffff', fontSize: 22, fontWeight: 'bold', margin: 0 }}>AQ COMPANIES</h1>
         <p style={{ color: '#94a3b8', fontSize: 12, margin: '4px 0 0', textTransform: 'uppercase', letterSpacing: 1 }}>

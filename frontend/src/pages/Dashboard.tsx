@@ -66,16 +66,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     <div className="space-y-4 sm:space-y-6">
       {/* Title & Organization Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 sm:pb-4 border-b border-slate-800">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Executive Dashboard</h1>
-            <span className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800">
-              LIVE SYSTEM
-            </span>
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-slate-950 p-1.5 flex items-center justify-center border border-slate-700/80 shadow-md shrink-0">
+            <img
+              src="/logo.png"
+              alt="AQ Companies Official Logo"
+              className="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(255,255,255,0.35)]"
+            />
           </div>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            AQ Companies • Afghan United Bank Operating Account (101502******0472)
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Executive Dashboard</h1>
+              <span className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800">
+                LIVE SYSTEM
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+              AQ Companies • Afghan United Bank Operating Account (101502******0472)
+            </p>
+          </div>
         </div>
         <button
           onClick={fetchOverview}

@@ -8,6 +8,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     title: 'AQ Companies • Corporate Logistics & Banking Portal',
+    icon: path.join(__dirname, 'assets/logo.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,

@@ -183,4 +183,111 @@ describe('Proforma Invoice Visibility, Persistence & Localization E2E Tests', ()
     // Parity count check
     expect(enKeys.length).toBe(psKeys.length);
   });
+
+  it('TC-INV-VIS-03: Search query matches invoice number, source ref, or customer name accurately', async () => {
+    // 1. Get first invoice
+    const allRes = await request(app)
+      .get('/api/invoices')
+      .set('Authorization', `Bearer ${authToken}`);
+    expect(allRes.status).toBe(200);
+    expect(allRes.body.length).toBeGreaterThan(0);
+    const target = allRes.body[0];
+
+    // Search by invoiceNumber
+    const searchRes = await request(app)
+      .get(`/api/invoices?search=${encodeURIComponent(target.invoiceNumber)}`)
+      .set('Authorization', `Bearer ${authToken}`);
+    expect(searchRes.status).toBe(200);
+    expect(searchRes.body.some((inv: any) => inv.id === target.id)).toBe(true);
+  });
+
+  it('TC-INV-VIS-04: Clearing filters restores the full authorized invoice list', async () => {
+    const fullRes = await request(app)
+      .get('/api/invoices')
+      .set('Authorization', `Bearer ${authToken}`);
+
+    // Simulate applying filter
+    const filteredRes = await request(app)
+      .get('/api/invoices?status=VOID')
+      .set('Authorization', `Bearer ${authToken}`);
+
+    // Simulate clearing filter (?search=&status=)
+    const clearedRes = await request(app)
+      .get('/api/invoices?search=&status=')
+      .set('Authorization', `Bearer ${authToken}`);
+
+    expect(clearedRes.status).toBe(200);
+    expect(clearedRes.body.length).toBe(fullRes.body.length);
+  });
+
+  it('TC-INV-SEC-01: Denies unauthenticated access to /api/invoices with 401', async () => {
+    const res = await request(app).get('/api/invoices');
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('UNAUTHORIZED');
+  });
+
+  it('TC-INV-CREAT-03: Rejects invalid invoice creation with 400 Bad Request', async () => {
+    const invalidRes = await request(app)
+      .post('/api/invoices')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({
+        customerId,
+        issueDate: new Date().toISOString(),
+        lines: [] // Empty lines violate schema
+      });
+
+    expect(invalidRes.status).toBe(400);
+    expect(invalidRes.body.error).toBe('VALIDATION_ERROR');
+  });
+
+  it('TC-INV-DUP-01: Separate invoices with matching source reference do not overwrite each other', async () => {
+    const duplicateRef = `REPEATED-SOURCE-REF-${Date.now()}`;
+    const itemPayload = {
+      description: 'Sultana Raisins Standard',
+      quantity: 100,
+      unitOfMeasure: 'KG',
+      unitPrice: 2.20
+    };
+
+    // First Invoice
+    const firstRes = await request(app)
+      .post('/api/invoices')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({
+        customerId,
+        issueDate: new Date().toISOString(),
+        sourceInvoiceRef: duplicateRef,
+        lines: [itemPayload]
+      });
+    expect(firstRes.status).toBe(201);
+
+    // Second Invoice with same sourceInvoiceRef
+    const secondRes = await request(app)
+      .post('/api/invoices')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({
+        customerId,
+        issueDate: new Date().toISOString(),
+        sourceInvoiceRef: duplicateRef,
+        lines: [itemPayload]
+      });
+    expect(secondRes.status).toBe(201);
+
+    // Assert both exist as distinct immutable entities
+    expect(firstRes.body.id).not.toBe(secondRes.body.id);
+    expect(firstRes.body.invoiceNumber).not.toBe(secondRes.body.invoiceNumber);
+
+    const getFirst = await request(app)
+      .get(`/api/invoices/${firstRes.body.id}`)
+      .set('Authorization', `Bearer ${authToken}`);
+    const getSecond = await request(app)
+      .get(`/api/invoices/${secondRes.body.id}`)
+      .set('Authorization', `Bearer ${authToken}`);
+
+    expect(getFirst.status).toBe(200);
+    expect(getSecond.status).toBe(200);
+    expect(getFirst.body.id).toBe(firstRes.body.id);
+    expect(getSecond.body.id).toBe(secondRes.body.id);
+  });
 });
+

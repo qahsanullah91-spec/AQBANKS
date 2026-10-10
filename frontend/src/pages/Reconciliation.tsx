@@ -1,17 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
+import { useLanguage } from '../context/LanguageContext';
 import {
   CheckCircle,
-  AlertTriangle,
-  ArrowRight,
   RefreshCw,
-  Search,
   ShieldCheck,
-  Percent,
-  DollarSign
+  Percent
 } from 'lucide-react';
 
 export const Reconciliation: React.FC = () => {
+  const { t, isRtl } = useLanguage();
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
@@ -54,16 +52,16 @@ export const Reconciliation: React.FC = () => {
       {/* Title & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Statement & Invoice Reconciliation</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">{t('reconciliation.title')}</h1>
           <p className="text-sm text-slate-400 mt-0.5">
-            Automated candidate matching between unreconciled bank credits and proforma invoices with fee tolerance
+            {t('reconciliation.subtitle')}
           </p>
         </div>
         <button
           onClick={loadSuggestions}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition self-start sm:self-auto"
+          className="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition self-start sm:self-auto"
         >
-          <RefreshCw className="w-3.5 h-3.5" /> Re-scan Matches
+          <RefreshCw className="w-3.5 h-3.5" /> {t('common.refresh', 'Re-scan Matches')}
         </button>
       </div>
 
@@ -94,8 +92,8 @@ export const Reconciliation: React.FC = () => {
                     </span>
                     <h2 className="text-sm font-bold text-white mt-0.5">{tx.description}</h2>
                     <div className="text-xs text-slate-400 mt-1 flex items-center gap-3 font-mono">
-                      <span>Ref: <strong className="text-slate-200">{tx.reference || 'N/A'}</strong></span>
-                      <span>Received: <strong className="text-emerald-400 font-bold">${tx.creditAmount}</strong></span>
+                      <span>Ref: <strong className="text-slate-200" dir="ltr">{tx.reference || 'N/A'}</strong></span>
+                      <span>Received: <strong className="text-emerald-400 font-bold" dir="ltr">${tx.creditAmount}</strong></span>
                     </div>
                   </div>
 
@@ -103,7 +101,7 @@ export const Reconciliation: React.FC = () => {
                   {match && (
                     <div className="flex flex-col items-center">
                       <span className="text-[10px] text-slate-400 uppercase font-semibold mb-1">Match Confidence</span>
-                      <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold text-xs">
+                      <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold text-xs" dir="ltr">
                         <Percent className="w-3.5 h-3.5" /> {match.score}% Score
                       </div>
                     </div>
@@ -115,15 +113,15 @@ export const Reconciliation: React.FC = () => {
                   <div className="mt-4 pt-2 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                     <div className="md:col-span-8 space-y-2">
                       <div className="text-xs text-slate-300 font-medium">
-                        Candidate Invoice: <strong className="text-white">{match.invoice.invoiceNumber}</strong>
+                        Candidate Invoice: <strong className="text-white" dir="ltr">{match.invoice.invoiceNumber}</strong>
                         {match.invoice.sourceInvoiceRef && (
-                          <span className="text-amber-400 ml-2 font-mono">(Source Ref: {match.invoice.sourceInvoiceRef})</span>
+                          <span className="text-amber-400 ml-2 font-mono" dir="ltr">(Source Ref: {match.invoice.sourceInvoiceRef})</span>
                         )}
                       </div>
                       <div className="text-xs text-slate-400">
                         Consignee: <strong className="text-slate-200">{match.invoice.customerName}</strong>
                       </div>
-                      <div className="text-xs text-slate-400 font-mono">
+                      <div className="text-xs text-slate-400 font-mono" dir="ltr">
                         Invoice Total: <strong className="text-white">${match.invoice.totalAmount}</strong> • Received: <strong className="text-emerald-400">${tx.creditAmount}</strong>
                         {Number(match.variance) !== 0 && (
                           <span className="ml-2 text-amber-400">
@@ -140,14 +138,14 @@ export const Reconciliation: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="md:col-span-4 flex justify-end">
+                    <div className="md:col-span-4 flex justify-end rtl:justify-start">
                       <button
                         onClick={() => handleConfirmMatch(tx.id, match.invoice.id, Number(tx.creditAmount))}
                         disabled={confirmingId === tx.id}
-                        className="w-full md:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-lg shadow-emerald-950 transition flex items-center justify-center gap-2"
+                        className="w-full md:w-auto px-4 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-lg shadow-emerald-950 transition flex items-center justify-center gap-2"
                       >
                         <CheckCircle className="w-4 h-4" />
-                        {confirmingId === tx.id ? 'Reconciling...' : 'Confirm Match & Allocate'}
+                        {confirmingId === tx.id ? t('common.loading') : t('reconciliation.confirmMatch')}
                       </button>
                     </div>
                   </div>
@@ -166,7 +164,7 @@ export const Reconciliation: React.FC = () => {
             ) : (
               <div>
                 <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-2" />
-                <h3 className="text-sm font-semibold text-white">All Statement Credits Reconciled</h3>
+                <h3 className="text-sm font-semibold text-white">{t('reconciliation.emptyState')}</h3>
                 <p className="text-xs text-slate-500 mt-1">No unreconciled commercial credits require attention.</p>
               </div>
             )}

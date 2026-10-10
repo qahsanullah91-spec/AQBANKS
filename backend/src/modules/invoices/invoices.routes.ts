@@ -47,14 +47,28 @@ router.get('/', authenticate, requirePermission('invoice:view'), async (req: Aut
     const { status, paymentStatus, customerId, search } = req.query;
     const where: any = {};
 
-    if (status) where.status = String(status);
-    if (paymentStatus) where.paymentStatus = String(paymentStatus);
-    if (customerId) where.customerId = String(customerId);
-    if (search) {
+    const cleanParam = (val: any) => {
+      if (!val) return undefined;
+      const str = String(val).trim();
+      if (str === '' || str === 'undefined' || str === 'null' || str === 'ALL') return undefined;
+      return str;
+    };
+
+    const sStatus = cleanParam(status);
+    if (sStatus) where.status = sStatus;
+
+    const sPaymentStatus = cleanParam(paymentStatus);
+    if (sPaymentStatus) where.paymentStatus = sPaymentStatus;
+
+    const sCustomerId = cleanParam(customerId);
+    if (sCustomerId) where.customerId = sCustomerId;
+
+    const sSearch = cleanParam(search);
+    if (sSearch) {
       where.OR = [
-        { invoiceNumber: { contains: String(search) } },
-        { sourceInvoiceRef: { contains: String(search) } },
-        { customer: { companyName: { contains: String(search) } } }
+        { invoiceNumber: { contains: sSearch } },
+        { sourceInvoiceRef: { contains: sSearch } },
+        { customer: { companyName: { contains: sSearch } } }
       ];
     }
 

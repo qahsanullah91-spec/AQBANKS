@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { BankAccount } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 import {
   ShieldCheck,
   Eye,
   Lock,
   Building2,
-  AlertTriangle,
-  History,
   X,
   CheckCircle
 } from 'lucide-react';
 
 export const BankRouting: React.FC = () => {
+  const { t, isRtl } = useLanguage();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,9 +56,9 @@ export const BankRouting: React.FC = () => {
     <div className="space-y-6">
       {/* Title */}
       <div className="pb-4 border-b border-slate-800">
-        <h1 className="text-2xl font-bold text-white tracking-tight">Restricted Banking & SWIFT Routing Information</h1>
+        <h1 className="text-2xl font-bold text-white tracking-tight">{t('banking.title')}</h1>
         <p className="text-sm text-slate-400 mt-0.5">
-          Official export wire settlement coordinates for Sky Ariana Ltd with field-level access control & compliance logging
+          {t('banking.subtitle')}
         </p>
       </div>
 
@@ -70,7 +70,7 @@ export const BankRouting: React.FC = () => {
         <div>
           <h3 className="font-semibold text-white">Confidential Corporate Banking Protocol</h3>
           <p className="text-slate-400 mt-0.5">
-            Banking identifiers are masked by default across all dashboards and client bundles. Unmasking an account number is an audited event requiring dual authorization or role-verified justification.
+            {t('banking.securityNotice')}
           </p>
         </div>
       </div>
@@ -86,7 +86,7 @@ export const BankRouting: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-white">{acc.bankName}</h2>
-                  <span className="text-xs text-slate-400">Beneficiary: <strong className="text-slate-200">{acc.beneficiaryName}</strong></span>
+                  <span className="text-xs text-slate-400">{t('banking.beneficiaryName')}: <strong className="text-slate-200">{acc.beneficiaryName}</strong></span>
                 </div>
               </div>
 
@@ -100,9 +100,9 @@ export const BankRouting: React.FC = () => {
                     setRevealedData(null);
                     setRevealReason('');
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition"
+                  className="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition"
                 >
-                  <Eye className="w-3.5 h-3.5 text-amber-400" /> Reveal Unmasked
+                  <Eye className="w-3.5 h-3.5 text-amber-400" /> {t('banking.revealAccount')}
                 </button>
               </div>
             </div>
@@ -112,14 +112,14 @@ export const BankRouting: React.FC = () => {
               <div className="p-4 bg-slate-950 border border-slate-800/80 rounded-lg space-y-2">
                 <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider block">Direct Bank Info</span>
                 <div>
-                  <span className="text-slate-400 block">Account Number (USD):</span>
-                  <div className="font-mono text-base font-bold text-emerald-400 mt-0.5">
+                  <span className="text-slate-400 block">{t('banking.accountNumber')}:</span>
+                  <div className="font-mono text-base font-bold text-emerald-400 mt-0.5" dir="ltr">
                     {acc.accountNumberMasked}
                   </div>
                 </div>
                 <div>
-                  <span className="text-slate-400 block">Bank SWIFT Code:</span>
-                  <div className="font-mono text-sm font-semibold text-white mt-0.5">
+                  <span className="text-slate-400 block">{t('banking.swiftCode')}:</span>
+                  <div className="font-mono text-sm font-semibold text-white mt-0.5" dir="ltr">
                     {acc.swiftCode}
                   </div>
                 </div>
@@ -128,14 +128,14 @@ export const BankRouting: React.FC = () => {
               <div className="p-4 bg-slate-950 border border-slate-800/80 rounded-lg space-y-2">
                 <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider block">Correspondent Routing (For International SWIFT)</span>
                 <div>
-                  <span className="text-slate-400 block">Correspondent Bank:</span>
+                  <span className="text-slate-400 block">{t('banking.correspondentBank')}:</span>
                   <div className="text-sm font-semibold text-white mt-0.5">
                     {acc.correspondentBank || 'DA AFGHANISTAN BANK'}
                   </div>
                 </div>
                 <div>
                   <span className="text-slate-400 block">Correspondent SWIFT:</span>
-                  <div className="font-mono text-sm font-semibold text-white mt-0.5">
+                  <div className="font-mono text-sm font-semibold text-white mt-0.5" dir="ltr">
                     {acc.correspondentSwift || 'AFGBAFKA'}
                   </div>
                 </div>
@@ -151,9 +151,9 @@ export const BankRouting: React.FC = () => {
           <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6 shadow-2xl">
             <div className="flex justify-between items-center pb-3 border-b border-slate-800">
               <h3 className="text-base font-bold text-white flex items-center gap-2 text-amber-400">
-                <ShieldCheck className="w-5 h-5 text-amber-400" /> Security Access: Reveal Account Number
+                <ShieldCheck className="w-5 h-5 text-amber-400" /> {t('banking.revealAccount')}
               </h3>
-              <button onClick={() => setRevealModalAccountId(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setRevealModalAccountId(null)} className="text-slate-400 hover:text-white p-2 min-h-[44px]">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -164,7 +164,7 @@ export const BankRouting: React.FC = () => {
                   This action reveals the complete bank account identifier. This disclosure is <strong className="text-white">logged with your user identity, IP address, and timestamp</strong>.
                 </p>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Mandatory Business Justification</label>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">{t('banking.reasonPrompt')}</label>
                   <textarea
                     value={revealReason}
                     onChange={e => setRevealReason(e.target.value)}
@@ -178,16 +178,16 @@ export const BankRouting: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setRevealModalAccountId(null)}
-                    className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded text-xs"
+                    className="px-3 py-1.5 min-h-[44px] bg-slate-800 text-slate-300 rounded text-xs"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="submit"
                     disabled={revealing || !revealReason.trim()}
-                    className="px-4 py-1.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded text-xs disabled:opacity-50"
+                    className="px-4 py-1.5 min-h-[44px] bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded text-xs disabled:opacity-50"
                   >
-                    {revealing ? 'Authorizing...' : 'Authorize & Reveal'}
+                    {revealing ? t('common.loading') : t('banking.revealAccount')}
                   </button>
                 </div>
               </form>
@@ -199,8 +199,8 @@ export const BankRouting: React.FC = () => {
                 </div>
 
                 <div className="p-4 bg-slate-950 border border-slate-800 rounded-lg text-center">
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">Full Unmasked Account Number:</span>
-                  <div className="font-mono text-xl font-extrabold text-white mt-1 tracking-wider selection:bg-emerald-600">
+                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">{t('banking.accountNumber')}:</span>
+                  <div className="font-mono text-xl font-extrabold text-white mt-1 tracking-wider selection:bg-emerald-600" dir="ltr">
                     {revealedData.accountNumberUnmasked}
                   </div>
                 </div>
@@ -211,9 +211,9 @@ export const BankRouting: React.FC = () => {
                       setRevealModalAccountId(null);
                       setRevealedData(null);
                     }}
-                    className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs font-semibold"
+                    className="px-4 py-1.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs font-semibold"
                   >
-                    Close & Re-mask
+                    {t('common.close')}
                   </button>
                 </div>
               </div>

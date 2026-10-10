@@ -29,18 +29,30 @@ router.get('/', authenticate, requirePermission('ledger:view'), async (req: Auth
   try {
     const { category, search, startDate, endDate } = req.query;
 
+    const cleanParam = (val: any) => {
+      if (!val) return undefined;
+      const str = String(val).trim();
+      if (str === '' || str === 'undefined' || str === 'null' || str === 'ALL') return undefined;
+      return str;
+    };
+
     const where: any = {};
-    if (category) where.category = String(category);
-    if (search) {
+    const sCategory = cleanParam(category);
+    if (sCategory) where.category = sCategory;
+
+    const sSearch = cleanParam(search);
+    if (sSearch) {
       where.OR = [
-        { description: { contains: String(search) } },
-        { reference: { contains: String(search) } }
+        { description: { contains: sSearch } },
+        { reference: { contains: sSearch } }
       ];
     }
-    if (startDate || endDate) {
+    const sStartDate = cleanParam(startDate);
+    const sEndDate = cleanParam(endDate);
+    if (sStartDate || sEndDate) {
       where.effectiveDate = {};
-      if (startDate) where.effectiveDate.gte = new Date(String(startDate));
-      if (endDate) where.effectiveDate.lte = new Date(String(endDate));
+      if (sStartDate) where.effectiveDate.gte = new Date(sStartDate);
+      if (sEndDate) where.effectiveDate.lte = new Date(sEndDate);
     }
 
     // Fetch primary financial account

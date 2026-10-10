@@ -44,6 +44,17 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
   return res.json();
 }
 
+export function buildQueryString(params: Record<string, any> = {}): string {
+  const sp = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '' && value !== 'undefined' && value !== 'null') {
+      sp.append(key, String(value));
+    }
+  }
+  const qs = sp.toString();
+  return qs ? `?${qs}` : '';
+}
+
 export const api = {
   // Auth
   login: (credentials: { email: string; password: string }) =>
@@ -61,8 +72,7 @@ export const api = {
 
   // Invoices
   getInvoices: (params: any = {}) => {
-    const qs = new URLSearchParams(params).toString();
-    return apiRequest(`/invoices${qs ? `?${qs}` : ''}`);
+    return apiRequest(`/invoices${buildQueryString(params)}`);
   },
   getInvoice: (id: string) => apiRequest(`/invoices/${id}`),
   createInvoice: (data: any) => apiRequest('/invoices', { method: 'POST', body: JSON.stringify(data) }),
@@ -73,8 +83,7 @@ export const api = {
 
   // Shipments
   getShipments: (params: any = {}) => {
-    const qs = new URLSearchParams(params).toString();
-    return apiRequest(`/shipments${qs ? `?${qs}` : ''}`);
+    return apiRequest(`/shipments${buildQueryString(params)}`);
   },
   getShipment: (id: string) => apiRequest(`/shipments/${id}`),
   createShipment: (data: any) => apiRequest('/shipments', { method: 'POST', body: JSON.stringify(data) }),
@@ -83,8 +92,7 @@ export const api = {
 
   // Ledger
   getLedger: (params: any = {}) => {
-    const qs = new URLSearchParams(params).toString();
-    return apiRequest(`/ledger${qs ? `?${qs}` : ''}`);
+    return apiRequest(`/ledger${buildQueryString(params)}`);
   },
   postLedgerEntry: (data: any) => apiRequest('/ledger', { method: 'POST', body: JSON.stringify(data) }),
   reverseLedgerEntry: (id: string, reason: string) =>
@@ -92,8 +100,7 @@ export const api = {
 
   // Payments
   getPayments: (params: any = {}) => {
-    const qs = new URLSearchParams(params).toString();
-    return apiRequest(`/payments${qs ? `?${qs}` : ''}`);
+    return apiRequest(`/payments${buildQueryString(params)}`);
   },
   createPayment: (data: any) => apiRequest('/payments', { method: 'POST', body: JSON.stringify(data) }),
 
@@ -119,7 +126,6 @@ export const api = {
 
   // Audit
   getAuditEvents: (params: any = {}) => {
-    const qs = new URLSearchParams(params).toString();
-    return apiRequest(`/audit${qs ? `?${qs}` : ''}`);
+    return apiRequest(`/audit${buildQueryString(params)}`);
   }
 };

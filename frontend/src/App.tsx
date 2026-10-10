@@ -14,6 +14,7 @@ import { Reports } from './pages/Reports';
 import { Admin } from './pages/Admin';
 import { Receipts } from './pages/Receipts';
 import { useTheme } from './context/ThemeContext';
+import { useLanguage, LanguageSelector } from './context/LanguageContext';
 import {
   LayoutDashboard,
   FileText,
@@ -37,6 +38,7 @@ import {
 
 export const App: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
+  const { t, isRtl } = useLanguage();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -75,7 +77,7 @@ export const App: React.FC = () => {
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
         <div className="text-center p-4">
           <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-xs text-slate-400">Initializing AQ Companies System...</p>
+          <p className="text-xs text-slate-400">{t('nav.initializing')}</p>
         </div>
       </div>
     );
@@ -86,25 +88,25 @@ export const App: React.FC = () => {
   }
 
   const navItems = [
-    { id: 'dashboard', label: 'Overview Dashboard', icon: LayoutDashboard },
-    { id: 'invoices', label: 'Proforma Invoices', icon: FileText },
-    { id: 'receipts', label: 'Deposit Receipts', icon: ReceiptIcon },
-    { id: 'logistics', label: 'Freight Logistics', icon: Ship },
-    { id: 'ledger', label: 'Account Statement', icon: DollarSign },
-    { id: 'payments', label: 'Payments & Allocations', icon: CreditCard },
-    { id: 'reconciliation', label: 'Reconciliation Review', icon: CheckSquare },
-    { id: 'banking', label: 'Restricted Bank Details', icon: ShieldCheck },
-    { id: 'import', label: 'Workbook Import Center', icon: FileSpreadsheet },
-    { id: 'reports', label: 'Financial Reports', icon: BarChart3 },
-    { id: 'admin', label: 'Admin & Compliance', icon: Settings, adminOnly: true }
+    { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+    { id: 'invoices', label: t('nav.invoices'), icon: FileText },
+    { id: 'receipts', label: t('nav.receipts'), icon: ReceiptIcon },
+    { id: 'logistics', label: t('nav.logistics'), icon: Ship },
+    { id: 'ledger', label: t('nav.ledger'), icon: DollarSign },
+    { id: 'payments', label: t('nav.payments'), icon: CreditCard },
+    { id: 'reconciliation', label: t('nav.reconciliation'), icon: CheckSquare },
+    { id: 'banking', label: t('nav.banking'), icon: ShieldCheck },
+    { id: 'import', label: t('nav.import'), icon: FileSpreadsheet },
+    { id: 'reports', label: t('nav.reports'), icon: BarChart3 },
+    { id: 'admin', label: t('nav.admin'), icon: Settings, adminOnly: true }
   ];
 
   // Primary items for mobile bottom tab bar (thumb-accessible)
   const mobilePrimaryTabs = [
-    { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
-    { id: 'invoices', label: 'Invoices', icon: FileText },
-    { id: 'logistics', label: 'Logistics', icon: Ship },
-    { id: 'ledger', label: 'Ledger', icon: DollarSign },
+    { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+    { id: 'invoices', label: t('nav.invoices'), icon: FileText },
+    { id: 'logistics', label: t('nav.logistics'), icon: Ship },
+    { id: 'ledger', label: t('nav.ledger'), icon: DollarSign },
   ];
 
   return (
@@ -129,19 +131,22 @@ export const App: React.FC = () => {
             </div>
             <div className="truncate">
               <span className="font-extrabold text-xs sm:text-sm tracking-wide text-white block sm:inline">
-                AQ COMPANIES
+                {t('nav.portalTitle')}
               </span>
-              <span className="hidden sm:inline-block text-[11px] text-slate-400 ml-2 border-l border-slate-700 pl-2">
-                Sky Ariana Ltd Corporate Portal
+              <span className="hidden sm:inline-block text-[11px] text-slate-400 mx-2 border-slate-700 rtl:border-r rtl:pr-2 ltr:border-l ltr:pl-2">
+                {t('nav.portalSubtitle')}
               </span>
             </div>
           </div>
         </div>
 
-        {/* User Context & Role Switcher */}
+        {/* User Context, Language Selector & Role Switcher */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Language Selector in Navigation Bar (Desktop & Mobile) */}
+          <LanguageSelector />
+
           <div className="hidden lg:flex items-center gap-1.5 text-xs">
-            <span className="text-slate-400">Role:</span>
+            <span className="text-slate-400">{t('nav.role')}:</span>
             <select
               value={currentUser.email}
               onChange={e => switchDemoRole(e.target.value)}
@@ -155,26 +160,26 @@ export const App: React.FC = () => {
             </select>
           </div>
 
-          <div className="flex items-center gap-2 pl-2 sm:border-l sm:border-slate-800">
-            <div className="text-right hidden sm:block">
+          <div className="flex items-center gap-2 px-1 sm:px-2 border-slate-800 rtl:border-r ltr:border-l">
+            <div className="text-right rtl:text-left hidden sm:block">
               <div className="text-xs font-semibold text-white leading-tight">{currentUser.firstName} {currentUser.lastName}</div>
               <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase">
                 {currentUser.roles[0]}
               </span>
             </div>
-            {/* Light / Dark Mode Toggle (Light Theme Default) */}
+            {/* Light / Dark Mode Toggle */}
             <button
               onClick={toggleTheme}
-              title={theme === 'dark' ? 'Switch to Light Mode (Default)' : 'Switch to Dark Mode'}
-              aria-label="Toggle Theme"
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              aria-label={t('nav.toggleTheme')}
               className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
             >
               {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-sky-400" />}
             </button>
             <button
               onClick={handleLogout}
-              title="Sign Out"
-              aria-label="Sign Out"
+              title={t('nav.signOut')}
+              aria-label={t('nav.signOut')}
               className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition"
             >
               <LogOut className="w-4 h-4" />
@@ -194,8 +199,8 @@ export const App: React.FC = () => {
 
         {/* Navigation Sidebar Drawer */}
         <aside
-          className={`fixed md:static inset-y-0 left-0 z-40 w-64 max-w-[80vw] bg-slate-900 border-r border-slate-800 transform ${
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+          className={`fixed md:static inset-y-0 ${isRtl ? 'right-0 border-l' : 'left-0 border-r'} z-40 w-64 max-w-[80vw] bg-slate-900 border-slate-800 transform ${
+            sidebarOpen ? 'translate-x-0' : (isRtl ? 'translate-x-full md:translate-x-0' : '-translate-x-full md:translate-x-0')
           } transition-transform duration-200 ease-in-out flex flex-col pt-14 md:pt-0 shrink-0 shadow-2xl md:shadow-none`}
         >
           {/* Mobile User Profile info inside drawer */}
@@ -217,7 +222,7 @@ export const App: React.FC = () => {
               />
             </div>
             <div className="truncate">
-              <div className="font-extrabold text-xs text-white tracking-wider">AQ COMPANIES</div>
+              <div className="font-extrabold text-xs text-white tracking-wider">{t('nav.portalTitle')}</div>
               <div className="text-[10px] text-emerald-400 font-mono">FINANCE & LOGISTICS</div>
             </div>
           </div>
@@ -249,14 +254,14 @@ export const App: React.FC = () => {
 
           {/* System Footer Info */}
           <div className="p-3 border-t border-slate-800 text-[11px] text-slate-500 font-mono">
-            <div>v1.0.0-PROD • Build 2026.10</div>
+            <div>{t('nav.systemVersion')}</div>
             <div className="text-[10px] text-slate-600 mt-0.5">SHA256: BC2518195...</div>
           </div>
         </aside>
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-5 md:p-6 lg:p-8 pb-20 md:pb-8 w-full max-w-full">
-          {activeTab === 'dashboard' && <Dashboard onNavigate={t => setActiveTab(t)} />}
+          {activeTab === 'dashboard' && <Dashboard onNavigate={tKey => setActiveTab(tKey)} />}
           {activeTab === 'invoices' && <Invoices />}
           {activeTab === 'receipts' && <Receipts />}
           {activeTab === 'logistics' && <Logistics />}
@@ -298,7 +303,7 @@ export const App: React.FC = () => {
           }`}
         >
           <MoreHorizontal className="w-4 h-4" />
-          <span className="text-[10px] font-medium mt-0.5">More</span>
+          <span className="text-[10px] font-medium mt-0.5">{t('nav.more')}</span>
         </button>
       </nav>
     </div>

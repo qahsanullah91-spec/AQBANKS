@@ -1,21 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { Shipment, Invoice } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 import {
   Ship,
   Search,
   Plus,
-  ArrowRight,
-  Clock,
-  CheckCircle,
-  Truck,
   Anchor,
   X,
-  History,
-  AlertCircle
+  History
 } from 'lucide-react';
 
 export const Logistics: React.FC = () => {
+  const { t, isRtl } = useLanguage();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,9 +93,9 @@ export const Logistics: React.FC = () => {
       {/* Title & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Active Freight Logistics & Container Tracking</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">{t('logistics.title')}</h1>
           <p className="text-sm text-slate-400 mt-0.5">
-            Cross-border container movements, carrier manifests (Maersk, MSC), and delivery milestones
+            {t('logistics.subtitle')}
           </p>
         </div>
         <button
@@ -106,30 +103,32 @@ export const Logistics: React.FC = () => {
             setShipmentRef(`SHP-${Math.floor(9000 + Math.random() * 1000)}`);
             setShowCreateModal(true);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition self-start sm:self-auto"
+          className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition self-start sm:self-auto"
         >
-          <Plus className="w-4 h-4" /> Register Shipment
+          <Plus className="w-4 h-4" /> {t('logistics.newShipment')}
         </button>
       </div>
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+          <Search className={`w-4 h-4 text-slate-500 absolute top-3 ${isRtl ? 'right-3' : 'left-3'}`} />
           <input
             type="text"
-            placeholder="Search by shipment ref, container no, B/L, route, or carrier..."
+            placeholder={t('logistics.searchPlaceholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+            className={`w-full bg-slate-900 border border-slate-800 rounded-lg py-2.5 min-h-[44px] text-xs text-white focus:outline-none focus:border-emerald-500 ${
+              isRtl ? 'pr-9 pl-3 text-right' : 'pl-9 pr-3 text-left'
+            }`}
           />
         </div>
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
-          className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
+          className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 min-h-[44px] text-xs text-slate-300 focus:outline-none"
         >
-          <option value="">All Tracking Statuses</option>
+          <option value="">{t('logistics.allStatuses')}</option>
           <option value="BOOKED">Booked</option>
           <option value="AT_ORIGIN_PORT">At Origin Port</option>
           <option value="IN_TRANSIT">In Transit</option>
@@ -147,9 +146,10 @@ export const Logistics: React.FC = () => {
               <div>
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Shipment Ref</span>
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">{t('logistics.shipmentRef')}</span>
                     <h2 className="text-lg font-bold text-white flex items-center gap-2 mt-0.5">
-                      <Anchor className="w-4 h-4 text-cyan-400" /> {s.shipmentRef}
+                      <Anchor className="w-4 h-4 text-cyan-400" />
+                      <span dir="ltr" className="font-mono">{s.shipmentRef}</span>
                     </h2>
                   </div>
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
@@ -165,26 +165,26 @@ export const Logistics: React.FC = () => {
                 {/* Route visualization */}
                 <div className="my-4 p-3 bg-slate-950 border border-slate-800/80 rounded-lg flex items-center justify-between text-xs font-medium">
                   <div className="text-slate-300">
-                    <span className="text-[10px] text-slate-500 block uppercase">Origin</span>
+                    <span className="text-[10px] text-slate-500 block uppercase">{t('logistics.origin')}</span>
                     {s.origin || 'Kandahar'}
                   </div>
                   <div className="flex items-center gap-1.5 text-slate-500 px-3">
                     <div className="h-[1px] w-8 bg-slate-700" />
-                    <Ship className="w-4 h-4 text-cyan-400" />
+                    <Ship className={`w-4 h-4 text-cyan-400 ${isRtl ? 'scale-x-[-1]' : ''}`} />
                     <div className="h-[1px] w-8 bg-slate-700" />
                   </div>
-                  <div className="text-right text-slate-300">
-                    <span className="text-[10px] text-slate-500 block uppercase">Destination</span>
+                  <div className="text-right rtl:text-left text-slate-300">
+                    <span className="text-[10px] text-slate-500 block uppercase">{t('logistics.destination')}</span>
                     {s.destination || 'Nhava Sheva'}
                   </div>
                 </div>
 
                 {/* Details Grid */}
                 <div className="grid grid-cols-2 gap-2 text-xs text-slate-400">
-                  <div>Container No: <span className="font-mono text-white font-medium">{s.containerNumber || 'N/A'}</span></div>
-                  <div>Carrier / Vessel: <span className="text-white font-medium">{s.carrier || 'N/A'}</span></div>
-                  <div>Bill of Lading: <span className="font-mono text-white font-medium">{s.billOfLading || 'N/A'}</span></div>
-                  <div>ETA: <span className="text-white font-medium">{s.estimatedArrivalDate ? new Date(s.estimatedArrivalDate).toLocaleDateString() : 'N/A'}</span></div>
+                  <div>{t('logistics.containerNo')}: <span dir="ltr" className="font-mono text-white font-medium">{s.containerNumber || 'N/A'}</span></div>
+                  <div>{t('logistics.carrier')}: <span className="text-white font-medium">{s.carrier || 'N/A'}</span></div>
+                  <div>{t('logistics.billOfLading')}: <span dir="ltr" className="font-mono text-white font-medium">{s.billOfLading || 'N/A'}</span></div>
+                  <div>{t('logistics.eta')}: <span dir="ltr" className="text-white font-medium">{s.estimatedArrivalDate ? new Date(s.estimatedArrivalDate).toLocaleDateString() : 'N/A'}</span></div>
                 </div>
 
                 {/* Linked Invoices */}
@@ -193,7 +193,7 @@ export const Logistics: React.FC = () => {
                     <span className="text-[10px] text-slate-500 uppercase font-semibold block mb-1">Linked Proforma Invoices:</span>
                     <div className="flex flex-wrap gap-1.5">
                       {s.shipmentInvoices.map((si: any) => (
-                        <span key={si.id} className="px-2 py-0.5 bg-slate-950 border border-slate-800 rounded font-mono text-[11px] text-emerald-400">
+                        <span key={si.id} className="px-2 py-0.5 bg-slate-950 border border-slate-800 rounded font-mono text-[11px] text-emerald-400" dir="ltr">
                           {si.invoice?.invoiceNumber} ({si.invoice?.customer?.companyName})
                         </span>
                       ))}
@@ -204,7 +204,7 @@ export const Logistics: React.FC = () => {
 
               {/* Status Update Button */}
               <div className="mt-5 pt-3 border-t border-slate-800 flex justify-between items-center">
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-slate-500" dir="ltr">
                   {s.statusHistory && s.statusHistory.length > 0 ? `Updated: ${new Date(s.statusHistory[0].changedAt).toLocaleDateString()}` : ''}
                 </span>
                 <button
@@ -212,7 +212,7 @@ export const Logistics: React.FC = () => {
                     setStatusModalShipment(s);
                     setNewStatus(s.status);
                   }}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition"
+                  className="px-3 py-1.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition"
                 >
                   Update Status & Timeline
                 </button>
@@ -221,7 +221,7 @@ export const Logistics: React.FC = () => {
           ))
         ) : (
           <div className="col-span-2 text-center py-12 text-slate-500">
-            {loading ? 'Loading shipments...' : 'No shipments registered. Click Register Shipment to track freight.'}
+            {loading ? t('common.loading') : t('logistics.emptyState')}
           </div>
         )}
       </div>
@@ -232,9 +232,9 @@ export const Logistics: React.FC = () => {
           <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-lg p-6 shadow-2xl">
             <div className="flex justify-between items-center pb-4 border-b border-slate-800">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Ship className="w-5 h-5 text-cyan-400" /> Register Freight Shipment
+                <Ship className="w-5 h-5 text-cyan-400" /> {t('logistics.newShipment')}
               </h2>
-              <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-white p-2 min-h-[44px]">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -242,7 +242,7 @@ export const Logistics: React.FC = () => {
             <form onSubmit={handleCreateShipment} className="mt-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] text-slate-300 mb-1">Shipment Reference</label>
+                  <label className="block text-[11px] text-slate-300 mb-1">{t('logistics.shipmentRef')}</label>
                   <input
                     type="text"
                     value={shipmentRef}
@@ -252,7 +252,7 @@ export const Logistics: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-slate-300 mb-1">Carrier / Vessel</label>
+                  <label className="block text-[11px] text-slate-300 mb-1">{t('logistics.carrier')}</label>
                   <input
                     type="text"
                     value={carrier}
@@ -265,30 +265,32 @@ export const Logistics: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] text-slate-300 mb-1">Container Number</label>
+                  <label className="block text-[11px] text-slate-300 mb-1">{t('logistics.containerNo')}</label>
                   <input
                     type="text"
                     value={containerNumber}
                     onChange={e => setContainerNumber(e.target.value)}
                     placeholder="MSKU9023418"
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white"
+                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white font-mono"
+                    dir="ltr"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-slate-300 mb-1">Bill of Lading (B/L)</label>
+                  <label className="block text-[11px] text-slate-300 mb-1">{t('logistics.billOfLading')}</label>
                   <input
                     type="text"
                     value={billOfLading}
                     onChange={e => setBillOfLading(e.target.value)}
                     placeholder="BL-1928374"
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white"
+                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white font-mono"
+                    dir="ltr"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] text-slate-300 mb-1">Origin Port/City</label>
+                  <label className="block text-[11px] text-slate-300 mb-1">{t('logistics.origin')}</label>
                   <input
                     type="text"
                     value={origin}
@@ -297,7 +299,7 @@ export const Logistics: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-slate-300 mb-1">Destination Port/City</label>
+                  <label className="block text-[11px] text-slate-300 mb-1">{t('logistics.destination')}</label>
                   <input
                     type="text"
                     value={destination}
@@ -308,7 +310,7 @@ export const Logistics: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] text-slate-300 mb-1">Estimated Arrival (ETA)</label>
+                <label className="block text-[11px] text-slate-300 mb-1">{t('logistics.eta')}</label>
                 <input
                   type="date"
                   value={estimatedArrivalDate}
@@ -321,15 +323,15 @@ export const Logistics: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded text-xs"
+                  className="px-3 py-1.5 min-h-[44px] bg-slate-800 text-slate-300 rounded text-xs"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold"
+                  className="px-4 py-1.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold"
                 >
-                  Save Shipment
+                  {t('common.save')}
                 </button>
               </div>
             </form>
@@ -345,14 +347,14 @@ export const Logistics: React.FC = () => {
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <History className="w-4 h-4 text-cyan-400" /> Milestone Tracking: {statusModalShipment.shipmentRef}
               </h3>
-              <button onClick={() => setStatusModalShipment(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setStatusModalShipment(null)} className="text-slate-400 hover:text-white p-2 min-h-[44px]">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="mt-4 space-y-3">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Transition To Status</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1">{t('common.status')}</label>
                 <select
                   value={newStatus}
                   onChange={e => setNewStatus(e.target.value)}
@@ -368,7 +370,7 @@ export const Logistics: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Reason / Carrier Update Note</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1">{t('common.notes')}</label>
                 <textarea
                   value={statusReason}
                   onChange={e => setStatusReason(e.target.value)}
@@ -387,7 +389,7 @@ export const Logistics: React.FC = () => {
                       <div key={h.id} className="p-2 bg-slate-950 border border-slate-800 rounded text-[11px]">
                         <div className="flex justify-between text-slate-300 font-medium">
                           <span>{h.newStatus}</span>
-                          <span className="text-slate-500">{new Date(h.changedAt).toLocaleDateString()}</span>
+                          <span dir="ltr" className="text-slate-500">{new Date(h.changedAt).toLocaleDateString()}</span>
                         </div>
                         <p className="text-slate-400 text-[10px] mt-0.5">{h.reason}</p>
                       </div>
@@ -399,15 +401,15 @@ export const Logistics: React.FC = () => {
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   onClick={() => setStatusModalShipment(null)}
-                  className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded text-xs"
+                  className="px-3 py-1.5 min-h-[44px] bg-slate-800 text-slate-300 rounded text-xs"
                 >
-                  Close
+                  {t('common.close')}
                 </button>
                 <button
                   onClick={handleUpdateStatus}
-                  className="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-semibold"
+                  className="px-4 py-1.5 min-h-[44px] bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-semibold"
                 >
-                  Update Milestone
+                  {t('common.save')}
                 </button>
               </div>
             </div>

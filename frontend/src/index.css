@@ -220,3 +220,22 @@ html:not(.dark) textarea {
 .dark ::-webkit-scrollbar-thumb {
   background: #334155;
 }
+
+/* Pashto & RTL Typography & Layout Rules */
+html[lang="ps"],
+body.rtl-layout {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Bahij Pashto", "Noto Sans Arabic", Tahoma, Arial, sans-serif;
+  direction: rtl;
+}
+
+/* Technical identifiers, codes, currency amounts, and phone/email remain readable */
+.font-mono,
+[dir="ltr"],
+.code-identifier,
+.ltr-text,
+input[type="number"],
+input[type="date"],
+input[type="email"],
+input[type="tel"] {
+  unicode-bidi: isolate;
+}

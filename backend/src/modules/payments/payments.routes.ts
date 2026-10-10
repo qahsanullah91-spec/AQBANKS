@@ -59,8 +59,19 @@ router.get('/', authenticate, async (req: AuthenticatedRequest, res: Response, n
   try {
     const { customerId, reference } = req.query;
     const where: any = {};
-    if (customerId) where.customerId = String(customerId);
-    if (reference) where.reference = { contains: String(reference) };
+
+    const cleanParam = (val: any) => {
+      if (!val) return undefined;
+      const str = String(val).trim();
+      if (str === '' || str === 'undefined' || str === 'null' || str === 'ALL') return undefined;
+      return str;
+    };
+
+    const sCustomerId = cleanParam(customerId);
+    if (sCustomerId) where.customerId = sCustomerId;
+
+    const sReference = cleanParam(reference);
+    if (sReference) where.reference = { contains: sReference };
 
     const payments = await prisma.payment.findMany({
       where,

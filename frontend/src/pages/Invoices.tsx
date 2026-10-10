@@ -1,31 +1,33 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { Invoice, Customer, InvoiceLine } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 import {
   FileText,
   Plus,
   Printer,
   Ban,
   CheckCircle,
-  Clock,
   Search,
-  Filter,
-  DollarSign,
   AlertTriangle,
   X,
-  Lock,
-  Download
+  RotateCcw,
+  Check
 } from 'lucide-react';
 
 export const Invoices: React.FC = () => {
+  const { t, isRtl } = useLanguage();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [previewInvoice, setPreviewInvoice] = useState<any | null>(null);
   const [voidInvoiceId, setVoidInvoiceId] = useState<string | null>(null);
   const [voidReason, setVoidReason] = useState('');
@@ -41,6 +43,7 @@ export const Invoices: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
+      setError(null);
       const [invRes, custRes] = await Promise.all([
         api.getInvoices({ search, status: statusFilter || undefined }),
         api.getCustomers()
@@ -50,8 +53,9 @@ export const Invoices: React.FC = () => {
       if (custRes.length > 0 && !customerId) {
         setCustomerId(custRes[0].id);
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Failed to load invoices:', err);
+      setError(err.message || 'Failed to load proforma invoices from server');
     } finally {
       setLoading(false);
     }
@@ -60,6 +64,11 @@ export const Invoices: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [search, statusFilter]);
+
+  const handleClearFilters = () => {
+    setSearch('');
+    setStatusFilter('');
+  };
 
   const handleAddLine = () => {
     setLines([
@@ -95,8 +104,21 @@ export const Invoices: React.FC = () => {
 
   const handleCreateDraft = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCreateError(null);
+
+    if (!customerId) {
+      setCreateError(t('invoices.validationError', 'Please select a buyer / consignee company.'));
+      return;
+    }
+
+    const invalidLine = lines.find(l => !l.description.trim() || Number(l.quantity) <= 0 || Number(l.unitPrice) <= 0);
+    if (invalidLine) {
+      setCreateError(t('invoices.validationError', 'All line items must have a description, positive quantity, and positive price.'));
+      return;
+    }
+
     try {
-      await api.createInvoice({
+      const created = await api.createInvoice({
         customerId,
         issueDate,
         paymentTerms,
@@ -107,15 +129,23 @@ export const Invoices: React.FC = () => {
           unitPrice: Number(l.unitPrice)
         }))
       });
+
+      // Immediately prepend new invoice to list
+      setInvoices(prev => [created, ...prev.filter(i => i.id !== created.id)]);
       setShowCreateModal(false);
+      setSuccessMessage(t('invoices.createSuccess', 'Proforma invoice created successfully!'));
+      setTimeout(() => setSuccessMessage(null), 5000);
+
+      // Reload fresh data from backend
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to create invoice');
+      console.error('Create invoice error:', err);
+      setCreateError(err.message || 'Failed to create invoice');
     }
   };
 
   const handleIssue = async (id: string) => {
-    if (!confirm('Issuing this invoice will freeze line items and banking details permanently. Proceed?')) return;
+    if (!confirm(t('invoices.issueConfirm', 'Issuing this invoice will freeze line items and banking details permanently. Proceed?'))) return;
     try {
       await api.issueInvoice(id);
       loadData();
@@ -150,29 +180,63 @@ export const Invoices: React.FC = () => {
       {/* Title & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 sm:pb-4 border-b border-slate-800">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Proforma Invoices & Receivables</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{t('invoices.title')}</h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Commercial proforma invoices, immutable legal snapshots & customer balances
+            {t('invoices.subtitle')}
           </p>
         </div>
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => {
+            setCreateError(null);
+            setShowCreateModal(true);
+          }}
           className="flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition w-full sm:w-auto"
         >
-          <Plus className="w-4 h-4" /> Create Proforma Invoice
+          <Plus className="w-4 h-4" /> {t('invoices.createInvoice')}
         </button>
       </div>
+
+      {/* Global Success Notification */}
+      {successMessage && (
+        <div className="bg-emerald-950/80 border border-emerald-700 text-emerald-200 px-4 py-3 rounded-lg text-xs flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{successMessage}</span>
+          </div>
+          <button onClick={() => setSuccessMessage(null)} className="p-1 hover:text-white">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Error Alert Banner with Retry Button */}
+      {error && (
+        <div className="bg-rose-950/80 border border-rose-700 text-rose-200 px-4 py-3 rounded-lg text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-lg">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={loadData}
+            className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-rose-800 hover:bg-rose-700 text-white rounded text-xs font-semibold transition"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> {t('common.retry', 'Retry')}
+          </button>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+          <Search className={`w-4 h-4 text-slate-500 absolute top-3.5 ${isRtl ? 'right-3' : 'left-3'}`} />
           <input
             type="text"
-            placeholder="Search invoice number, ref, or customer..."
+            placeholder={t('invoices.searchPlaceholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 min-h-[44px] text-xs text-white focus:outline-none focus:border-emerald-500"
+            className={`w-full bg-slate-900 border border-slate-800 rounded-lg py-2.5 min-h-[44px] text-xs text-white focus:outline-none focus:border-emerald-500 ${
+              isRtl ? 'pr-9 pl-3 text-right' : 'pl-9 pr-3 text-left'
+            }`}
           />
         </div>
         <select
@@ -180,51 +244,64 @@ export const Invoices: React.FC = () => {
           onChange={e => setStatusFilter(e.target.value)}
           className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 min-h-[44px] text-xs text-slate-300 focus:outline-none"
         >
-          <option value="">All Lifecycle Statuses</option>
-          <option value="DRAFT">Draft Only</option>
-          <option value="ISSUED">Issued Only</option>
-          <option value="VOID">Voided</option>
+          <option value="">{t('invoices.allStatuses')}</option>
+          <option value="DRAFT">{t('invoices.draftOnly')}</option>
+          <option value="ISSUED">{t('invoices.issuedOnly')}</option>
+          <option value="VOID">{t('invoices.voidOnly')}</option>
         </select>
+        {(search || statusFilter) && (
+          <button
+            onClick={handleClearFilters}
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition"
+          >
+            <X className="w-3.5 h-3.5" /> {t('common.clearFilters', 'Clear Filters')}
+          </button>
+        )}
       </div>
 
       {/* MOBILE CARD VIEW (< 640px) */}
       <div className="block sm:hidden space-y-3">
-        {invoices.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-8 text-slate-400 text-xs">
+            <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+            {t('invoices.loading')}
+          </div>
+        ) : invoices.length > 0 ? (
           invoices.map(inv => (
             <div key={inv.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-md space-y-3">
               <div className="flex justify-between items-start">
                 <div>
                   <div className="flex items-center gap-1.5 font-bold text-white text-sm">
-                    <FileText className="w-4 h-4 text-emerald-400" />
-                    <span>{inv.invoiceNumber}</span>
+                    <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span dir="ltr" className="font-mono">{inv.invoiceNumber}</span>
                   </div>
                   {inv.sourceInvoiceRef && (
-                    <span className="text-[11px] text-amber-300 font-mono block mt-0.5">
+                    <span dir="ltr" className="text-[11px] text-amber-300 font-mono block mt-0.5">
                       Ref: {inv.sourceInvoiceRef}
                     </span>
                   )}
-                  <span className="text-[11px] text-slate-400 block mt-0.5">
+                  <span dir="ltr" className="text-[11px] text-slate-400 block mt-0.5 font-mono">
                     {new Date(inv.issueDate).toLocaleDateString()}
                   </span>
                 </div>
-                <div className="text-right">
-                  <span className="font-mono font-extrabold text-emerald-400 text-sm block">
+                <div className="text-right rtl:text-left">
+                  <span dir="ltr" className="font-mono font-extrabold text-emerald-400 text-sm block">
                     ${Number(inv.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
-                  <div className="flex gap-1 justify-end mt-1">
+                  <div className="flex gap-1 justify-end rtl:justify-start mt-1">
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                       inv.status === 'ISSUED' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' :
                       inv.status === 'VOID' ? 'bg-rose-950 text-rose-300 border border-rose-800' :
                       'bg-slate-800 text-slate-300'
                     }`}>
-                      {inv.status}
+                      {t(`status.${inv.status.toLowerCase()}`, inv.status)}
                     </span>
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                       inv.paymentStatus === 'PAID' ? 'bg-blue-950 text-blue-300 border border-blue-800' :
                       inv.paymentStatus === 'PARTIALLY_PAID' ? 'bg-amber-950 text-amber-300 border border-amber-800' :
                       'bg-slate-800 text-slate-400'
                     }`}>
-                      {inv.paymentStatus}
+                      {t(`status.${inv.paymentStatus.toLowerCase().replace('_', '')}`, inv.paymentStatus)}
                     </span>
                   </div>
                 </div>
@@ -240,14 +317,14 @@ export const Invoices: React.FC = () => {
                   onClick={() => handleOpenPrintPreview(inv.id)}
                   className="flex items-center justify-center gap-1.5 py-2.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition"
                 >
-                  <Printer className="w-4 h-4 text-slate-400" /> Print
+                  <Printer className="w-4 h-4 text-slate-400" /> {t('common.print')}
                 </button>
                 {inv.status === 'DRAFT' && (
                   <button
                     onClick={() => handleIssue(inv.id)}
                     className="flex items-center justify-center gap-1.5 py-2.5 min-h-[44px] bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 text-xs font-semibold rounded-lg transition"
                   >
-                    <CheckCircle className="w-4 h-4" /> Issue
+                    <CheckCircle className="w-4 h-4" /> {t('invoices.issue')}
                   </button>
                 )}
                 {inv.status !== 'VOID' && (
@@ -255,15 +332,15 @@ export const Invoices: React.FC = () => {
                     onClick={() => setVoidInvoiceId(inv.id)}
                     className="flex items-center justify-center gap-1.5 py-2.5 min-h-[44px] bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-semibold rounded-lg transition"
                   >
-                    <Ban className="w-4 h-4" /> Void
+                    <Ban className="w-4 h-4" /> {t('invoices.void')}
                   </button>
                 )}
               </div>
             </div>
           ))
         ) : (
-          <div className="text-center py-8 text-slate-500 text-xs">
-            {loading ? 'Loading proforma invoices...' : 'No invoices found.'}
+          <div className="text-center py-8 text-slate-400 text-xs bg-slate-900 border border-slate-800 rounded-xl p-6">
+            {t('invoices.emptyState')}
           </div>
         )}
       </div>
@@ -271,34 +348,41 @@ export const Invoices: React.FC = () => {
       {/* DESKTOP TABLE VIEW (>= 640px) */}
       <div className="hidden sm:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
+          <table className="w-full text-xs text-slate-300">
             <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
-                <th className="py-3 px-4">Invoice No</th>
-                <th className="py-3 px-4">Source Ref</th>
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4">Buyer / Consignee</th>
-                <th className="py-3 px-4">Lifecycle</th>
-                <th className="py-3 px-4">Payment</th>
-                <th className="py-3 px-4 text-right">Total (USD)</th>
-                <th className="py-3 px-4 text-center">Actions</th>
+                <th className={`py-3 px-4 ${isRtl ? 'text-right' : 'text-left'}`}>{t('invoices.invoiceNo')}</th>
+                <th className={`py-3 px-4 ${isRtl ? 'text-right' : 'text-left'}`}>{t('invoices.sourceRef')}</th>
+                <th className={`py-3 px-4 ${isRtl ? 'text-right' : 'text-left'}`}>{t('invoices.issueDate')}</th>
+                <th className={`py-3 px-4 ${isRtl ? 'text-right' : 'text-left'}`}>{t('invoices.buyerConsignee')}</th>
+                <th className={`py-3 px-4 ${isRtl ? 'text-right' : 'text-left'}`}>{t('invoices.lifecycle')}</th>
+                <th className={`py-3 px-4 ${isRtl ? 'text-right' : 'text-left'}`}>{t('invoices.paymentStatus')}</th>
+                <th className={`py-3 px-4 ${isRtl ? 'text-left' : 'text-right'}`}>{t('invoices.totalUsd')}</th>
+                <th className="py-3 px-4 text-center">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
-              {invoices.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-8 text-slate-400 font-sans">
+                    <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                    {t('invoices.loading')}
+                  </td>
+                </tr>
+              ) : invoices.length > 0 ? (
                 invoices.map(inv => (
                   <tr key={inv.id} className="hover:bg-slate-800/40 transition">
-                    <td className="py-3 px-4 font-bold text-white flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-emerald-400" />
-                      {inv.invoiceNumber}
+                    <td className={`py-3 px-4 font-bold text-white flex items-center gap-1.5 ${isRtl ? 'text-right' : 'text-left'}`}>
+                      <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span dir="ltr">{inv.invoiceNumber}</span>
                     </td>
-                    <td className="py-3 px-4 text-amber-300 font-semibold">
+                    <td className="py-3 px-4 text-amber-300 font-semibold" dir="ltr">
                       {inv.sourceInvoiceRef || '-'}
                     </td>
-                    <td className="py-3 px-4 text-slate-400">
+                    <td className="py-3 px-4 text-slate-400" dir="ltr">
                       {new Date(inv.issueDate).toLocaleDateString()}
                     </td>
-                    <td className="py-3 px-4 font-sans text-slate-200">
+                    <td className={`py-3 px-4 font-sans text-slate-200 ${isRtl ? 'text-right' : 'text-left'}`}>
                       {inv.customer?.companyName || 'Unknown Customer'}
                     </td>
                     <td className="py-3 px-4">
@@ -307,7 +391,7 @@ export const Invoices: React.FC = () => {
                         inv.status === 'VOID' ? 'bg-rose-950 text-rose-300 border border-rose-800' :
                         'bg-slate-800 text-slate-300 border border-slate-700'
                       }`}>
-                        {inv.status}
+                        {t(`status.${inv.status.toLowerCase()}`, inv.status)}
                       </span>
                     </td>
                     <td className="py-3 px-4">
@@ -316,17 +400,17 @@ export const Invoices: React.FC = () => {
                         inv.paymentStatus === 'PARTIALLY_PAID' ? 'bg-amber-950 text-amber-300 border border-amber-800' :
                         'bg-slate-800 text-slate-400 border border-slate-700'
                       }`}>
-                        {inv.paymentStatus}
+                        {t(`status.${inv.paymentStatus.toLowerCase().replace('_', '')}`, inv.paymentStatus)}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right font-bold text-emerald-400">
+                    <td className={`py-3 px-4 font-bold text-emerald-400 ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
                       ${Number(inv.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
                     <td className="py-3 px-4 text-center font-sans">
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => handleOpenPrintPreview(inv.id)}
-                          title="Print / View Invoice Layout"
+                          title={t('common.print')}
                           className="p-2 min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 rounded transition"
                         >
                           <Printer className="w-4 h-4" />
@@ -334,7 +418,7 @@ export const Invoices: React.FC = () => {
                         {inv.status === 'DRAFT' && (
                           <button
                             onClick={() => handleIssue(inv.id)}
-                            title="Issue & Freeze Invoice"
+                            title={t('invoices.issue')}
                             className="p-2 min-h-[36px] min-w-[36px] flex items-center justify-center text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950 rounded transition"
                           >
                             <CheckCircle className="w-4 h-4" />
@@ -343,7 +427,7 @@ export const Invoices: React.FC = () => {
                         {inv.status !== 'VOID' && (
                           <button
                             onClick={() => setVoidInvoiceId(inv.id)}
-                            title="Void Invoice"
+                            title={t('invoices.void')}
                             className="p-2 min-h-[36px] min-w-[36px] flex items-center justify-center text-rose-400 hover:text-rose-300 hover:bg-rose-950 rounded transition"
                           >
                             <Ban className="w-4 h-4" />
@@ -355,8 +439,8 @@ export const Invoices: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-slate-500 font-sans">
-                    {loading ? 'Loading proforma invoices...' : 'No proforma invoices found matching filters.'}
+                  <td colSpan={8} className="text-center py-8 text-slate-400 font-sans">
+                    {t('invoices.emptyState')}
                   </td>
                 </tr>
               )}
@@ -371,34 +455,42 @@ export const Invoices: React.FC = () => {
           <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-3xl my-auto p-4 sm:p-6 shadow-2xl">
             <div className="flex justify-between items-center pb-3 sm:pb-4 border-b border-slate-800">
               <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                <FileText className="w-5 h-5 text-emerald-400" /> New Proforma Invoice
+                <FileText className="w-5 h-5 text-emerald-400" /> {t('invoices.createModalTitle')}
               </h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                aria-label="Close modal"
+                aria-label={t('common.close')}
                 className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
+            {createError && (
+              <div className="mt-3 bg-rose-950/80 border border-rose-700 text-rose-200 p-3 rounded-lg text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{createError}</span>
+              </div>
+            )}
+
             <form onSubmit={handleCreateDraft} className="mt-4 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Buyer / Consignee</label>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">{t('invoices.customerLabel')}</label>
                   <select
                     value={customerId}
                     onChange={e => setCustomerId(e.target.value)}
                     required
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 min-h-[44px] text-xs text-white focus:outline-none focus:border-emerald-500"
                   >
+                    <option value="">-- {t('invoices.selectCustomer')} --</option>
                     {customers.map(c => (
                       <option key={c.id} value={c.id}>{c.companyName}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Invoice Date</label>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">{t('invoices.issueDate')}</label>
                   <input
                     type="date"
                     value={issueDate}
@@ -410,7 +502,7 @@ export const Invoices: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Payment Terms</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1">{t('invoices.paymentTerms')}</label>
                 <input
                   type="text"
                   value={paymentTerms}
@@ -422,13 +514,13 @@ export const Invoices: React.FC = () => {
               {/* Line Items Editor */}
               <div className="pt-2">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Line Items</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300">{t('invoices.lineItemsTitle')}</span>
                   <button
                     type="button"
                     onClick={handleAddLine}
                     className="flex items-center gap-1 text-xs text-emerald-400 hover:underline min-h-[44px] px-2"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Add Line
+                    <Plus className="w-3.5 h-3.5" /> {t('invoices.addLine')}
                   </button>
                 </div>
 
@@ -436,7 +528,7 @@ export const Invoices: React.FC = () => {
                   {lines.map((line, idx) => (
                     <div key={idx} className="p-3 bg-slate-950 border border-slate-800 rounded-lg space-y-2 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 items-center text-xs">
                       <div className="sm:col-span-5">
-                        <label className="text-[10px] text-slate-500 block mb-0.5">Description</label>
+                        <label className="text-[10px] text-slate-500 block mb-0.5">{t('invoices.itemDesc')}</label>
                         <input
                           type="text"
                           value={line.description}
@@ -447,7 +539,7 @@ export const Invoices: React.FC = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-2 sm:contents">
                         <div className="sm:col-span-2">
-                          <label className="text-[10px] text-slate-500 block mb-0.5">Weight (KG)</label>
+                          <label className="text-[10px] text-slate-500 block mb-0.5">{t('invoices.netWeight')}</label>
                           <input
                             type="number"
                             step="any"
@@ -458,7 +550,7 @@ export const Invoices: React.FC = () => {
                           />
                         </div>
                         <div className="sm:col-span-2">
-                          <label className="text-[10px] text-slate-500 block mb-0.5">Price (USD)</label>
+                          <label className="text-[10px] text-slate-500 block mb-0.5">{t('invoices.unitPrice')}</label>
                           <input
                             type="number"
                             step="0.0001"
@@ -470,15 +562,15 @@ export const Invoices: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex justify-between sm:contents items-center pt-1 sm:pt-0">
-                        <div className="sm:col-span-2 text-left sm:text-right">
-                          <label className="text-[10px] text-slate-500 block mb-0.5 sm:inline">Total: </label>
-                          <span className="font-mono font-bold text-emerald-400">${Number(line.lineTotal).toLocaleString()}</span>
+                        <div className="sm:col-span-2 text-left sm:text-right rtl:sm:text-left">
+                          <label className="text-[10px] text-slate-500 block mb-0.5 sm:inline">{t('invoices.lineTotal')}: </label>
+                          <span dir="ltr" className="font-mono font-bold text-emerald-400">${Number(line.lineTotal).toLocaleString()}</span>
                         </div>
                         <div className="sm:col-span-1 text-right sm:text-center">
                           <button
                             type="button"
                             onClick={() => handleRemoveLine(idx)}
-                            aria-label="Remove line"
+                            aria-label={t('common.delete')}
                             className="text-slate-500 hover:text-rose-400 p-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center"
                           >
                             <X className="w-4 h-4" />
@@ -490,8 +582,8 @@ export const Invoices: React.FC = () => {
                 </div>
 
                 <div className="mt-4 p-3 bg-slate-950 border border-slate-800 rounded-lg flex justify-between items-center text-xs sm:text-sm">
-                  <span className="font-semibold text-slate-300">Grand Total:</span>
-                  <span className="font-mono font-extrabold text-base sm:text-lg text-emerald-400">
+                  <span className="font-semibold text-slate-300">{t('invoices.grandTotal')}</span>
+                  <span dir="ltr" className="font-mono font-extrabold text-base sm:text-lg text-emerald-400">
                     ${calculateFormTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -503,13 +595,13 @@ export const Invoices: React.FC = () => {
                   onClick={() => setShowCreateModal(false)}
                   className="px-4 py-2.5 min-h-[44px] bg-slate-800 text-slate-300 rounded-lg text-xs"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg text-xs"
                 >
-                  Save as Draft Invoice
+                  {t('invoices.createDraftButton')}
                 </button>
               </div>
             </form>
@@ -536,13 +628,13 @@ export const Invoices: React.FC = () => {
                   <p className="text-xs text-slate-600 mt-1">{previewInvoice.company.email} | {previewInvoice.company.website}</p>
                 </div>
               </div>
-              <div className="sm:text-right">
+              <div className="sm:text-right rtl:sm:text-left">
                 <span className="text-lg sm:text-xl font-bold text-slate-900 uppercase tracking-wider block">PROFORMA INVOICE</span>
-                <span className="text-xs font-mono font-bold text-emerald-700 block mt-1">{previewInvoice.invoiceNumber}</span>
+                <span dir="ltr" className="text-xs font-mono font-bold text-emerald-700 block mt-1">{previewInvoice.invoiceNumber}</span>
                 {previewInvoice.sourceInvoiceRef && (
-                  <span className="text-[11px] text-slate-500 font-mono block">Workbook Ref: {previewInvoice.sourceInvoiceRef}</span>
+                  <span dir="ltr" className="text-[11px] text-slate-500 font-mono block">Workbook Ref: {previewInvoice.sourceInvoiceRef}</span>
                 )}
-                <span className="text-xs text-slate-600 block mt-0.5">Date: {previewInvoice.issueDate}</span>
+                <span dir="ltr" className="text-xs text-slate-600 block mt-0.5">Date: {previewInvoice.issueDate}</span>
               </div>
             </div>
 
@@ -564,30 +656,30 @@ export const Invoices: React.FC = () => {
 
             {/* Line Items Table */}
             <div className="my-4 sm:my-6 overflow-x-auto">
-              <table className="w-full text-left text-xs border border-slate-200">
+              <table className="w-full text-left rtl:text-right text-xs border border-slate-200">
                 <thead className="bg-slate-100 text-slate-700 uppercase font-semibold">
                   <tr>
                     <th className="py-2 px-2.5 border-b">Item Description</th>
-                    <th className="py-2 px-2.5 border-b text-right">Net Wt</th>
-                    <th className="py-2 px-2.5 border-b text-right">C&F Unit Price</th>
-                    <th className="py-2 px-2.5 border-b text-right">Total Amount</th>
+                    <th className="py-2 px-2.5 border-b text-right rtl:text-left">Net Wt</th>
+                    <th className="py-2 px-2.5 border-b text-right rtl:text-left">C&F Unit Price</th>
+                    <th className="py-2 px-2.5 border-b text-right rtl:text-left">Total Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {previewInvoice.lines.map((l: any, i: number) => (
                     <tr key={i}>
                       <td className="py-2 px-2.5 text-slate-900 font-medium">{l.description}</td>
-                      <td className="py-2 px-2.5 text-right font-mono text-slate-700">{l.quantity}</td>
-                      <td className="py-2 px-2.5 text-right font-mono text-slate-700">{l.unitPrice}</td>
-                      <td className="py-2 px-2.5 text-right font-mono font-bold text-slate-900">{l.lineTotal}</td>
+                      <td className="py-2 px-2.5 text-right rtl:text-left font-mono text-slate-700" dir="ltr">{l.quantity}</td>
+                      <td className="py-2 px-2.5 text-right rtl:text-left font-mono text-slate-700" dir="ltr">{l.unitPrice}</td>
+                      <td className="py-2 px-2.5 text-right rtl:text-left font-mono font-bold text-slate-900" dir="ltr">{l.lineTotal}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <div className="flex justify-end mt-3 text-sm">
-                <div className="text-right">
-                  <span className="text-xs uppercase text-slate-500 font-bold mr-3">GRAND TOTAL (USD):</span>
-                  <span className="text-base sm:text-lg font-extrabold font-mono text-emerald-700">{previewInvoice.grandTotal}</span>
+              <div className="flex justify-end rtl:justify-start mt-3 text-sm">
+                <div className="text-right rtl:text-left">
+                  <span className="text-xs uppercase text-slate-500 font-bold mr-3 rtl:ml-3 rtl:mr-0">GRAND TOTAL (USD):</span>
+                  <span dir="ltr" className="text-base sm:text-lg font-extrabold font-mono text-emerald-700">{previewInvoice.grandTotal}</span>
                 </div>
               </div>
             </div>
@@ -599,10 +691,10 @@ export const Invoices: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-slate-700">
                   <div>Bank Name: <span className="font-semibold text-slate-900">{previewInvoice.bankingDetails.bankName}</span></div>
                   <div>Beneficiary: <span className="font-semibold text-slate-900">{previewInvoice.bankingDetails.beneficiaryName}</span></div>
-                  <div>Account No (USD): <span className="font-mono font-bold text-slate-900">{previewInvoice.bankingDetails.accountNumber}</span></div>
-                  <div>SWIFT Code: <span className="font-mono font-semibold text-slate-900">{previewInvoice.bankingDetails.swiftCode}</span></div>
+                  <div>Account No (USD): <span dir="ltr" className="font-mono font-bold text-slate-900">{previewInvoice.bankingDetails.accountNumber}</span></div>
+                  <div>SWIFT Code: <span dir="ltr" className="font-mono font-semibold text-slate-900">{previewInvoice.bankingDetails.swiftCode}</span></div>
                   <div>Correspondent Bank: <span className="font-semibold text-slate-900">{previewInvoice.bankingDetails.correspondentBank}</span></div>
-                  <div>Correspondent SWIFT: <span className="font-mono font-semibold text-slate-900">{previewInvoice.bankingDetails.correspondentSwift}</span></div>
+                  <div>Correspondent SWIFT: <span dir="ltr" className="font-mono font-semibold text-slate-900">{previewInvoice.bankingDetails.correspondentSwift}</span></div>
                 </div>
               </div>
             )}
@@ -612,13 +704,13 @@ export const Invoices: React.FC = () => {
                 onClick={() => window.print()}
                 className="px-4 py-2.5 min-h-[44px] bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs rounded-lg shadow"
               >
-                Print / Save PDF
+                {t('common.print', 'Print / Save PDF')}
               </button>
               <button
                 onClick={() => setPreviewInvoice(null)}
                 className="px-4 py-2.5 min-h-[44px] bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold text-xs rounded-lg"
               >
-                Close Preview
+                {t('common.close', 'Close Preview')}
               </button>
             </div>
           </div>
@@ -630,13 +722,13 @@ export const Invoices: React.FC = () => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-5 shadow-2xl">
             <h3 className="text-base font-bold text-white flex items-center gap-2 text-rose-400">
-              <AlertTriangle className="w-5 h-5 text-rose-400" /> Void Proforma Invoice
+              <AlertTriangle className="w-5 h-5 text-rose-400" /> {t('invoices.void')}
             </h3>
             <p className="text-xs text-slate-400 mt-2">
               Voiding an invoice cancels outstanding receivables. A mandatory audit reason is required.
             </p>
             <div className="mt-3">
-              <label className="block text-xs font-medium text-slate-300 mb-1">Reason for Voiding</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1">{t('invoices.voidPrompt')}</label>
               <textarea
                 value={voidReason}
                 onChange={e => setVoidReason(e.target.value)}
@@ -650,14 +742,14 @@ export const Invoices: React.FC = () => {
                 onClick={() => setVoidInvoiceId(null)}
                 className="px-3 py-2 min-h-[44px] bg-slate-800 text-slate-300 rounded text-xs"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleVoid}
                 disabled={!voidReason.trim()}
                 className="px-4 py-2 min-h-[44px] bg-rose-600 hover:bg-rose-500 text-white rounded text-xs font-semibold disabled:opacity-50"
               >
-                Confirm Void
+                {t('common.confirm')}
               </button>
             </div>
           </div>

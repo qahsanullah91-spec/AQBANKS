@@ -1,20 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { LedgerTransaction } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 import {
   DollarSign,
   Plus,
   RotateCcw,
   Download,
   Search,
-  Filter,
-  CheckCircle,
-  AlertTriangle,
   X,
   ShieldCheck
 } from 'lucide-react';
 
 export const Ledger: React.FC = () => {
+  const { t, isRtl } = useLanguage();
   const [transactions, setTransactions] = useState<LedgerTransaction[]>([]);
   const [openingBalance, setOpeningBalance] = useState('0.00');
   const [currentEndingBalance, setCurrentEndingBalance] = useState('0.00');
@@ -88,15 +87,15 @@ export const Ledger: React.FC = () => {
 
   const exportCsv = () => {
     const headers = ['Date', 'Reference', 'Description', 'Category', 'Debit', 'Credit', 'Running Balance', 'Reconciliation Status'];
-    const rows = transactions.map(t => [
-      new Date(t.effectiveDate).toLocaleDateString(),
-      t.reference || '',
-      `"${t.description.replace(/"/g, '""')}"`,
-      t.category,
-      t.debitAmount,
-      t.creditAmount,
-      t.runningBalance,
-      t.reconciliationStatus
+    const rows = transactions.map(item => [
+      new Date(item.effectiveDate).toLocaleDateString(),
+      item.reference || '',
+      `"${item.description.replace(/"/g, '""')}"`,
+      item.category,
+      item.debitAmount,
+      item.creditAmount,
+      item.runningBalance,
+      item.reconciliationStatus
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
@@ -113,9 +112,9 @@ export const Ledger: React.FC = () => {
       {/* Title & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 sm:pb-4 border-b border-slate-800">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Account Statement & Ledger</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{t('ledger.title')}</h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Afghan United Bank USD Operating Statement with deterministic cumulative balance calculations
+            {t('ledger.subtitle')}
           </p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
@@ -123,13 +122,13 @@ export const Ledger: React.FC = () => {
             onClick={exportCsv}
             className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
           >
-            <Download className="w-3.5 h-3.5" /> Export CSV
+            <Download className="w-3.5 h-3.5" /> {t('common.export', 'Export CSV')}
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
             className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition"
           >
-            <Plus className="w-4 h-4" /> Post Entry
+            <Plus className="w-4 h-4" /> {t('ledger.newEntry')}
           </button>
         </div>
       </div>
@@ -137,8 +136,8 @@ export const Ledger: React.FC = () => {
       {/* Balance Verification Banner */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-xl">
-          <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold block">Opening Baseline Balance</span>
-          <div className="text-lg sm:text-xl font-bold font-mono text-white mt-1">
+          <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold block">{t('ledger.balance', 'Opening Baseline Balance')}</span>
+          <div className="text-lg sm:text-xl font-bold font-mono text-white mt-1" dir="ltr">
             ${Number(openingBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           <p className="text-[11px] text-slate-500 mt-0.5">Prior period baseline</p>
@@ -146,7 +145,7 @@ export const Ledger: React.FC = () => {
 
         <div className="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-xl">
           <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold block">Verified Cash Balance</span>
-          <div className="text-xl sm:text-2xl font-extrabold font-mono text-emerald-400 mt-1">
+          <div className="text-xl sm:text-2xl font-extrabold font-mono text-emerald-400 mt-1" dir="ltr">
             ${Number(currentEndingBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           <p className="text-[11px] text-emerald-500 flex items-center gap-1 mt-0.5">
@@ -157,7 +156,7 @@ export const Ledger: React.FC = () => {
         <div className="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-xl">
           <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold block">Reconciliation Policy</span>
           <div className="text-xs text-slate-300 font-medium mt-1">
-            Deterministic: <code className="text-emerald-400">Date → Posted → ID</code>
+            Deterministic: <code className="text-emerald-400" dir="ltr">Date → Posted → ID</code>
           </div>
           <p className="text-[11px] text-slate-500 mt-0.5">Row-offset formula bug corrected server-side.</p>
         </div>
@@ -166,13 +165,15 @@ export const Ledger: React.FC = () => {
       {/* Search and Filter */}
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+          <Search className={`w-4 h-4 text-slate-500 absolute top-3.5 ${isRtl ? 'right-3' : 'left-3'}`} />
           <input
             type="text"
-            placeholder="Search description or reference..."
+            placeholder={t('ledger.searchPlaceholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 min-h-[44px] text-xs text-white focus:outline-none focus:border-emerald-500"
+            className={`w-full bg-slate-900 border border-slate-800 rounded-lg py-2.5 min-h-[44px] text-xs text-white focus:outline-none focus:border-emerald-500 ${
+              isRtl ? 'pr-9 pl-3 text-right' : 'pl-9 pr-3 text-left'
+            }`}
           />
         </div>
         <select
@@ -180,30 +181,35 @@ export const Ledger: React.FC = () => {
           onChange={e => setCategoryFilter(e.target.value)}
           className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 min-h-[44px] text-xs text-slate-300 focus:outline-none"
         >
-          <option value="">All Categories</option>
-          <option value="CREDIT">Credits Only (Inward)</option>
-          <option value="DEBIT">Debits Only (Outward)</option>
-          <option value="BALANCE">Starting Balance</option>
+          <option value="">{t('ledger.allCategories')}</option>
+          <option value="CREDIT">{t('ledger.credit')}</option>
+          <option value="DEBIT">{t('ledger.debit')}</option>
+          <option value="BALANCE">{t('ledger.balance')}</option>
         </select>
       </div>
 
       {/* MOBILE CARD VIEW (< 640px) */}
       <div className="block sm:hidden space-y-3">
-        {transactions.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-8 text-slate-400 text-xs">
+            <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+            {t('common.loading')}
+          </div>
+        ) : transactions.length > 0 ? (
           transactions.map(tx => (
             <div key={tx.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-md space-y-2.5">
               <div className="flex justify-between items-start">
                 <div>
-                  <span className="text-[11px] text-slate-400 font-mono">
+                  <span dir="ltr" className="text-[11px] text-slate-400 font-mono">
                     {new Date(tx.effectiveDate).toLocaleDateString()}
                   </span>
                   {tx.reference && (
-                    <span className="text-[11px] text-slate-300 font-mono block font-semibold">
+                    <span dir="ltr" className="text-[11px] text-slate-300 font-mono block font-semibold">
                       Ref: {tx.reference}
                     </span>
                   )}
                 </div>
-                <div className="text-right">
+                <div className="text-right rtl:text-left">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
                     tx.category === 'CREDIT' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' :
                     tx.category === 'DEBIT' ? 'bg-rose-950 text-rose-300 border border-rose-800' :
@@ -217,8 +223,8 @@ export const Ledger: React.FC = () => {
               <div className="text-xs text-slate-200 font-medium">
                 {tx.description}
                 {tx.isReversal && (
-                  <span className="ml-2 px-1.5 py-0.2 rounded text-[10px] bg-rose-950 text-rose-300 border border-rose-800 font-mono">
-                    REVERSAL
+                  <span className="mx-2 px-1.5 py-0.2 rounded text-[10px] bg-rose-950 text-rose-300 border border-rose-800 font-mono">
+                    {t('ledger.reversal', 'REVERSAL')}
                   </span>
                 )}
               </div>
@@ -226,37 +232,39 @@ export const Ledger: React.FC = () => {
               <div className="flex justify-between items-center pt-2 border-t border-slate-800/80 font-mono text-xs">
                 <div>
                   <span className="text-slate-500 block text-[10px] font-sans">Amount:</span>
-                  {Number(tx.creditAmount) > 0 ? (
-                    <span className="text-emerald-400 font-bold">+${Number(tx.creditAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  ) : Number(tx.debitAmount) > 0 ? (
-                    <span className="text-rose-400 font-bold">-${Number(tx.debitAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  ) : (
-                    <span className="text-slate-400">$0.00</span>
-                  )}
+                  <span dir="ltr">
+                    {Number(tx.creditAmount) > 0 ? (
+                      <span className="text-emerald-400 font-bold">+${Number(tx.creditAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    ) : Number(tx.debitAmount) > 0 ? (
+                      <span className="text-rose-400 font-bold">-${Number(tx.debitAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    ) : (
+                      <span className="text-slate-400">$0.00</span>
+                    )}
+                  </span>
                 </div>
-                <div className="text-right">
-                  <span className="text-slate-500 block text-[10px] font-sans">Running Balance:</span>
-                  <span className="text-white font-extrabold text-sm">
+                <div className="text-right rtl:text-left">
+                  <span className="text-slate-500 block text-[10px] font-sans">{t('ledger.runningBalance')}:</span>
+                  <span dir="ltr" className="text-white font-extrabold text-sm">
                     ${Number(tx.runningBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
 
               {!tx.isReversal && (
-                <div className="pt-2 border-t border-slate-800/80 flex justify-end">
+                <div className="pt-2 border-t border-slate-800/80 flex justify-end rtl:justify-start">
                   <button
                     onClick={() => setReversalTx(tx)}
                     className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-xs text-slate-400 hover:text-rose-400 transition"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" /> Reversal Adjustment
+                    <RotateCcw className="w-3.5 h-3.5" /> {t('ledger.reverseAction')}
                   </button>
                 </div>
               )}
             </div>
           ))
         ) : (
-          <div className="text-center py-8 text-slate-500 text-xs">
-            {loading ? 'Calculating balances...' : 'No ledger transactions found.'}
+          <div className="text-center py-8 text-slate-400 text-xs">
+            {t('ledger.emptyState')}
           </div>
         )}
       </div>
@@ -264,40 +272,46 @@ export const Ledger: React.FC = () => {
       {/* DESKTOP TABLE VIEW (>= 640px) */}
       <div className="hidden sm:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
+          <table className="w-full text-xs text-slate-300">
             <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
-                <th className="py-3 px-4">Effective Date</th>
-                <th className="py-3 px-4">Transaction ID / Ref</th>
-                <th className="py-3 px-4">Description</th>
-                <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4 text-right">Debit (USD)</th>
-                <th className="py-3 px-4 text-right">Credit (USD)</th>
-                <th className="py-3 px-4 text-right">Running Balance</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-center">Actions</th>
+                <th className={`py-3 px-4 ${isRtl ? 'text-right' : 'text-left'}`}>{t('ledger.effectiveDate')}</th>
+                <th className={`py-3 px-4 ${isRtl ? 'text-right' : 'text-left'}`}>{t('ledger.reference')}</th>
+                <th className={`py-3 px-4 ${isRtl ? 'text-right' : 'text-left'}`}>{t('ledger.description')}</th>
+                <th className={`py-3 px-4 ${isRtl ? 'text-right' : 'text-left'}`}>{t('ledger.category')}</th>
+                <th className={`py-3 px-4 ${isRtl ? 'text-left' : 'text-right'}`}>{t('ledger.debit')}</th>
+                <th className={`py-3 px-4 ${isRtl ? 'text-left' : 'text-right'}`}>{t('ledger.credit')}</th>
+                <th className={`py-3 px-4 ${isRtl ? 'text-left' : 'text-right'}`}>{t('ledger.runningBalance')}</th>
+                <th className="py-3 px-4 text-center">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
-              {transactions.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-8 text-slate-400 font-sans">
+                    <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                    {t('common.loading')}
+                  </td>
+                </tr>
+              ) : transactions.length > 0 ? (
                 transactions.map(tx => (
                   <tr key={tx.id} className="hover:bg-slate-800/40 transition">
-                    <td className="py-3 px-4 text-slate-400">
+                    <td className={`py-3 px-4 text-slate-400 ${isRtl ? 'text-right' : 'text-left'}`} dir="ltr">
                       {new Date(tx.effectiveDate).toLocaleDateString()}
                     </td>
-                    <td className="py-3 px-4 font-semibold text-slate-300">
-                      {tx.reference || 'N/A'}
+                    <td className={`py-3 px-4 text-slate-300 font-semibold ${isRtl ? 'text-right' : 'text-left'}`} dir="ltr">
+                      {tx.reference || '-'}
                     </td>
-                    <td className="py-3 px-4 font-sans text-slate-200">
+                    <td className={`py-3 px-4 font-sans text-slate-200 ${isRtl ? 'text-right' : 'text-left'}`}>
                       {tx.description}
                       {tx.isReversal && (
-                        <span className="ml-2 px-1.5 py-0.2 rounded text-[10px] bg-rose-950 text-rose-300 border border-rose-800 font-mono">
-                          REVERSAL
+                        <span className="mx-2 px-1.5 py-0.5 rounded text-[10px] bg-rose-950 text-rose-300 border border-rose-800 font-mono">
+                          {t('ledger.reversal', 'REVERSAL')}
                         </span>
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-sans font-semibold ${
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-sans font-semibold uppercase ${
                         tx.category === 'CREDIT' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' :
                         tx.category === 'DEBIT' ? 'bg-rose-950 text-rose-300 border border-rose-800' :
                         'bg-slate-800 text-slate-300'
@@ -305,39 +319,34 @@ export const Ledger: React.FC = () => {
                         {tx.category}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right text-rose-400 font-semibold">
+                    <td className={`py-3 px-4 text-rose-400 ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
                       {Number(tx.debitAmount) > 0 ? `$${Number(tx.debitAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                     </td>
-                    <td className="py-3 px-4 text-right text-emerald-400 font-semibold">
+                    <td className={`py-3 px-4 text-emerald-400 ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
                       {Number(tx.creditAmount) > 0 ? `$${Number(tx.creditAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                     </td>
-                    <td className="py-3 px-4 text-right font-extrabold text-white text-sm">
+                    <td className={`py-3 px-4 font-bold text-white ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
                       ${Number(tx.runningBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
                     <td className="py-3 px-4 text-center font-sans">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                        tx.reconciliationStatus === 'RECONCILED' ? 'text-emerald-400' : 'text-slate-500'
-                      }`}>
-                        {tx.reconciliationStatus}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-center font-sans">
-                      {!tx.isReversal && (
+                      {!tx.isReversal ? (
                         <button
                           onClick={() => setReversalTx(tx)}
-                          title="Post Reversal Adjustment"
-                          className="p-2 min-h-[36px] min-w-[36px] inline-flex items-center justify-center text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition"
+                          title={t('ledger.reverseAction')}
+                          className="p-2 min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition mx-auto"
                         >
-                          <RotateCcw className="w-3.5 h-3.5" />
+                          <RotateCcw className="w-4 h-4" />
                         </button>
+                      ) : (
+                        <span className="text-slate-600 text-xs">-</span>
                       )}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="text-center py-8 text-slate-500 font-sans">
-                    {loading ? 'Calculating balances...' : 'No ledger transactions match criteria.'}
+                  <td colSpan={8} className="text-center py-8 text-slate-500 font-sans">
+                    {t('ledger.emptyState')}
                   </td>
                 </tr>
               )}
@@ -346,13 +355,13 @@ export const Ledger: React.FC = () => {
         </div>
       </div>
 
-      {/* POST ENTRY MODAL (Mobile-responsive) */}
+      {/* CREATE ENTRY MODAL */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-5 shadow-2xl">
             <div className="flex justify-between items-center pb-3 border-b border-slate-800">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-emerald-400" /> Post Ledger Transaction
+                <DollarSign className="w-4 h-4 text-emerald-400" /> {t('ledger.newEntry')}
               </h2>
               <button
                 onClick={() => setShowCreateModal(false)}
@@ -364,7 +373,7 @@ export const Ledger: React.FC = () => {
 
             <form onSubmit={handleCreateEntry} className="mt-4 space-y-3">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Effective Date</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1">{t('ledger.effectiveDate')}</label>
                 <input
                   type="date"
                   value={effectiveDate}
@@ -375,7 +384,7 @@ export const Ledger: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Category & Direction</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1">{t('ledger.category')}</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -384,7 +393,7 @@ export const Ledger: React.FC = () => {
                       category === 'CREDIT' ? 'bg-emerald-950 text-emerald-300 border-emerald-600' : 'bg-slate-950 text-slate-400 border-slate-800'
                     }`}
                   >
-                    + Credit (Inward)
+                    + {t('ledger.credit')}
                   </button>
                   <button
                     type="button"
@@ -393,7 +402,7 @@ export const Ledger: React.FC = () => {
                       category === 'DEBIT' ? 'bg-rose-950 text-rose-300 border-rose-600' : 'bg-slate-950 text-slate-400 border-slate-800'
                     }`}
                   >
-                    - Debit (Outward)
+                    - {t('ledger.debit')}
                   </button>
                 </div>
               </div>
@@ -408,11 +417,12 @@ export const Ledger: React.FC = () => {
                   placeholder="0.00"
                   required
                   className="w-full bg-slate-950 border border-slate-800 rounded p-2.5 min-h-[44px] text-xs text-white font-mono"
+                  dir="ltr"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Reference / Transaction ID</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1">{t('ledger.reference')}</label>
                 <input
                   type="text"
                   value={reference}
@@ -423,7 +433,7 @@ export const Ledger: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Description</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1">{t('ledger.description')}</label>
                 <input
                   type="text"
                   value={description}
@@ -440,13 +450,13 @@ export const Ledger: React.FC = () => {
                   onClick={() => setShowCreateModal(false)}
                   className="px-3 py-2 min-h-[44px] bg-slate-800 text-slate-300 rounded text-xs"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold"
                 >
-                  Post Entry
+                  {t('common.save')}
                 </button>
               </div>
             </form>
@@ -459,7 +469,7 @@ export const Ledger: React.FC = () => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-5 shadow-2xl">
             <h3 className="text-base font-bold text-white flex items-center gap-2 text-rose-400">
-              <RotateCcw className="w-5 h-5 text-rose-400" /> Post Reversing Entry
+              <RotateCcw className="w-5 h-5 text-rose-400" /> {t('ledger.reverseAction')}
             </h3>
             <p className="text-xs text-slate-400 mt-2">
               Posted entries cannot be mutated. Posting a reversal creates a linked opposite adjustment entry.
@@ -467,12 +477,12 @@ export const Ledger: React.FC = () => {
             <div className="mt-3 p-2.5 bg-slate-950 border border-slate-800 rounded text-xs">
               <span className="text-slate-500 block">Target Transaction:</span>
               <span className="text-white font-medium">{reversalTx.description}</span>
-              <div className="mt-1 font-mono text-slate-300">
+              <div className="mt-1 font-mono text-slate-300" dir="ltr">
                 Debit: ${reversalTx.debitAmount} | Credit: ${reversalTx.creditAmount}
               </div>
             </div>
             <div className="mt-4">
-              <label className="block text-xs font-medium text-slate-300 mb-1">Reason for Reversal</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1">{t('common.notes')}</label>
               <textarea
                 value={reversalReason}
                 onChange={e => setReversalReason(e.target.value)}
@@ -486,14 +496,14 @@ export const Ledger: React.FC = () => {
                 onClick={() => setReversalTx(null)}
                 className="px-3 py-2 min-h-[44px] bg-slate-800 text-slate-300 rounded text-xs"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handlePostReversal}
                 disabled={!reversalReason.trim()}
                 className="px-3 py-2 min-h-[44px] bg-rose-600 hover:bg-rose-500 text-white rounded text-xs font-semibold disabled:opacity-50"
               >
-                Confirm Reversal
+                {t('common.confirm')}
               </button>
             </div>
           </div>

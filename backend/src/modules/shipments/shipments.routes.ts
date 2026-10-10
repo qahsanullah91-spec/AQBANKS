@@ -32,15 +32,28 @@ router.get('/', authenticate, requirePermission('shipment:view'), async (req: Au
   try {
     const { status, carrier, search } = req.query;
     const where: any = {};
-    if (status) where.status = String(status);
-    if (carrier) where.carrier = { contains: String(carrier) };
-    if (search) {
+
+    const cleanParam = (val: any) => {
+      if (!val) return undefined;
+      const str = String(val).trim();
+      if (str === '' || str === 'undefined' || str === 'null' || str === 'ALL') return undefined;
+      return str;
+    };
+
+    const sStatus = cleanParam(status);
+    if (sStatus) where.status = sStatus;
+
+    const sCarrier = cleanParam(carrier);
+    if (sCarrier) where.carrier = { contains: sCarrier };
+
+    const sSearch = cleanParam(search);
+    if (sSearch) {
       where.OR = [
-        { shipmentRef: { contains: String(search) } },
-        { containerNumber: { contains: String(search) } },
-        { billOfLading: { contains: String(search) } },
-        { origin: { contains: String(search) } },
-        { destination: { contains: String(search) } }
+        { shipmentRef: { contains: sSearch } },
+        { containerNumber: { contains: sSearch } },
+        { billOfLading: { contains: sSearch } },
+        { origin: { contains: sSearch } },
+        { destination: { contains: sSearch } }
       ];
     }
 

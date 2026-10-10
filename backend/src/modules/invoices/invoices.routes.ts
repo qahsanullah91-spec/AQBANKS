@@ -21,6 +21,7 @@ const createInvoiceSchema = z.object({
   dueDate: z.string().optional().nullable(),
   paymentTerms: z.string().default('100% Advance Payment'),
   bankAccountId: z.string().uuid().optional().nullable(),
+  remittanceProfileId: z.string().uuid().optional().nullable(),
   sourceInvoiceRef: z.string().optional().nullable(),
   lines: z.array(lineItemSchema).min(1, 'At least one line item required')
 });
@@ -77,6 +78,9 @@ router.get('/', authenticate, requirePermission('invoice:view'), async (req: Aut
       include: {
         customer: true,
         lines: true,
+        bankAccount: true,
+        remittanceProfile: true,
+        bankSnapshot: true,
         paymentAllocations: true,
         shipmentInvoices: {
           include: { shipment: true }
@@ -100,6 +104,8 @@ router.get('/:id', authenticate, requirePermission('invoice:view'), async (req: 
         customer: true,
         lines: { orderBy: { lineNumber: 'asc' } },
         bankAccount: true,
+        remittanceProfile: true,
+        bankSnapshot: true,
         snapshots: { orderBy: { issuedAt: 'desc' } },
         paymentAllocations: {
           include: { payment: true },
@@ -116,7 +122,29 @@ router.get('/:id', authenticate, requirePermission('invoice:view'), async (req: 
       return;
     }
 
-    res.json(invoice);
+    let enrichedBankSnapshot = invoice.bankSnapshot;
+    if (invoice.bankSnapshot && (invoice.bankSnapshot as any).snapshotJson) {
+      try {
+        const parsed = JSON.parse((invoice.bankSnapshot as any).snapshotJson);
+        enrichedBankSnapshot = {
+          ...invoice.bankSnapshot,
+          ...parsed,
+          beneficiaryBank: parsed.beneficiaryBank?.name || parsed.beneficiaryBank,
+          beneficiaryName: parsed.beneficiary?.name || parsed.beneficiaryName,
+          beneficiaryAccount: parsed.beneficiary?.accountNumber || parsed.beneficiaryAccount,
+          correspondentBank: parsed.correspondentBank?.name || parsed.correspondentBank,
+          correspondentSwift: parsed.correspondentBank?.swiftBic || parsed.correspondentSwift,
+          correspondentAccount: parsed.correspondentBank?.accountNumber || parsed.correspondentAccount,
+          intermediaryBank: parsed.intermediaryBank?.name || parsed.intermediaryBank,
+          intermediarySwift: parsed.intermediaryBank?.swiftBic || parsed.intermediarySwift
+        } as any;
+      } catch (e) {}
+    }
+
+    res.json({
+      ...invoice,
+      bankSnapshot: enrichedBankSnapshot
+    });
   } catch (err) {
     next(err);
   }
@@ -138,11 +166,26 @@ router.post('/', authenticate, requirePermission('invoice:create_draft'), async 
     const calc = calculateInvoiceTotals(data.lines);
     const invoiceNumber = await generateNextInvoiceNumber();
 
+    // Default active remittance profile if none passed
+    let remittanceProfileId = data.remittanceProfileId;
+    if (!remittanceProfileId) {
+      const defaultProfile = await prisma.remittanceProfile.findFirst({
+        where: { isDefault: true, isActive: true }
+      });
+      if (defaultProfile) remittanceProfileId = defaultProfile.id;
+    }
+
     // Default primary bank account if none passed
     let bankAccountId = data.bankAccountId;
     if (!bankAccountId) {
-      const primaryBank = await prisma.bankAccount.findFirst({ where: { isPrimary: true } });
-      if (primaryBank) bankAccountId = primaryBank.id;
+      if (remittanceProfileId) {
+        const prof = await prisma.remittanceProfile.findUnique({ where: { id: remittanceProfileId } });
+        if (prof) bankAccountId = prof.bankAccountId;
+      }
+      if (!bankAccountId) {
+        const primaryBank = await prisma.bankAccount.findFirst({ where: { isPrimary: true } });
+        if (primaryBank) bankAccountId = primaryBank.id;
+      }
     }
 
     const invoice = await prisma.$transaction(async (tx) => {
@@ -155,6 +198,7 @@ router.post('/', authenticate, requirePermission('invoice:create_draft'), async 
           dueDate: data.dueDate ? new Date(data.dueDate) : null,
           paymentTerms: data.paymentTerms,
           bankAccountId: bankAccountId || null,
+          remittanceProfileId: remittanceProfileId || null,
           subtotal: calc.subtotal.toNumber(),
           taxAmount: calc.taxAmount.toNumber(),
           totalAmount: calc.grandTotal.toNumber(),
@@ -171,7 +215,7 @@ router.post('/', authenticate, requirePermission('invoice:create_draft'), async 
             }))
           }
         },
-        include: { lines: true, customer: true }
+        include: { lines: true, customer: true, bankAccount: true, remittanceProfile: true }
       });
 
       return created;
@@ -182,7 +226,7 @@ router.post('/', authenticate, requirePermission('invoice:create_draft'), async 
       action: 'INVOICE_DRAFT_CREATED',
       entityType: 'INVOICE',
       entityId: invoice.id,
-      newValues: { invoiceNumber, totalAmount: calc.grandTotal.toFixed(2) },
+      newValues: { invoiceNumber, totalAmount: calc.grandTotal.toFixed(2), remittanceProfileId },
       ipAddress: req.ip
     });
 
@@ -228,6 +272,7 @@ router.put('/:id', authenticate, requirePermission('invoice:create_draft'), asyn
           dueDate: data.dueDate ? new Date(data.dueDate) : null,
           paymentTerms: data.paymentTerms,
           bankAccountId: data.bankAccountId || existing.bankAccountId,
+          remittanceProfileId: data.remittanceProfileId !== undefined ? data.remittanceProfileId : existing.remittanceProfileId,
           sourceInvoiceRef: data.sourceInvoiceRef || existing.sourceInvoiceRef,
           subtotal: calc.subtotal.toNumber(),
           taxAmount: calc.taxAmount.toNumber(),
@@ -243,7 +288,7 @@ router.put('/:id', authenticate, requirePermission('invoice:create_draft'), asyn
             }))
           }
         },
-        include: { lines: true, customer: true }
+        include: { lines: true, customer: true, bankAccount: true, remittanceProfile: true }
       });
     });
 
@@ -270,7 +315,8 @@ router.post('/:id/issue', authenticate, requirePermission('invoice:issue'), asyn
       include: {
         customer: true,
         lines: { orderBy: { lineNumber: 'asc' } },
-        bankAccount: true
+        bankAccount: true,
+        remittanceProfile: true
       }
     });
 
@@ -287,6 +333,52 @@ router.post('/:id/issue', authenticate, requirePermission('invoice:issue'), asyn
       res.status(400).json({ error: 'INVOICE_VOID', message: 'Cannot issue a voided invoice' });
       return;
     }
+
+    // Resolve remittance profile
+    let profile = existing.remittanceProfile;
+    if (!profile && existing.remittanceProfileId) {
+      profile = await prisma.remittanceProfile.findUnique({
+        where: { id: existing.remittanceProfileId }
+      });
+    }
+    if (!profile) {
+      profile = await prisma.remittanceProfile.findFirst({
+        where: { isDefault: true, isActive: true }
+      });
+    }
+
+    // Build immutable bank snapshot data (WITHOUT sensitive internal CIF numbers)
+    const bankSnapshotData = profile ? {
+      profileId: profile.id,
+      profileType: profile.profileType,
+      name: profile.name,
+      currency: 'USD',
+      beneficiary: {
+        name: profile.beneficiaryName,
+        accountNumber: profile.beneficiaryAccount,
+        swiftField59A: profile.swiftField59A || profile.beneficiaryAccount
+      },
+      beneficiaryBank: {
+        name: profile.beneficiaryBank,
+        address: profile.beneficiaryBankAddress,
+        swiftBic: profile.beneficiarySwift,
+        swiftField57A: profile.swiftField57A || profile.beneficiarySwift,
+        accountWithCorrespondent: profile.aubAccountWithCorrespondent
+      },
+      correspondentBank: {
+        name: profile.correspondentBank,
+        swiftBic: profile.correspondentSwift,
+        accountNumber: profile.correspondentAccount,
+        location: profile.correspondentLocation,
+        swiftField56A: profile.swiftField56A || profile.correspondentSwift
+      },
+      intermediaryBank: profile.intermediaryBank ? {
+        name: profile.intermediaryBank,
+        swiftBic: profile.intermediarySwift,
+        swiftField54A: profile.swiftField54A
+      } : null,
+      issuedAt: new Date().toISOString()
+    } : null;
 
     // Freeze snapshot data
     const snapshotPayload = {
@@ -321,6 +413,7 @@ router.post('/:id/issue', authenticate, requirePermission('invoice:issue'), asyn
         correspondentBank: existing.bankAccount.correspondentBank,
         correspondentSwift: existing.bankAccount.correspondentSwift
       } : null,
+      remittanceProfile: bankSnapshotData,
       issuedAt: new Date().toISOString(),
       issuedBy: req.user!.email
     };
@@ -330,10 +423,31 @@ router.post('/:id/issue', authenticate, requirePermission('invoice:issue'), asyn
         where: { id: existing.id },
         data: {
           status: 'ISSUED',
-          issuedAt: new Date()
+          issuedAt: new Date(),
+          remittanceProfileId: profile ? profile.id : existing.remittanceProfileId
         },
-        include: { customer: true, lines: true }
+        include: { customer: true, lines: true, bankAccount: true, remittanceProfile: true }
       });
+
+      // Save dedicated bank snapshot
+      if (profile && bankSnapshotData) {
+        await tx.invoiceBankSnapshot.upsert({
+          where: { invoiceId: existing.id },
+          update: {
+            remittanceProfileId: profile.id,
+            profileType: profile.profileType,
+            profileName: profile.name,
+            snapshotJson: JSON.stringify(bankSnapshotData)
+          },
+          create: {
+            invoiceId: existing.id,
+            remittanceProfileId: profile.id,
+            profileType: profile.profileType,
+            profileName: profile.name,
+            snapshotJson: JSON.stringify(bankSnapshotData)
+          }
+        });
+      }
 
       await tx.invoiceSnapshot.create({
         data: {

@@ -109,17 +109,80 @@ model BankAccount {
   beneficiaryName        String
   accountNumberEncrypted String
   accountNumberMasked    String
+  cifNumberEncrypted     String?
+  cifNumberMasked        String?
+  accountType            String              @default("AWDCCA")
+  accountStatus          String              @default("Active")
+  openingDate            DateTime?
+  branchName             String?             @default("AUB Building Zarghona Maidan, Shahr-e-Now, Kabul")
   swiftCode              String
   correspondentBank      String?
   correspondentSwift     String?
   currency               String              @default("USD")
   isPrimary              Boolean             @default(true)
+  remittanceProfiles     RemittanceProfile[]
   invoices               Invoice[]
   versions               BankDetailVersion[]
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
 
   @@map("bank_accounts")
+}
+
+model RemittanceProfile {
+  id                          String                @id @default(uuid())
+  bankAccountId               String
+  bankAccount                 BankAccount           @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  profileType                 String                // LOCAL, INTERNATIONAL
+  name                        String
+  beneficiaryName             String
+  beneficiaryAccount          String
+  beneficiaryBank             String
+  beneficiaryBankAddress      String
+  beneficiarySwift            String
+  swiftField57A               String?
+  swiftField59A               String?
+  aubAccountWithCorrespondent String?
+
+  // Correspondent Bank
+  correspondentBank           String
+  correspondentSwift          String
+  correspondentAccount        String?
+  correspondentLocation       String?
+  swiftField56A               String?
+
+  // Intermediary Bank
+  intermediaryBank            String?
+  intermediarySwift           String?
+  swiftField54A               String?
+
+  // Verification & Settings
+  mt103VerificationFlag       Boolean               @default(false)
+  verificationNotes           String?
+  isDefault                   Boolean               @default(false)
+  isActive                    Boolean               @default(true)
+  createdBy                   String?
+  updatedBy                   String?
+  invoices                    Invoice[]
+  snapshots                   InvoiceBankSnapshot[]
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
+
+  @@map("remittance_profiles")
+}
+
+model InvoiceBankSnapshot {
+  id                  String             @id @default(uuid())
+  invoiceId           String             @unique
+  invoice             Invoice            @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  remittanceProfileId String?
+  remittanceProfile   RemittanceProfile? @relation(fields: [remittanceProfileId], references: [id], onDelete: SetNull)
+  profileType         String             // LOCAL, INTERNATIONAL
+  profileName         String
+  snapshotJson        String             // Frozen JSON snapshot of all banking details
+  createdAt           DateTime           @default(now())
+
+  @@map("invoice_bank_snapshots")
 }
 
 model BankDetailVersion {
@@ -191,18 +254,21 @@ model Invoice {
   status             String              @default("DRAFT") // DRAFT, ISSUED, VOID
   paymentStatus      String              @default("UNPAID") // UNPAID, PARTIALLY_PAID, PAID, OVERDUE
   paymentTerms       String              @default("100% Advance Payment")
-  bankAccountId      String?
-  bankAccount        BankAccount?        @relation(fields: [bankAccountId], references: [id])
-  issuedAt           DateTime?
-  voidedAt           DateTime?
-  voidReason         String?
-  lines              InvoiceLine[]
-  snapshots          InvoiceSnapshot[]
-  shipmentInvoices   ShipmentInvoice[]
-  paymentAllocations PaymentAllocation[]
-  receipts           Receipt[]
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  bankAccountId       String?
+  bankAccount         BankAccount?         @relation(fields: [bankAccountId], references: [id])
+  remittanceProfileId String?
+  remittanceProfile   RemittanceProfile?   @relation(fields: [remittanceProfileId], references: [id])
+  bankSnapshot        InvoiceBankSnapshot?
+  issuedAt            DateTime?
+  voidedAt            DateTime?
+  voidReason          String?
+  lines               InvoiceLine[]
+  snapshots           InvoiceSnapshot[]
+  shipmentInvoices    ShipmentInvoice[]
+  paymentAllocations  PaymentAllocation[]
+  receipts            Receipt[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@index([invoiceNumber])
   @@index([sourceInvoiceRef])

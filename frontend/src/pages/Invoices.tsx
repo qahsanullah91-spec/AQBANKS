@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
-import { Invoice, Customer, InvoiceLine } from '../types';
+import { Invoice, Customer, InvoiceLine, RemittanceProfile } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import {
   FileText,
@@ -12,13 +12,16 @@ import {
   AlertTriangle,
   X,
   RotateCcw,
-  Check
+  Check,
+  Building2,
+  Globe
 } from 'lucide-react';
 
 export const Invoices: React.FC = () => {
   const { t, isRtl } = useLanguage();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [remittanceProfiles, setRemittanceProfiles] = useState<RemittanceProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -34,6 +37,7 @@ export const Invoices: React.FC = () => {
 
   // New Invoice Form State
   const [customerId, setCustomerId] = useState('');
+  const [remittanceProfileId, setRemittanceProfileId] = useState('');
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentTerms, setPaymentTerms] = useState('100% Advance Payment');
   const [lines, setLines] = useState<InvoiceLine[]>([
@@ -44,14 +48,20 @@ export const Invoices: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [invRes, custRes] = await Promise.all([
+      const [invRes, custRes, profRes] = await Promise.all([
         api.getInvoices({ search, status: statusFilter || undefined }),
-        api.getCustomers()
+        api.getCustomers(),
+        api.getRemittanceProfiles()
       ]);
       setInvoices(invRes);
       setCustomers(custRes);
+      setRemittanceProfiles(profRes);
       if (custRes.length > 0 && !customerId) {
         setCustomerId(custRes[0].id);
+      }
+      if (profRes.length > 0 && !remittanceProfileId) {
+        const def = profRes.find((p: any) => p.isDefault && p.isActive) || profRes.find((p: any) => p.isActive) || profRes[0];
+        if (def) setRemittanceProfileId(def.id);
       }
     } catch (err: any) {
       console.error('Failed to load invoices:', err);
@@ -120,6 +130,7 @@ export const Invoices: React.FC = () => {
     try {
       const created = await api.createInvoice({
         customerId,
+        remittanceProfileId: remittanceProfileId || undefined,
         issueDate,
         paymentTerms,
         lines: lines.map(l => ({
@@ -511,6 +522,46 @@ export const Invoices: React.FC = () => {
                 />
               </div>
 
+              {/* Payment Instructions / Remittance Profile Selector */}
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  {t('invoices.paymentInstructions')}
+                </label>
+                <select
+                  value={remittanceProfileId}
+                  onChange={e => setRemittanceProfileId(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 min-h-[44px] text-xs text-white focus:outline-none focus:border-emerald-500"
+                >
+                  {remittanceProfiles.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.profileType === 'LOCAL' ? 'Local Wire - Da Afghanistan Bank' : 'International Wire - Al Salam / JPMorgan'}) {p.isDefault ? '★ Default' : ''}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Dynamic Remittance Preview in Modal */}
+                {(() => {
+                  const activeP = remittanceProfiles.find(p => p.id === remittanceProfileId);
+                  if (!activeP) return null;
+                  const isIntl = activeP.profileType === 'INTERNATIONAL';
+                  return (
+                    <div className="mt-2 p-3 bg-slate-950 rounded-lg border border-slate-800 text-[11px] space-y-1.5 text-slate-300">
+                      <div className="font-semibold text-emerald-400 flex items-center justify-between">
+                        <span>{activeP.beneficiaryBank} ({activeP.profileType})</span>
+                        <span className="font-mono text-slate-400" dir="ltr">SWIFT: {activeP.beneficiarySwift}</span>
+                      </div>
+                      <div>Beneficiary: <strong className="text-white">{activeP.beneficiaryName}</strong> (Acc: <span dir="ltr" className="font-mono text-emerald-400">{activeP.beneficiaryAccount}</span>)</div>
+                      <div>Correspondent: <span className="text-white">{activeP.correspondentBank}</span> (SWIFT: <span dir="ltr" className="font-mono text-slate-300">{activeP.correspondentSwift}</span>)</div>
+                      {isIntl && activeP.intermediaryBank && (
+                        <div className="text-amber-300 pt-1 border-t border-slate-900">
+                          Intermediary (Field 54A): {activeP.intermediaryBank} (SWIFT: <span dir="ltr" className="font-mono">{activeP.intermediarySwift}</span>)
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
               {/* Line Items Editor */}
               <div className="pt-2">
                 <div className="flex justify-between items-center mb-2">
@@ -684,20 +735,67 @@ export const Invoices: React.FC = () => {
               </div>
             </div>
 
-            {/* Banking Details Snapshot */}
-            {previewInvoice.bankingDetails && (
-              <div className="bg-slate-50 p-3 sm:p-4 rounded-lg border border-slate-200 text-xs mt-4">
-                <h3 className="font-bold uppercase tracking-wider text-slate-700 mb-2">BANKING DETAILS FOR WIRE PAYMENT</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-slate-700">
-                  <div>Bank Name: <span className="font-semibold text-slate-900">{previewInvoice.bankingDetails.bankName}</span></div>
-                  <div>Beneficiary: <span className="font-semibold text-slate-900">{previewInvoice.bankingDetails.beneficiaryName}</span></div>
-                  <div>Account No (USD): <span dir="ltr" className="font-mono font-bold text-slate-900">{previewInvoice.bankingDetails.accountNumber}</span></div>
-                  <div>SWIFT Code: <span dir="ltr" className="font-mono font-semibold text-slate-900">{previewInvoice.bankingDetails.swiftCode}</span></div>
-                  <div>Correspondent Bank: <span className="font-semibold text-slate-900">{previewInvoice.bankingDetails.correspondentBank}</span></div>
-                  <div>Correspondent SWIFT: <span dir="ltr" className="font-mono font-semibold text-slate-900">{previewInvoice.bankingDetails.correspondentSwift}</span></div>
+            {/* Payment & Banking Wire Instructions */}
+            {(() => {
+              const snap = previewInvoice.bankSnapshot;
+              const prof = previewInvoice.remittanceProfile;
+              const fallback = previewInvoice.bankingDetails;
+
+              const isSnapshot = !!snap;
+              const data = snap || prof || fallback;
+              if (!data) return null;
+
+              const isIntl = data.profileType === 'INTERNATIONAL' || (data.profile && data.profile.profileType === 'INTERNATIONAL');
+              const bankName = data.beneficiaryBank || data.bankName || 'Afghan United Bank (AUB)';
+              const beneName = data.beneficiaryName || 'Sky Ariana LTD';
+              const accNo = data.beneficiaryAccount || data.accountNumber || '101502USD2940472';
+              const swift = data.beneficiarySwift || data.swiftCode || 'AFGUAFKAXXX';
+              const corrBank = data.correspondentBank || (isIntl ? 'AL SALAM BANK BAHRAIN' : '(DAB) DA AFGHANISTAN BANK');
+              const corrSwift = data.correspondentSwift || (isIntl ? 'ALSABHBMXXX' : 'AFGBAFKA');
+              const corrAcc = data.correspondentAccount || (!isIntl ? '3000205027231' : '400758954');
+              const interBank = data.intermediaryBank || (isIntl ? 'JPMorgan Chase Bank, New York' : null);
+              const interSwift = data.intermediarySwift || (isIntl ? 'CHASUS33' : null);
+
+              return (
+                <div className="bg-slate-50 p-3 sm:p-4 rounded-lg border border-slate-200 text-xs mt-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2 pb-1.5 border-b border-slate-200">
+                    <h3 className="font-bold uppercase tracking-wider text-slate-800 text-xs">
+                      OFFICIAL PAYMENT & WIRE REMITTANCE INSTRUCTIONS
+                    </h3>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-200 text-slate-700">
+                        {isIntl ? 'International USD Remittance' : 'Local USD Remittance'}
+                      </span>
+                      {isSnapshot && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          Frozen Snapshot (Issued)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700">
+                    <div>Beneficiary (Field 59A): <strong className="text-slate-900">{beneName}</strong></div>
+                    <div>Account No (USD): <span dir="ltr" className="font-mono font-bold text-slate-900">{accNo}</span></div>
+                    <div>Beneficiary Bank {isIntl ? '(Field 57A)' : ''}: <span className="font-semibold text-slate-900">{bankName}</span></div>
+                    <div>SWIFT / BIC: <span dir="ltr" className="font-mono font-bold text-emerald-800">{swift}</span></div>
+                    <div>Correspondent Bank {isIntl ? '(Field 56A)' : ''}: <span className="font-semibold text-slate-900">{corrBank}</span></div>
+                    <div>Correspondent SWIFT: <span dir="ltr" className="font-mono font-bold text-slate-900">{corrSwift}</span></div>
+                    {corrAcc && (
+                      <div>Correspondent Account: <span dir="ltr" className="font-mono text-slate-900">{corrAcc}</span></div>
+                    )}
+                    {data.aubAccountWithCorrespondent && (
+                      <div>AUB Account with Al Salam: <span dir="ltr" className="font-mono text-slate-900">{data.aubAccountWithCorrespondent}</span></div>
+                    )}
+                    {interBank && (
+                      <div className="sm:col-span-2 pt-1 border-t border-slate-200 text-amber-900">
+                        Intermediary Bank (Field 54A - Mandatory): <strong className="font-bold">{interBank}</strong> (SWIFT: <span dir="ltr" className="font-mono font-bold">{interSwift}</span>)
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-200 print:hidden">
               <button

@@ -110,6 +110,24 @@ export const api = {
     apiRequest(`/bank-accounts/${id}/reveal`, { method: 'POST', body: JSON.stringify({ reason }) }),
   updateBankAccount: (id: string, data: any) =>
     apiRequest(`/bank-accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getBankAccountHistory: (id: string) =>
+    apiRequest(`/bank-accounts/${id}/history`),
+
+  // Remittance Profiles
+  getRemittanceProfiles: (params: any = {}) =>
+    apiRequest(`/remittance-profiles${buildQueryString(params)}`),
+  getRemittanceProfile: (id: string) =>
+    apiRequest(`/remittance-profiles/${id}`),
+  createRemittanceProfile: (data: any) =>
+    apiRequest('/remittance-profiles', { method: 'POST', body: JSON.stringify(data) }),
+  updateRemittanceProfile: (id: string, data: any) =>
+    apiRequest(`/remittance-profiles/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  toggleRemittanceActive: (id: string) =>
+    apiRequest(`/remittance-profiles/${id}/toggle-active`, { method: 'PATCH' }),
+  setRemittanceDefault: (id: string) =>
+    apiRequest(`/remittance-profiles/${id}/set-default`, { method: 'PATCH' }),
+  getRemittanceDocument: (id: string) =>
+    apiRequest(`/remittance-profiles/${id}/document`),
 
   // Reconciliation
   getReconciliationSuggestions: () => apiRequest('/reconciliation/suggestions'),

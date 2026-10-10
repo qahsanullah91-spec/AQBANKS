@@ -126,17 +126,27 @@ router.post('/', authenticate, requirePermission('payment:create'), async (req: 
       }
     }
 
-    // Check for potential duplicate payment
-    let duplicateWarning = false;
+    // Check for potential duplicate payment (Idempotency and duplicate prevention)
     if (data.reference) {
       const dup = await prisma.payment.findFirst({
         where: {
           reference: data.reference,
           customerId: data.customerId,
           totalAmount: totalAmount.toNumber()
+        },
+        include: {
+          receipt: true
         }
       });
-      if (dup) duplicateWarning = true;
+      if (dup) {
+        res.status(200).json({
+          ...dup,
+          receipt: dup.receipt,
+          idempotent: true,
+          duplicateWarning: 'A payment with identical reference, customer, and amount already exists.'
+        });
+        return;
+      }
     }
 
     const createdPayment = await prisma.$transaction(async (tx) => {
@@ -171,12 +181,18 @@ router.post('/', authenticate, requirePermission('payment:create'), async (req: 
       const customer = await tx.customer.findUnique({ where: { id: data.customerId } });
       const finAcc = await tx.financialAccount.findUnique({ where: { id: accountId! } });
       const primaryInvoiceId = data.allocations.length > 0 ? data.allocations[0].invoiceId : null;
+      const bankAccount = await tx.bankAccount.findFirst({
+        where: { isPrimary: true }
+      });
+
+      const receivingAccountName = bankAccount?.bankName || finAcc?.name || 'Afghan United Bank (AUB)';
+      const receivingAccountMasked = bankAccount?.accountNumberMasked || '101502******0472';
 
       const receipt = await receiptsService.createReceipt({
         paymentId: payment.id,
         payerName: customer?.companyName || 'General Account',
-        receivingAccountName: finAcc?.name || 'Afghan United Bank Operating Account',
-        receivingAccountMasked: '101502******0472',
+        receivingAccountName,
+        receivingAccountMasked,
         amount: totalAmount.toNumber(),
         currency: data.currency,
         paymentMethod: data.paymentMethod,
@@ -199,8 +215,7 @@ router.post('/', authenticate, requirePermission('payment:create'), async (req: 
         totalAmount: totalAmount.toFixed(2),
         allocatedAmount: allocatedSum.toFixed(2),
         unallocatedAmount: unallocatedAmount.toFixed(2),
-        receiptNumber: createdPayment.receipt.receiptNumber,
-        duplicateWarning
+        receiptNumber: createdPayment.receipt.receiptNumber
       },
       ipAddress: req.ip
     });
@@ -208,7 +223,7 @@ router.post('/', authenticate, requirePermission('payment:create'), async (req: 
     res.status(201).json({
       ...createdPayment.payment,
       receipt: createdPayment.receipt,
-      duplicateWarning: duplicateWarning ? 'A payment with identical reference, customer, and amount exists.' : null
+      duplicateWarning: null
     });
   } catch (err) {
     next(err);

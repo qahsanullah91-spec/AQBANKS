@@ -83,16 +83,54 @@ export interface LedgerTransaction {
   isReversal?: boolean;
 }
 
+export interface RemittanceProfile {
+  id: string;
+  bankAccountId: string;
+  bankAccount?: BankAccount;
+  profileType: 'LOCAL' | 'INTERNATIONAL';
+  name: string;
+  beneficiaryName: string;
+  beneficiaryAccount: string;
+  beneficiaryBank: string;
+  beneficiaryBankAddress: string;
+  beneficiarySwift: string;
+  swiftField57A?: string | null;
+  swiftField59A?: string | null;
+  aubAccountWithCorrespondent?: string | null;
+  correspondentBank: string;
+  correspondentSwift: string;
+  correspondentAccount?: string | null;
+  correspondentLocation?: string | null;
+  swiftField56A?: string | null;
+  intermediaryBank?: string | null;
+  intermediarySwift?: string | null;
+  swiftField54A?: string | null;
+  mt103VerificationFlag?: boolean;
+  verificationNotes?: string | null;
+  isDefault: boolean;
+  isActive: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface BankAccount {
   id: string;
   bankName: string;
   beneficiaryName: string;
   accountNumberMasked: string;
+  cifNumberMasked?: string;
+  accountType?: string;
+  accountStatus?: string;
+  openingDate?: string;
+  branchName?: string;
   swiftCode: string;
   correspondentBank?: string;
   correspondentSwift?: string;
   currency: string;
   isPrimary: boolean;
+  remittanceProfiles?: RemittanceProfile[];
   versionCount?: number;
 }
 

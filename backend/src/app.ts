@@ -13,6 +13,7 @@ import shipmentRoutes from './modules/shipments/shipments.routes.js';
 import ledgerRoutes from './modules/ledger/ledger.routes.js';
 import paymentRoutes from './modules/payments/payments.routes.js';
 import bankingRoutes from './modules/banking/banking.routes.js';
+import remittanceRoutes from './modules/banking/remittance.routes.js';
 import reconciliationRoutes from './modules/reconciliation/reconciliation.routes.js';
 import importRoutes from './modules/import/import.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
@@ -63,6 +64,7 @@ export function createApp() {
   app.use('/api/ledger', ledgerRoutes);
   app.use('/api/payments', paymentRoutes);
   app.use('/api/bank-accounts', bankingRoutes);
+  app.use('/api/remittance-profiles', remittanceRoutes);
   app.use('/api/reconciliation', reconciliationRoutes);
   app.use('/api/import', importRoutes);
   app.use('/api/dashboard', dashboardRoutes);

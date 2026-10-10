@@ -552,7 +552,10 @@ export const Payments: React.FC = () => {
                 </div>
                 <div className="flex justify-between border-b border-slate-200 pb-1.5">
                   <span className="text-slate-500 font-semibold">{t('receipts.receivingAccount')}:</span>
-                  <span dir="ltr" className="font-mono text-slate-800">{selectedReceiptModal.receivingAccountMasked || '101502******0472'}</span>
+                  <div className="text-right rtl:text-left">
+                    <span className="font-semibold text-slate-900 block">{selectedReceiptModal.bankAccountName || 'Afghan United Bank (AUB)'}</span>
+                    <span dir="ltr" className="font-mono text-slate-800 text-[11px]">{selectedReceiptModal.receivingAccountMasked || '101502******0472'}</span>
+                  </div>
                 </div>
                 <div>
                   <span className="text-slate-500 font-semibold block mb-0.5">{t('receipts.purpose')}:</span>

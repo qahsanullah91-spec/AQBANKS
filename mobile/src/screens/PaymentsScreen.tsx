@@ -450,7 +450,7 @@ export const PaymentsScreen: React.FC<PaymentsScreenProps> = ({ user, onNavigate
           zIndex: 100,
           padding: 16
         }}>
-          <div style={{
+          <div className="printable-document" style={{
             backgroundColor: colors.card,
             border: `1px solid ${colors.cardBorder}`,
             borderRadius: 14,
@@ -463,14 +463,26 @@ export const PaymentsScreen: React.FC<PaymentsScreenProps> = ({ user, onNavigate
             color: colors.text
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 20 }}>🎉</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 80,
+                  height: 34,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start'
+                }}>
+                  <img
+                    src="/sky-ariana-logo.png"
+                    alt="Sky Ariana Ltd Logo"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                </div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: colors.accent }}>
-                    Receipt Automatically Generated
+                  <div style={{ fontSize: 13, fontWeight: 900, color: colors.text }}>
+                    SKY ARIANA LTD.
                   </div>
-                  <div style={{ fontSize: 10, color: colors.textMuted }}>
-                    Official proof created atomically with deposit
+                  <div style={{ fontSize: 10, color: colors.accent, fontWeight: 700 }}>
+                    Official Deposit Receipt
                   </div>
                 </div>
               </div>

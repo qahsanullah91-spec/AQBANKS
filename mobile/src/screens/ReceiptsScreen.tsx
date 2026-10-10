@@ -327,7 +327,7 @@ export const ReceiptsScreen: React.FC<ReceiptsScreenProps> = ({
           zIndex: 100,
           padding: 16
         }}>
-          <div style={{
+          <div className="printable-document" style={{
             backgroundColor: colors.card,
             border: `1px solid ${colors.cardBorder}`,
             borderRadius: 14,
@@ -339,29 +339,25 @@ export const ReceiptsScreen: React.FC<ReceiptsScreenProps> = ({
             boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
             color: colors.text
           }}>
-            {/* Modal Header with Logo */}
+            {/* Modal Header with Sky Ariana Ltd Logo */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{
-                  width: 36,
-                  height: 36,
-                  backgroundColor: '#020617',
-                  borderRadius: 8,
-                  padding: 4,
+                  width: 90,
+                  height: 38,
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '1px solid rgba(255, 255, 255, 0.2)'
+                  justifyContent: 'flex-start'
                 }}>
                   <img
-                    src="/logo.png"
-                    alt="AQ Logo"
+                    src="/sky-ariana-logo.png"
+                    alt="Sky Ariana Ltd Logo"
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 </div>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 900, color: colors.text, letterSpacing: 0.5 }}>
-                    AQ COMPANIES
+                    SKY ARIANA LTD.
                   </div>
                   <div style={{ fontSize: 10, color: colors.textMuted, fontWeight: 600 }}>
                     TREASURY & DEPOSIT RECEIPT

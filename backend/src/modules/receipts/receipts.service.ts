@@ -175,12 +175,13 @@ export const receiptsService = {
     return {
       company: {
         legalName: 'Sky Ariana Ltd',
-        brandName: 'AQ Companies',
+        brandName: 'Sky Ariana Ltd',
+        platformName: 'AQ Companies',
         portalTitle: 'Logistics & Financial Management Portal',
-        logoUrl: '/logo.png',
+        logoUrl: '/sky-ariana-logo.png',
         address: 'Kabul / Dubai Commercial Operations',
-        email: 'finance@aqcompanies.com',
-        website: 'https://aqcompanies.com'
+        email: 'info@skyariana.com',
+        website: 'https://skyariana.com'
       },
       receipt: {
         id: receipt.id,

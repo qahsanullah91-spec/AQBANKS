@@ -443,8 +443,8 @@ export const Payments: React.FC = () => {
       {/* OFFICIAL AUTOMATIC RECEIPT MODAL */}
       {selectedReceiptModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
-          <div className="bg-white text-slate-900 rounded-xl w-full max-w-xl p-5 sm:p-7 shadow-2xl font-sans my-auto max-h-[95vh] overflow-y-auto">
-            <div className="flex justify-between items-center pb-3 mb-4 border-b border-slate-200">
+          <div className="printable-document bg-white text-slate-900 rounded-xl w-full max-w-xl p-5 sm:p-7 shadow-2xl font-sans my-auto max-h-[95vh] overflow-y-auto">
+            <div className="flex justify-between items-center pb-3 mb-4 border-b border-slate-200 print:hidden">
               <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
                 <CheckCircle className="w-4 h-4 text-emerald-600" /> Automatic Deposit Receipt Generated
               </span>
@@ -468,12 +468,12 @@ export const Payments: React.FC = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-start border-b border-slate-200 pb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-slate-950 p-1 rounded-xl flex items-center justify-center border border-slate-300 shadow-sm shrink-0">
-                    <img src="/logo.png" alt="AQ Companies Logo" className="w-full h-full object-contain filter drop-shadow-[0_0_4px_rgba(255,255,255,0.4)]" />
+                  <div className="h-14 w-32 sm:w-36 flex items-center justify-start shrink-0">
+                    <img src="/sky-ariana-logo.png" alt="Sky Ariana Ltd. Official Logo" className="max-h-full max-w-full object-contain" />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-slate-900 text-base leading-tight">AQ COMPANIES</h3>
-                    <p className="text-[11px] text-slate-500 font-semibold uppercase">Legal: Sky Ariana Ltd</p>
+                    <h3 className="font-extrabold text-slate-900 text-base leading-tight">SKY ARIANA LTD.</h3>
+                    <p className="text-[11px] text-slate-500 font-semibold uppercase">Corporate Treasury & Settlement</p>
                   </div>
                 </div>
                 <div className="text-right">

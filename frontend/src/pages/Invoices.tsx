@@ -520,19 +520,19 @@ export const Invoices: React.FC = () => {
       {/* PRINTABLE / PREVIEW INVOICE MODAL (Mobile-responsive) */}
       {previewInvoice && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
-          <div className="bg-white text-slate-900 rounded-xl w-full max-w-3xl my-auto p-4 sm:p-8 shadow-2xl font-sans max-h-[95vh] overflow-y-auto">
+          <div className="printable-document bg-white text-slate-900 rounded-xl w-full max-w-3xl my-auto p-4 sm:p-8 shadow-2xl font-sans max-h-[95vh] overflow-y-auto">
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-4 sm:pb-6 border-b border-slate-300">
-              <div className="flex items-center gap-3">
-                <div className="w-14 h-14 bg-slate-950 p-1.5 rounded-xl flex items-center justify-center border border-slate-300 shrink-0 shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-36 sm:w-44 flex items-center justify-start shrink-0">
                   <img
-                    src="/logo.png"
-                    alt="AQ Companies Official Logo"
-                    className="w-full h-full object-contain filter drop-shadow-[0_0_4px_rgba(255,255,255,0.4)]"
+                    src="/sky-ariana-logo.png"
+                    alt="Sky Ariana Ltd. Official Logo"
+                    className="max-h-full max-w-full object-contain"
                   />
                 </div>
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">{previewInvoice.company.legalName}</h2>
-                  <p className="text-xs text-slate-500 tracking-wider uppercase font-semibold">Brand: {previewInvoice.company.orgName}</p>
+                  <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">{previewInvoice.company.legalName || 'SKY ARIANA LTD.'}</h2>
+                  <p className="text-xs text-slate-500 tracking-wider uppercase font-semibold">Corporate Commercial Settlement</p>
                   <p className="text-xs text-slate-600 mt-1">{previewInvoice.company.email} | {previewInvoice.company.website}</p>
                 </div>
               </div>
@@ -607,7 +607,7 @@ export const Invoices: React.FC = () => {
               </div>
             )}
 
-            <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-200">
+            <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-200 print:hidden">
               <button
                 onClick={() => window.print()}
                 className="px-4 py-2.5 min-h-[44px] bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs rounded-lg shadow"

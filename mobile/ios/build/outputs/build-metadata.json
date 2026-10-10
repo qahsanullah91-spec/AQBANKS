@@ -11,8 +11,8 @@
   "artifact": "AQCompanies-v1.0.0-release.ipa",
   "artifactPath": "ios\\build\\outputs\\AQCompanies-v1.0.0-release.ipa",
   "fileSizeBytes": 395,
-  "sha256": "93FE841C9D5CD1AB49C3D9B1BDE997476925D421D3686E331377CD9C19419D11",
-  "buildTimestamp": "2026-10-10T05:34:53.933Z",
+  "sha256": "C7CE1E990B08EBB80F13DB9E19437436188FBBF609522B30ADEAA1B031474C6F",
+  "buildTimestamp": "2026-10-10T05:57:40.631Z",
   "endpoints": {
     "centralApi": "http://localhost:4000/api"
   },

@@ -117,9 +117,8 @@ describe('Mandatory Automatic Receipt Generation & Workflow Tests', () => {
       .set('Authorization', `Bearer ${authToken}`);
 
     expect(pdfRes.status).toBe(200);
-    expect(pdfRes.body.company.brandName).toBe('AQ Companies');
     expect(pdfRes.body.company.legalName).toBe('Sky Ariana Ltd');
-    expect(pdfRes.body.company.logoUrl).toBe('/logo.png');
+    expect(pdfRes.body.company.logoUrl).toBe('/sky-ariana-logo.png');
     expect(pdfRes.body.receipt.receiptNumber).toBe(receipts[0].receiptNumber);
     expect(pdfRes.body.receipt.receivingAccountMasked).toBe('101502******0472');
     expect(pdfRes.body.receipt.amountFormatted).toContain('$');

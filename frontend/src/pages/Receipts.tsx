@@ -344,7 +344,7 @@ export const Receipts: React.FC = () => {
       {/* OFFICIAL PRINTABLE RECEIPT MODAL */}
       {selectedReceipt && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
-          <div className="bg-white text-slate-900 rounded-xl w-full max-w-2xl my-auto p-4 sm:p-8 shadow-2xl font-sans max-h-[95vh] overflow-y-auto print:max-w-full print:p-0 print:shadow-none">
+          <div className="printable-document bg-white text-slate-900 rounded-xl w-full max-w-2xl my-auto p-4 sm:p-8 shadow-2xl font-sans max-h-[95vh] overflow-y-auto">
             {/* Modal Actions Bar (hidden in print) */}
             <div className="flex justify-between items-center pb-4 mb-4 border-b border-slate-200 print:hidden">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -382,33 +382,33 @@ export const Receipts: React.FC = () => {
 
             {/* PRINTABLE RECEIPT CONTENT (Always pure white print background) */}
             <div className="space-y-6">
-              {/* Receipt Header with Official Logo */}
+              {/* Receipt Header with Sky Ariana Ltd. Official Logo */}
               <div className="flex justify-between items-start border-b-2 border-slate-900 pb-5">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-16 h-16 bg-slate-950 p-1.5 rounded-2xl flex items-center justify-center border border-slate-300 shadow-sm shrink-0">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-36 sm:w-44 flex items-center justify-start shrink-0">
                     <img
-                      src="/logo.png"
-                      alt="AQ Companies Official Logo"
-                      className="w-full h-full object-contain filter drop-shadow-[0_0_4px_rgba(255,255,255,0.4)]"
+                      src="/sky-ariana-logo.png"
+                      alt="Sky Ariana Ltd. Official Logo"
+                      className="max-h-full max-w-full object-contain"
                     />
                   </div>
                   <div>
-                    <h2 className="text-xl font-extrabold tracking-tight text-slate-900">AQ COMPANIES</h2>
-                    <p className="text-xs text-slate-600 font-semibold uppercase tracking-wider">Legal Entity: Sky Ariana Ltd</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">finance@aqcompanies.com • Operating Account</p>
+                    <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">SKY ARIANA LTD.</h2>
+                    <p className="text-xs text-slate-600 font-bold uppercase tracking-wider">Corporate Treasury & Commercial Settlement</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">info@skyariana.com • www.skyariana.com</p>
                   </div>
                 </div>
 
                 <div className="text-right">
                   <span className="text-lg font-black tracking-wider uppercase text-emerald-800 block">OFFICIAL RECEIPT</span>
-                  <span className="text-xs font-mono font-bold text-slate-900 block mt-1">
+                  <span className="text-sm font-mono font-extrabold text-slate-900 block mt-1">
                     {selectedReceipt.receiptNumber}
                   </span>
                   <span className="text-[11px] text-slate-500 block mt-0.5">
                     Date: {new Date(selectedReceipt.issueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                   </span>
-                  <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold ${
-                    selectedReceipt.status === 'ISSUED' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                  <span className={`inline-block mt-1 px-2.5 py-0.5 rounded text-[10px] font-extrabold ${
+                    selectedReceipt.status === 'ISSUED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
                   }`}>
                     STATUS: {selectedReceipt.status}
                   </span>
@@ -472,7 +472,7 @@ export const Receipts: React.FC = () => {
                     <span>Cryptographically Audited Receipt</span>
                   </div>
                   <p className="text-[10px] leading-tight">
-                    This official electronic receipt was atomically recorded in the AQ Companies corporate ledger.
+                    This official electronic receipt was atomically recorded in the corporate ledger.
                     Receipt ID: <span className="font-mono text-slate-600">{selectedReceipt.id}</span>
                   </p>
                 </div>
@@ -480,7 +480,7 @@ export const Receipts: React.FC = () => {
                 <div className="text-right">
                   <div className="border-b border-slate-400 w-48 ml-auto mb-1"></div>
                   <span className="text-xs font-bold text-slate-800 uppercase block">Authorized Treasury Signature</span>
-                  <span className="text-[10px] text-slate-500 block">Sky Ariana Ltd / AQ Companies</span>
+                  <span className="text-[10px] text-slate-500 block">Sky Ariana Ltd. — Corporate Treasury</span>
                 </div>
               </div>
             </div>

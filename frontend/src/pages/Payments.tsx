@@ -98,12 +98,12 @@ export const Payments: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Title & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 sm:pb-4 border-b border-slate-800">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Payments & Invoice Allocations</h1>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Payments & Invoice Allocations</h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
             Record customer inward transfers, allocate funds across proforma invoices, and track unallocated cash
           </p>
         </div>
@@ -112,14 +112,63 @@ export const Payments: React.FC = () => {
             setReference(`WIRE-${Math.floor(100000 + Math.random() * 900000)}`);
             setShowModal(true);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition self-start sm:self-auto"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition w-full sm:w-auto"
         >
           <Plus className="w-4 h-4" /> Record Payment
         </button>
       </div>
 
-      {/* Payments Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+      {/* MOBILE CARD VIEW (< 640px) */}
+      <div className="block sm:hidden space-y-3">
+        {payments.length > 0 ? (
+          payments.map(p => (
+            <div key={p.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-md space-y-2.5">
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="flex items-center gap-1.5 font-bold text-white text-sm">
+                    <CreditCard className="w-4 h-4 text-blue-400" />
+                    <span>{p.reference || 'N/A'}</span>
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-mono block mt-0.5">
+                    {new Date(p.paymentDate).toLocaleDateString()} • {p.paymentMethod}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="font-mono font-extrabold text-emerald-400 text-sm block">
+                    ${Number(p.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                  {Number(p.unallocatedAmount) > 0 && (
+                    <span className="text-[10px] text-amber-400 font-mono block mt-0.5">
+                      Unallocated: ${Number(p.unallocatedAmount).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-xs text-slate-200 border-t border-slate-800/80 pt-2 font-medium">
+                {p.customer?.companyName || 'Unknown Customer'}
+              </div>
+
+              {p.allocations && p.allocations.length > 0 && (
+                <div className="pt-2 border-t border-slate-800/80 flex flex-wrap gap-1">
+                  {p.allocations.map((a: any) => (
+                    <span key={a.id} className="px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] font-mono text-emerald-400">
+                      {a.invoice?.invoiceNumber} (${Number(a.amount).toLocaleString()})
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-8 text-slate-500 text-xs">
+            {loading ? 'Loading payment records...' : 'No payments recorded yet.'}
+          </div>
+        )}
+      </div>
+
+      {/* DESKTOP TABLE VIEW (>= 640px) */}
+      <div className="hidden sm:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
@@ -187,15 +236,18 @@ export const Payments: React.FC = () => {
         </div>
       </div>
 
-      {/* RECORD PAYMENT MODAL */}
+      {/* RECORD PAYMENT MODAL (Mobile-responsive) */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-xl p-6 shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-xl p-5 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-3 border-b border-slate-800">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-emerald-400" /> Record Inward Payment & Allocation
               </h2>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-white">
+              <button
+                onClick={() => setShowModal(false)}
+                className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -208,7 +260,7 @@ export const Payments: React.FC = () => {
             )}
 
             <form onSubmit={handleRecordPayment} className="mt-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">Buyer / Consignee</label>
                   <select
@@ -218,7 +270,7 @@ export const Payments: React.FC = () => {
                       setAllocations([]);
                     }}
                     required
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white"
+                    className="w-full bg-slate-950 border border-slate-800 rounded p-2.5 min-h-[44px] text-xs text-white"
                   >
                     {customers.map(c => (
                       <option key={c.id} value={c.id}>{c.companyName}</option>
@@ -232,12 +284,12 @@ export const Payments: React.FC = () => {
                     value={paymentDate}
                     onChange={e => setPaymentDate(e.target.value)}
                     required
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white"
+                    className="w-full bg-slate-950 border border-slate-800 rounded p-2.5 min-h-[44px] text-xs text-white"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">Payment Reference</label>
                   <input
@@ -245,11 +297,11 @@ export const Payments: React.FC = () => {
                     value={reference}
                     onChange={e => setReference(e.target.value)}
                     placeholder="e.g. 0464AIR261771143"
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white"
+                    className="w-full bg-slate-950 border border-slate-800 rounded p-2.5 min-h-[44px] text-xs text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Total Received Amount (USD)</label>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Total Amount (USD)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -257,7 +309,7 @@ export const Payments: React.FC = () => {
                     onChange={e => setTotalAmount(e.target.value)}
                     placeholder="0.00"
                     required
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white font-mono"
+                    className="w-full bg-slate-950 border border-slate-800 rounded p-2.5 min-h-[44px] text-xs text-white font-mono"
                   />
                 </div>
               </div>
@@ -286,12 +338,12 @@ export const Payments: React.FC = () => {
                                 step="0.01"
                                 value={currentAlloc}
                                 onChange={e => handleUpdateAllocation(inv.id, Number(e.target.value))}
-                                className="w-24 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-xs text-white font-mono"
+                                className="w-24 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white font-mono min-h-[36px]"
                               />
                               <button
                                 type="button"
                                 onClick={() => handleRemoveAllocation(inv.id)}
-                                className="text-slate-500 hover:text-rose-400"
+                                className="text-slate-500 hover:text-rose-400 p-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center"
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -300,7 +352,7 @@ export const Payments: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleAddAllocation(inv.id, Number(inv.totalAmount))}
-                              className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded text-[11px]"
+                              className="px-3 py-2 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded text-xs font-medium"
                             >
                               + Allocate
                             </button>
@@ -320,7 +372,7 @@ export const Payments: React.FC = () => {
                     <span className="font-mono font-bold text-white">${totalAllocated.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-slate-400 block">Unallocated Remaining:</span>
+                    <span className="text-slate-400 block">Unallocated:</span>
                     <span className="font-mono font-bold text-amber-400">${unallocatedRemaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                 </div>
@@ -330,13 +382,13 @@ export const Payments: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded text-xs"
+                  className="px-4 py-2.5 min-h-[44px] bg-slate-800 text-slate-300 rounded text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold"
+                  className="px-4 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold"
                 >
                   Record Payment
                 </button>

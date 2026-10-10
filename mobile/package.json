@@ -1,0 +1,21 @@
+{
+  "name": "aq-companies-mobile",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Native Android and iOS Mobile Application for AQ Companies Logistics & Financial Management System",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "test": "vitest run",
+    "build:android": "node scripts/build_android.js",
+    "build:ios": "node scripts/build_ios.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.5.5",
+    "typescript": "^5.6.2",
+    "vitest": "^2.1.1"
+  }
+}

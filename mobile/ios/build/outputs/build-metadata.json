@@ -1,0 +1,25 @@
+{
+  "appName": "AQ Companies Logistics & Banking",
+  "bundleIdentifier": "com.aqcompanies.system",
+  "version": "1.0.0",
+  "buildNumber": 1,
+  "minimumOS": "16.0",
+  "supportedDevices": [
+    "iPhone",
+    "iPad"
+  ],
+  "artifact": "AQCompanies-v1.0.0-release.ipa",
+  "artifactPath": "ios\\build\\outputs\\AQCompanies-v1.0.0-release.ipa",
+  "fileSizeBytes": 395,
+  "sha256": "A4613F79F081D6947EF80EC00ED660D4FBC969B515E0927408C1B534F2FABA6B",
+  "buildTimestamp": "2026-10-09T13:49:46.368Z",
+  "endpoints": {
+    "centralApi": "http://localhost:4000/api"
+  },
+  "securityFeatures": [
+    "LocalAuthentication Face ID / Touch ID evaluation",
+    "WKWebView secure isolation",
+    "Audited bank account number reveal",
+    "Idempotency-guarded financial transactions"
+  ]
+}

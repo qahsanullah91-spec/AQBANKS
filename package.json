@@ -11,8 +11,12 @@
     "frontend:dev": "npm --prefix frontend run dev",
     "frontend:build": "npm --prefix frontend run build",
     "desktop:start": "npm --prefix desktop start",
+    "mobile:test": "npm --prefix mobile test",
+    "mobile:build:android": "npm --prefix mobile run build:android",
+    "mobile:build:ios": "npm --prefix mobile run build:ios",
     "build": "npm run backend:build && npm run frontend:build",
     "test": "npm run backend:test",
+    "test:all": "npm run backend:test && npm run mobile:test",
     "seed": "npm run backend:seed"
   },
   "keywords": [

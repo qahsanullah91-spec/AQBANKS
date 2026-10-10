@@ -1,0 +1,11 @@
+platform :ios, '16.0'
+use_frameworks!
+
+target 'AQCompanies' do
+  # Pod dependencies for iOS native release
+  pod 'LocalAuthentication' # Native FaceID / TouchID biometric security
+  
+  target 'AQCompaniesTests' do
+    inherit! :search_paths
+  end
+end

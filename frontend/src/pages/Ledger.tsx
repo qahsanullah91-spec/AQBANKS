@@ -109,25 +109,25 @@ export const Ledger: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Title & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 sm:pb-4 border-b border-slate-800">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Financial Ledger & Account Statement</h1>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Account Statement & Ledger</h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
             Afghan United Bank USD Operating Statement with deterministic cumulative balance calculations
           </p>
         </div>
-        <div className="flex gap-2 self-start sm:self-auto">
+        <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={exportCsv}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
           >
             <Download className="w-3.5 h-3.5" /> Export CSV
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition"
           >
             <Plus className="w-4 h-4" /> Post Entry
           </button>
@@ -135,18 +135,18 @@ export const Ledger: React.FC = () => {
       </div>
 
       {/* Balance Verification Banner */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-          <span className="text-xs text-slate-400 uppercase font-semibold block">Opening Baseline Balance</span>
-          <div className="text-xl font-bold font-mono text-white mt-1">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-xl">
+          <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold block">Opening Baseline Balance</span>
+          <div className="text-lg sm:text-xl font-bold font-mono text-white mt-1">
             ${Number(openingBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           <p className="text-[11px] text-slate-500 mt-0.5">Prior period baseline</p>
         </div>
 
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-          <span className="text-xs text-slate-400 uppercase font-semibold block">Current Verified Cash Balance</span>
-          <div className="text-2xl font-extrabold font-mono text-emerald-400 mt-1">
+        <div className="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-xl">
+          <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold block">Verified Cash Balance</span>
+          <div className="text-xl sm:text-2xl font-extrabold font-mono text-emerald-400 mt-1">
             ${Number(currentEndingBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           <p className="text-[11px] text-emerald-500 flex items-center gap-1 mt-0.5">
@@ -154,31 +154,31 @@ export const Ledger: React.FC = () => {
           </p>
         </div>
 
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-          <span className="text-xs text-slate-400 uppercase font-semibold block">Reconciliation Policy</span>
-          <div className="text-xs text-slate-300 font-medium mt-2">
-            Deterministic order tie-breaker: <code className="text-emerald-400">Date → PostedAt → UUID</code>.
+        <div className="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-xl">
+          <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold block">Reconciliation Policy</span>
+          <div className="text-xs text-slate-300 font-medium mt-1">
+            Deterministic: <code className="text-emerald-400">Date → Posted → ID</code>
           </div>
-          <p className="text-[11px] text-slate-500 mt-1">Row-offset formula bug corrected server-side.</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Row-offset formula bug corrected server-side.</p>
         </div>
       </div>
 
       {/* Search and Filter */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
           <input
             type="text"
-            placeholder="Search by description or transaction reference..."
+            placeholder="Search description or reference..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+            className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 min-h-[44px] text-xs text-white focus:outline-none focus:border-emerald-500"
           />
         </div>
         <select
           value={categoryFilter}
           onChange={e => setCategoryFilter(e.target.value)}
-          className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
+          className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 min-h-[44px] text-xs text-slate-300 focus:outline-none"
         >
           <option value="">All Categories</option>
           <option value="CREDIT">Credits Only (Inward)</option>
@@ -187,8 +187,82 @@ export const Ledger: React.FC = () => {
         </select>
       </div>
 
-      {/* Statement Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+      {/* MOBILE CARD VIEW (< 640px) */}
+      <div className="block sm:hidden space-y-3">
+        {transactions.length > 0 ? (
+          transactions.map(tx => (
+            <div key={tx.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-md space-y-2.5">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {new Date(tx.effectiveDate).toLocaleDateString()}
+                  </span>
+                  {tx.reference && (
+                    <span className="text-[11px] text-slate-300 font-mono block font-semibold">
+                      Ref: {tx.reference}
+                    </span>
+                  )}
+                </div>
+                <div className="text-right">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                    tx.category === 'CREDIT' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' :
+                    tx.category === 'DEBIT' ? 'bg-rose-950 text-rose-300 border border-rose-800' :
+                    'bg-slate-800 text-slate-300'
+                  }`}>
+                    {tx.category}
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-xs text-slate-200 font-medium">
+                {tx.description}
+                {tx.isReversal && (
+                  <span className="ml-2 px-1.5 py-0.2 rounded text-[10px] bg-rose-950 text-rose-300 border border-rose-800 font-mono">
+                    REVERSAL
+                  </span>
+                )}
+              </div>
+
+              <div className="flex justify-between items-center pt-2 border-t border-slate-800/80 font-mono text-xs">
+                <div>
+                  <span className="text-slate-500 block text-[10px] font-sans">Amount:</span>
+                  {Number(tx.creditAmount) > 0 ? (
+                    <span className="text-emerald-400 font-bold">+${Number(tx.creditAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  ) : Number(tx.debitAmount) > 0 ? (
+                    <span className="text-rose-400 font-bold">-${Number(tx.debitAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  ) : (
+                    <span className="text-slate-400">$0.00</span>
+                  )}
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500 block text-[10px] font-sans">Running Balance:</span>
+                  <span className="text-white font-extrabold text-sm">
+                    ${Number(tx.runningBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {!tx.isReversal && (
+                <div className="pt-2 border-t border-slate-800/80 flex justify-end">
+                  <button
+                    onClick={() => setReversalTx(tx)}
+                    className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-xs text-slate-400 hover:text-rose-400 transition"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" /> Reversal Adjustment
+                  </button>
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-8 text-slate-500 text-xs">
+            {loading ? 'Calculating balances...' : 'No ledger transactions found.'}
+          </div>
+        )}
+      </div>
+
+      {/* DESKTOP TABLE VIEW (>= 640px) */}
+      <div className="hidden sm:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
@@ -217,7 +291,7 @@ export const Ledger: React.FC = () => {
                     <td className="py-3 px-4 font-sans text-slate-200">
                       {tx.description}
                       {tx.isReversal && (
-                        <span className="ml-2 px-1.5 py-0.2 rounded text-[10px] bg-rose-950 text-rose-300 border border-rose-800">
+                        <span className="ml-2 px-1.5 py-0.2 rounded text-[10px] bg-rose-950 text-rose-300 border border-rose-800 font-mono">
                           REVERSAL
                         </span>
                       )}
@@ -252,7 +326,7 @@ export const Ledger: React.FC = () => {
                         <button
                           onClick={() => setReversalTx(tx)}
                           title="Post Reversal Adjustment"
-                          className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition"
+                          className="p-2 min-h-[36px] min-w-[36px] inline-flex items-center justify-center text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition"
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
                         </button>
@@ -272,15 +346,18 @@ export const Ledger: React.FC = () => {
         </div>
       </div>
 
-      {/* POST ENTRY MODAL */}
+      {/* POST ENTRY MODAL (Mobile-responsive) */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6 shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-5 shadow-2xl">
             <div className="flex justify-between items-center pb-3 border-b border-slate-800">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-emerald-400" /> Post Ledger Transaction
               </h2>
-              <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-white">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -293,7 +370,7 @@ export const Ledger: React.FC = () => {
                   value={effectiveDate}
                   onChange={e => setEffectiveDate(e.target.value)}
                   required
-                  className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white"
+                  className="w-full bg-slate-950 border border-slate-800 rounded p-2.5 min-h-[44px] text-xs text-white"
                 />
               </div>
 
@@ -303,7 +380,7 @@ export const Ledger: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setCategory('CREDIT')}
-                    className={`py-2 text-xs font-semibold rounded border ${
+                    className={`py-2.5 min-h-[44px] text-xs font-semibold rounded border ${
                       category === 'CREDIT' ? 'bg-emerald-950 text-emerald-300 border-emerald-600' : 'bg-slate-950 text-slate-400 border-slate-800'
                     }`}
                   >
@@ -312,7 +389,7 @@ export const Ledger: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setCategory('DEBIT')}
-                    className={`py-2 text-xs font-semibold rounded border ${
+                    className={`py-2.5 min-h-[44px] text-xs font-semibold rounded border ${
                       category === 'DEBIT' ? 'bg-rose-950 text-rose-300 border-rose-600' : 'bg-slate-950 text-slate-400 border-slate-800'
                     }`}
                   >
@@ -330,7 +407,7 @@ export const Ledger: React.FC = () => {
                   onChange={e => setAmount(e.target.value)}
                   placeholder="0.00"
                   required
-                  className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white font-mono"
+                  className="w-full bg-slate-950 border border-slate-800 rounded p-2.5 min-h-[44px] text-xs text-white font-mono"
                 />
               </div>
 
@@ -341,7 +418,7 @@ export const Ledger: React.FC = () => {
                   value={reference}
                   onChange={e => setReference(e.target.value)}
                   placeholder="e.g. 0464AIR261771143"
-                  className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white"
+                  className="w-full bg-slate-950 border border-slate-800 rounded p-2.5 min-h-[44px] text-xs text-white"
                 />
               </div>
 
@@ -353,7 +430,7 @@ export const Ledger: React.FC = () => {
                   onChange={e => setDescription(e.target.value)}
                   placeholder="e.g. Inward Wire Transfer from Consignee"
                   required
-                  className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white"
+                  className="w-full bg-slate-950 border border-slate-800 rounded p-2.5 min-h-[44px] text-xs text-white"
                 />
               </div>
 
@@ -361,13 +438,13 @@ export const Ledger: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded text-xs"
+                  className="px-3 py-2 min-h-[44px] bg-slate-800 text-slate-300 rounded text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold"
+                  className="px-4 py-2 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold"
                 >
                   Post Entry
                 </button>
@@ -379,13 +456,13 @@ export const Ledger: React.FC = () => {
 
       {/* REVERSAL MODAL */}
       {reversalTx && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6 shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-5 shadow-2xl">
             <h3 className="text-base font-bold text-white flex items-center gap-2 text-rose-400">
               <RotateCcw className="w-5 h-5 text-rose-400" /> Post Reversing Entry
             </h3>
             <p className="text-xs text-slate-400 mt-2">
-              Posted ledger entries cannot be mutated or deleted. Posting a reversal creates a linked opposite adjustment entry.
+              Posted entries cannot be mutated. Posting a reversal creates a linked opposite adjustment entry.
             </p>
             <div className="mt-3 p-2.5 bg-slate-950 border border-slate-800 rounded text-xs">
               <span className="text-slate-500 block">Target Transaction:</span>
@@ -401,20 +478,20 @@ export const Ledger: React.FC = () => {
                 onChange={e => setReversalReason(e.target.value)}
                 placeholder="e.g. Bank correction, duplicate entry reversed..."
                 rows={2}
-                className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white"
+                className="w-full bg-slate-950 border border-slate-800 rounded p-2.5 text-xs text-white"
               />
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <button
                 onClick={() => setReversalTx(null)}
-                className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded text-xs"
+                className="px-3 py-2 min-h-[44px] bg-slate-800 text-slate-300 rounded text-xs"
               >
                 Cancel
               </button>
               <button
                 onClick={handlePostReversal}
                 disabled={!reversalReason.trim()}
-                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded text-xs font-semibold disabled:opacity-50"
+                className="px-3 py-2 min-h-[44px] bg-rose-600 hover:bg-rose-500 text-white rounded text-xs font-semibold disabled:opacity-50"
               >
                 Confirm Reversal
               </button>

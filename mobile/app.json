@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "AQ Companies Logistics & Banking",
+    "slug": "aq-companies-system",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#020617"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aqcompanies.system",
+      "buildNumber": "1.0.0",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Camera permission is used for scanning freight manifests and documents.",
+        "NSPhotoLibraryUsageDescription": "Photo library access is used for uploading cargo inspection attachments."
+      }
+    },
+    "android": {
+      "package": "com.aqcompanies.system",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#020617"
+      },
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "aq-companies-corporate-system"
+      }
+    }
+  }
+}

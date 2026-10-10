@@ -27,8 +27,13 @@ jobs:
       - name: Run Type Check
         run: npm run typecheck --if-present
 
-      - name: Run Automated Tests
-        run: npm test
+      - name: Run Automated Backend & Mobile Tests
+        run: npm run test:all
 
       - name: Build Backend & Frontend
         run: npm run build --if-present
+
+      - name: Build Android & iOS Release Packages
+        run: |
+          npm run mobile:build:android
+          npm run mobile:build:ios

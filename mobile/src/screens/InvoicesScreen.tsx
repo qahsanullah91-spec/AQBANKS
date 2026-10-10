@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { mobileApi } from '../services/api.js';
 import { Invoice, User } from '../types/index.js';
+import { useTheme } from '../theme/ThemeContext.js';
 
 interface InvoicesScreenProps {
   user: User;
 }
 
 export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({ user }) => {
+  const { theme, colors } = useTheme();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -67,34 +69,34 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({ user }) => {
     switch (status) {
       case 'ISSUED':
       case 'PAID':
-        return { bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399', border: '#059669' };
+        return { bg: colors.accentBg, text: colors.accent, border: colors.accent };
       case 'PARTIALLY_PAID':
-        return { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: '#d97706' };
+        return { bg: colors.warningBg, text: colors.warning, border: colors.warning };
       case 'OVERDUE':
       case 'VOID':
-        return { bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171', border: '#dc2626' };
+        return { bg: colors.dangerBg, text: colors.danger, border: colors.danger };
       default:
-        return { bg: 'rgba(148, 163, 184, 0.15)', text: '#94a3b8', border: '#475569' };
+        return { bg: colors.badgeBg, text: colors.textMuted, border: colors.cardBorder };
     }
   };
 
   return (
-    <div style={{ padding: 16, color: '#f8fafc' }}>
+    <div style={{ padding: 16, color: colors.text, backgroundColor: colors.bg, minHeight: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div>
-          <span style={{ fontSize: 12, color: '#94a3b8', textTransform: 'uppercase' }}>Commercial Billing</span>
-          <h2 style={{ margin: 0, fontSize: 18, color: '#ffffff', fontWeight: 700 }}>Invoices & Proformas</h2>
+          <span style={{ fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', fontWeight: 600 }}>Commercial Billing</span>
+          <h2 style={{ margin: 0, fontSize: 18, color: colors.text, fontWeight: 800 }}>Invoices & Proformas</h2>
         </div>
         <button
           onClick={fetchInvoices}
           style={{
             padding: '8px 12px',
-            backgroundColor: '#1e293b',
-            border: '1px solid #334155',
+            backgroundColor: colors.card,
+            border: `1px solid ${colors.cardBorder}`,
             borderRadius: 8,
-            color: '#38bdf8',
+            color: colors.primary,
             fontSize: 12,
-            minHeight: 44,
+            minHeight: 40,
             cursor: 'pointer'
           }}
         >
@@ -105,12 +107,13 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({ user }) => {
       {message && (
         <div style={{
           padding: 12,
-          backgroundColor: message.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-          border: `1px solid ${message.type === 'success' ? '#10b981' : '#ef4444'}`,
+          backgroundColor: message.type === 'success' ? colors.accentBg : colors.dangerBg,
+          border: `1px solid ${message.type === 'success' ? colors.accent : colors.danger}`,
           borderRadius: 8,
-          color: message.type === 'success' ? '#6ee7b7' : '#fca5a5',
+          color: message.type === 'success' ? colors.accent : colors.danger,
           fontSize: 13,
-          marginBottom: 12
+          marginBottom: 12,
+          fontWeight: 600
         }}>
           {message.text}
         </div>
@@ -128,9 +131,9 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({ user }) => {
             padding: '12px 14px',
             minHeight: 44,
             borderRadius: 8,
-            backgroundColor: '#0f172a',
-            border: '1px solid #334155',
-            color: '#ffffff',
+            backgroundColor: colors.inputBg,
+            border: `1px solid ${colors.inputBorder}`,
+            color: colors.text,
             fontSize: 14,
             boxSizing: 'border-box'
           }}
@@ -139,9 +142,9 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({ user }) => {
 
       {/* Invoices List */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 32, color: '#64748b' }}>Loading invoices...</div>
+        <div style={{ textAlign: 'center', padding: 32, color: colors.textMuted }}>Loading invoices...</div>
       ) : filteredInvoices.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 32, color: '#64748b', backgroundColor: '#0f172a', borderRadius: 8 }}>
+        <div style={{ textAlign: 'center', padding: 32, color: colors.textMuted, backgroundColor: colors.card, border: `1px solid ${colors.cardBorder}`, borderRadius: 10 }}>
           No invoices found matching criteria.
         </div>
       ) : (
@@ -153,20 +156,20 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({ user }) => {
                 key={inv.id}
                 onClick={() => openInvoiceDetails(inv)}
                 style={{
-                  backgroundColor: '#0f172a',
-                  border: '1px solid #1e293b',
+                  backgroundColor: colors.card,
+                  border: `1px solid ${colors.cardBorder}`,
                   borderRadius: 10,
                   padding: 14,
                   cursor: 'pointer',
-                  transition: 'border-color 0.2s'
+                  boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                   <div>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#ffffff' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: colors.text }}>
                       {inv.sourceInvoiceRef || inv.invoiceNumber}
                     </span>
-                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
                       {inv.customer?.companyName || 'General Account'}
                     </div>
                   </div>
@@ -183,11 +186,11 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({ user }) => {
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid #1e293b' }}>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: `1px solid ${colors.divider}` }}>
+                  <div style={{ fontSize: 11, color: colors.textMuted }}>
                     Date: {inv.issueDate ? new Date(inv.issueDate).toLocaleDateString() : 'N/A'}
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: '#38bdf8' }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: colors.primary }}>
                     ${Number(inv.totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
@@ -212,18 +215,19 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({ user }) => {
           zIndex: 100
         }}>
           <div style={{
-            backgroundColor: '#0f172a',
-            borderTop: '2px solid #334155',
+            backgroundColor: colors.card,
+            borderTop: `2px solid ${colors.primary}`,
             borderTopLeftRadius: 16,
             borderTopRightRadius: 16,
             maxHeight: '85vh',
             overflowY: 'auto',
-            padding: 20
+            padding: 20,
+            color: colors.text
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
-                <span style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase' }}>Proforma Invoice</span>
-                <h3 style={{ margin: 0, fontSize: 18, color: '#ffffff' }}>
+                <span style={{ fontSize: 11, color: colors.textMuted, textTransform: 'uppercase' }}>Proforma Invoice</span>
+                <h3 style={{ margin: 0, fontSize: 18, color: colors.text, fontWeight: 800 }}>
                   {selectedInvoice.sourceInvoiceRef || selectedInvoice.invoiceNumber}
                 </h3>
               </div>
@@ -231,10 +235,10 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({ user }) => {
                 onClick={() => setSelectedInvoice(null)}
                 style={{
                   padding: '6px 12px',
-                  backgroundColor: '#1e293b',
-                  border: '1px solid #475569',
+                  backgroundColor: colors.card,
+                  border: `1px solid ${colors.cardBorder}`,
                   borderRadius: 6,
-                  color: '#ffffff',
+                  color: colors.text,
                   minHeight: 36,
                   cursor: 'pointer'
                 }}
@@ -243,25 +247,26 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({ user }) => {
               </button>
             </div>
 
-            <div style={{ marginBottom: 16, backgroundColor: '#020617', padding: 12, borderRadius: 8 }}>
-              <div style={{ fontSize: 12, color: '#94a3b8' }}>Client:</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#f8fafc', marginBottom: 6 }}>
+            <div style={{ marginBottom: 16, backgroundColor: colors.inputBg, padding: 12, borderRadius: 8, border: `1px solid ${colors.cardBorder}` }}>
+              <div style={{ fontSize: 12, color: colors.textMuted }}>Client:</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: colors.text, marginBottom: 6 }}>
                 {selectedInvoice.customer?.companyName || 'General Account'}
               </div>
-              <div style={{ fontSize: 12, color: '#94a3b8' }}>Payment Terms:</div>
-              <div style={{ fontSize: 13, color: '#e2e8f0' }}>{selectedInvoice.paymentTerms || 'Standard'}</div>
+              <div style={{ fontSize: 12, color: colors.textMuted }}>Payment Terms:</div>
+              <div style={{ fontSize: 13, color: colors.textSecondary }}>{selectedInvoice.paymentTerms || 'Standard'}</div>
             </div>
 
             {/* Line Items */}
             {selectedInvoice.lines && selectedInvoice.lines.length > 0 && (
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#cbd5e1', marginBottom: 8, textTransform: 'uppercase' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: colors.textMuted, marginBottom: 8, textTransform: 'uppercase' }}>
                   Line Items
                 </div>
                 {selectedInvoice.lines.map((line: any, idx: number) => (
                   <div key={idx} style={{
                     padding: '8px 10px',
-                    backgroundColor: '#1e293b',
+                    backgroundColor: colors.inputBg,
+                    border: `1px solid ${colors.cardBorder}`,
                     borderRadius: 6,
                     marginBottom: 6,
                     display: 'flex',
@@ -269,12 +274,12 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({ user }) => {
                     alignItems: 'center'
                   }}>
                     <div>
-                      <div style={{ fontSize: 13, color: '#ffffff', fontWeight: 500 }}>{line.description}</div>
-                      <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                      <div style={{ fontSize: 13, color: colors.text, fontWeight: 600 }}>{line.description}</div>
+                      <div style={{ fontSize: 11, color: colors.textMuted }}>
                         Qty: {line.quantity} × ${Number(line.unitPrice).toFixed(2)}
                       </div>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#38bdf8' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: colors.primary }}>
                       ${Number(line.totalAmount).toFixed(2)}
                     </div>
                   </div>
@@ -287,12 +292,13 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({ user }) => {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: 12,
-              backgroundColor: '#020617',
+              backgroundColor: colors.inputBg,
+              border: `1px solid ${colors.cardBorder}`,
               borderRadius: 8,
               marginBottom: 20
             }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#cbd5e1' }}>Total Calculated:</span>
-              <span style={{ fontSize: 18, fontWeight: 800, color: '#34d399' }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: colors.textSecondary }}>Total Calculated:</span>
+              <span style={{ fontSize: 18, fontWeight: 800, color: colors.accent }}>
                 ${Number(selectedInvoice.totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
@@ -306,7 +312,7 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({ user }) => {
                   style={{
                     width: '100%',
                     minHeight: 48,
-                    backgroundColor: '#059669',
+                    backgroundColor: colors.accent,
                     border: 'none',
                     borderRadius: 8,
                     color: '#ffffff',
@@ -319,14 +325,16 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({ user }) => {
                 </button>
               )}
               <button
-                onClick={() => alert(`Proforma Invoice PDF data generated for ${selectedInvoice.sourceInvoiceRef || selectedInvoice.invoiceNumber}. Ready to export.`)}
+                onClick={() => {
+                  if (typeof window !== 'undefined') window.print();
+                }}
                 style={{
                   width: '100%',
                   minHeight: 44,
-                  backgroundColor: '#1e293b',
-                  border: '1px solid #334155',
+                  backgroundColor: colors.card,
+                  border: `1px solid ${colors.cardBorder}`,
                   borderRadius: 8,
-                  color: '#38bdf8',
+                  color: colors.primary,
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'pointer'

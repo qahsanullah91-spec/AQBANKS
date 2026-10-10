@@ -140,5 +140,20 @@ export const mobileApi = {
       method: 'POST',
       body: JSON.stringify({ reason })
     }, key);
+  },
+
+  // Receipts (Automatic on Inward Credit / Audited Void)
+  getReceipts: (params: any = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return mobileRequest(`/receipts${qs ? `?${qs}` : ''}`);
+  },
+  getReceipt: (id: string) => mobileRequest(`/receipts/${id}`),
+  getReceiptPdfData: (id: string) => mobileRequest(`/receipts/${id}/pdf-data`),
+  voidReceipt: (id: string, reason: string) => {
+    const key = generateIdempotencyKey(`void-receipt-${id}`);
+    return mobileRequest(`/receipts/${id}/void`, {
+      method: 'POST',
+      body: JSON.stringify({ reason })
+    }, key);
   }
 };

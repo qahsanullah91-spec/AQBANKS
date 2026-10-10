@@ -16,6 +16,7 @@ model User {
   isActive     Boolean     @default(true)
   userRoles    UserRole[]
   auditEvents  AuditEvent[]
+  receipts     Receipt[]
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
@@ -168,6 +169,7 @@ model LedgerTransaction {
   reversal             LedgerTransaction?  @relation("TransactionReversal")
   isReversal           Boolean             @default(false)
   notes                String?
+  receipt              Receipt?
   createdAt            DateTime            @default(now())
 
   @@index([effectiveDate, postedAt])
@@ -198,6 +200,7 @@ model Invoice {
   snapshots          InvoiceSnapshot[]
   shipmentInvoices   ShipmentInvoice[]
   paymentAllocations PaymentAllocation[]
+  receipts           Receipt[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
@@ -247,6 +250,7 @@ model Shipment {
   notes                  String?
   shipmentInvoices       ShipmentInvoice[]
   statusHistory          ShipmentStatusHistory[]
+  receipts               Receipt[]
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
 
@@ -295,6 +299,7 @@ model Payment {
   currency           String              @default("USD")
   notes              String?
   allocations        PaymentAllocation[]
+  receipt            Receipt?
   createdAt          DateTime            @default(now())
 
   @@map("payments")
@@ -361,3 +366,41 @@ model AuditEvent {
   @@index([entityType, entityId])
   @@map("audit_events")
 }
+
+model Receipt {
+  id                     String             @id @default(uuid())
+  receiptNumber          String             @unique // e.g. RCP-2026-0001
+  paymentId              String?            @unique
+  payment                Payment?           @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  ledgerTransactionId    String?            @unique
+  ledgerTransaction      LedgerTransaction? @relation(fields: [ledgerTransactionId], references: [id], onDelete: SetNull)
+  issueDate              DateTime           @default(now())
+  payerName              String
+  receivingAccountName   String
+  receivingAccountMasked String
+  amount                 Decimal
+  amountInWords          String?
+  currency               String             @default("USD")
+  paymentMethod          String             @default("WIRE_TRANSFER")
+  referenceNumber        String?
+  purpose                String
+  invoiceId              String?
+  invoice                Invoice?           @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  shipmentId             String?
+  shipment               Shipment?          @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  notes                  String?
+  status                 String             @default("ISSUED") // ISSUED, VOIDED
+  createdById            String?
+  createdBy              User?              @relation(fields: [createdById], references: [id])
+  voidReason             String?
+  voidedAt               DateTime?
+  voidedById             String?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  @@index([receiptNumber])
+  @@index([payerName])
+  @@index([issueDate])
+  @@map("receipts")
+}
+

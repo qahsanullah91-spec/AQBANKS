@@ -18,6 +18,7 @@ import importRoutes from './modules/import/import.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 import reportRoutes from './modules/reports/reports.routes.js';
 import auditRoutes from './modules/audit/audit.routes.js';
+import receiptRoutes from './modules/receipts/receipts.routes.js';
 
 export function createApp() {
   const app = express();
@@ -67,6 +68,7 @@ export function createApp() {
   app.use('/api/dashboard', dashboardRoutes);
   app.use('/api/reports', reportRoutes);
   app.use('/api/audit', auditRoutes);
+  app.use('/api/receipts', receiptRoutes);
 
   // Global Error Handler
   app.use(errorHandler);

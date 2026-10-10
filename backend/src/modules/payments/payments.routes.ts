@@ -5,6 +5,7 @@ import { toDecimal } from '../../utils/decimal.js';
 import { authenticate, AuthenticatedRequest } from '../../middleware/auth.js';
 import { requirePermission } from '../../middleware/rbac.js';
 import { recordAuditEvent } from '../../middleware/audit.js';
+import { receiptsService } from '../receipts/receipts.service.js';
 
 const router = Router();
 
@@ -66,6 +67,7 @@ router.get('/', authenticate, async (req: AuthenticatedRequest, res: Response, n
       include: {
         customer: true,
         financialAccount: true,
+        receipt: true,
         allocations: {
           include: { invoice: true }
         }
@@ -154,25 +156,47 @@ router.post('/', authenticate, requirePermission('payment:create'), async (req: 
         await updateInvoicePaymentStatus(alloc.invoiceId, tx);
       }
 
-      return payment;
+      // Mandatory Automatic Receipt Generation
+      const customer = await tx.customer.findUnique({ where: { id: data.customerId } });
+      const finAcc = await tx.financialAccount.findUnique({ where: { id: accountId! } });
+      const primaryInvoiceId = data.allocations.length > 0 ? data.allocations[0].invoiceId : null;
+
+      const receipt = await receiptsService.createReceipt({
+        paymentId: payment.id,
+        payerName: customer?.companyName || 'General Account',
+        receivingAccountName: finAcc?.name || 'Afghan United Bank Operating Account',
+        receivingAccountMasked: '101502******0472',
+        amount: totalAmount.toNumber(),
+        currency: data.currency,
+        paymentMethod: data.paymentMethod,
+        referenceNumber: data.reference || null,
+        purpose: data.notes || (data.allocations.length > 0 ? 'Commercial payment settlement' : 'Account deposit / wire transfer'),
+        invoiceId: primaryInvoiceId,
+        notes: data.notes || null,
+        createdById: req.user!.userId
+      }, tx);
+
+      return { payment, receipt };
     });
 
     await recordAuditEvent({
       actorId: req.user!.userId,
       action: 'PAYMENT_RECORDED',
       entityType: 'PAYMENT',
-      entityId: createdPayment.id,
+      entityId: createdPayment.payment.id,
       newValues: {
         totalAmount: totalAmount.toFixed(2),
         allocatedAmount: allocatedSum.toFixed(2),
         unallocatedAmount: unallocatedAmount.toFixed(2),
+        receiptNumber: createdPayment.receipt.receiptNumber,
         duplicateWarning
       },
       ipAddress: req.ip
     });
 
     res.status(201).json({
-      ...createdPayment,
+      ...createdPayment.payment,
+      receipt: createdPayment.receipt,
       duplicateWarning: duplicateWarning ? 'A payment with identical reference, customer, and amount exists.' : null
     });
   } catch (err) {

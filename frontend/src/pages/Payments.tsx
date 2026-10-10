@@ -27,6 +27,7 @@ export const Payments: React.FC = () => {
   const [totalAmount, setTotalAmount] = useState('');
   const [allocations, setAllocations] = useState<{ invoiceId: string; amount: number }[]>([]);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [selectedReceiptModal, setSelectedReceiptModal] = useState<any | null>(null);
 
   const loadData = async () => {
     try {
@@ -91,6 +92,9 @@ export const Payments: React.FC = () => {
         setTotalAmount('');
         setAllocations([]);
         loadData();
+        if (res.receipt) {
+          setSelectedReceiptModal(res.receipt);
+        }
       }
     } catch (err: any) {
       alert(err.message || 'Failed to record payment');
@@ -158,6 +162,25 @@ export const Payments: React.FC = () => {
                   ))}
                 </div>
               )}
+
+              <div className="pt-2 border-t border-slate-800/80">
+                <button
+                  onClick={() => {
+                    fetch(`http://localhost:4000/api/receipts?search=${p.reference || p.id}`, {
+                      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                      if (data && data.length > 0) setSelectedReceiptModal(data[0]);
+                      else alert('Receipt being generated. Please check Deposit Receipts tab.');
+                    })
+                    .catch(() => alert('Failed to load receipt'));
+                  }}
+                  className="w-full py-2 min-h-[40px] bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition"
+                >
+                  📄 View Official Deposit Receipt
+                </button>
+              </div>
             </div>
           ))
         ) : (
@@ -181,6 +204,7 @@ export const Payments: React.FC = () => {
                 <th className="py-3 px-4 text-right">Allocated</th>
                 <th className="py-3 px-4 text-right">Unallocated</th>
                 <th className="py-3 px-4">Linked Invoices</th>
+                <th className="py-3 px-4 text-center">Receipt</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
@@ -222,11 +246,29 @@ export const Payments: React.FC = () => {
                         )}
                       </div>
                     </td>
+                    <td className="py-3 px-4 text-center font-sans">
+                      <button
+                        onClick={() => {
+                          fetch(`http://localhost:4000/api/receipts?search=${p.reference || p.id}`, {
+                            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                          })
+                          .then(r => r.json())
+                          .then(data => {
+                            if (data && data.length > 0) setSelectedReceiptModal(data[0]);
+                            else alert('Receipt being generated. Please check Deposit Receipts tab.');
+                          })
+                          .catch(() => alert('Failed to load receipt'));
+                        }}
+                        className="px-2.5 py-1 min-h-[30px] bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 rounded text-xs transition"
+                      >
+                        📄 Receipt
+                      </button>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-slate-500 font-sans">
+                  <td colSpan={9} className="text-center py-8 text-slate-500 font-sans">
                     {loading ? 'Loading payment records...' : 'No payments recorded yet. Click Record Payment.'}
                   </td>
                 </tr>
@@ -394,6 +436,83 @@ export const Payments: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* OFFICIAL AUTOMATIC RECEIPT MODAL */}
+      {selectedReceiptModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+          <div className="bg-white text-slate-900 rounded-xl w-full max-w-xl p-5 sm:p-7 shadow-2xl font-sans my-auto max-h-[95vh] overflow-y-auto">
+            <div className="flex justify-between items-center pb-3 mb-4 border-b border-slate-200">
+              <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle className="w-4 h-4 text-emerald-600" /> Automatic Deposit Receipt Generated
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold flex items-center gap-1"
+                >
+                  Print / Save PDF
+                </button>
+                <button
+                  onClick={() => setSelectedReceiptModal(null)}
+                  className="p-1 text-slate-400 hover:text-slate-700 rounded"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Content */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-start border-b border-slate-200 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-slate-950 p-1 rounded-xl flex items-center justify-center border border-slate-300 shadow-sm shrink-0">
+                    <img src="/logo.png" alt="AQ Companies Logo" className="w-full h-full object-contain filter drop-shadow-[0_0_4px_rgba(255,255,255,0.4)]" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 text-base leading-tight">AQ COMPANIES</h3>
+                    <p className="text-[11px] text-slate-500 font-semibold uppercase">Legal: Sky Ariana Ltd</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-bold text-emerald-800 uppercase block">DEPOSIT RECEIPT</span>
+                  <span className="font-mono font-bold text-xs text-slate-900 block">{selectedReceiptModal.receiptNumber}</span>
+                  <span className="text-[10px] text-slate-500 block">{new Date(selectedReceiptModal.issueDate || Date.now()).toLocaleDateString()}</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2.5 text-xs">
+                <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                  <span className="text-slate-500 font-semibold">Payer / Customer:</span>
+                  <span className="font-bold text-slate-900">{selectedReceiptModal.payerName}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                  <span className="text-slate-500 font-semibold">Amount Received:</span>
+                  <span className="font-mono font-extrabold text-base text-emerald-700">
+                    ${Number(selectedReceiptModal.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
+                  </span>
+                </div>
+                <div className="border-b border-slate-200 pb-1.5">
+                  <span className="text-slate-500 font-semibold block mb-0.5">Amount in Words:</span>
+                  <span className="italic text-slate-800 font-medium">"{selectedReceiptModal.amountInWords || 'Amount in words'}"</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                  <span className="text-slate-500 font-semibold">Account Credited:</span>
+                  <span className="font-mono text-slate-800">{selectedReceiptModal.receivingAccountMasked || '101502******0472'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-semibold block mb-0.5">Purpose / Settlement:</span>
+                  <span className="text-slate-800">{selectedReceiptModal.purpose}</span>
+                </div>
+              </div>
+
+              <div className="pt-2 text-right">
+                <div className="border-b border-slate-300 w-40 ml-auto mb-1"></div>
+                <span className="text-[10px] text-slate-500 uppercase font-semibold block">Authorized Financial Officer</span>
+              </div>
+            </div>
           </div>
         </div>
       )}

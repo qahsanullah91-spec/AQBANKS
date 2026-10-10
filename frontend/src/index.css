@@ -3,8 +3,152 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --bg-primary: #f8fafc;
+    --bg-surface: #ffffff;
+    --border-color: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+  }
+
+  .dark {
+    --bg-primary: #020617;
+    --bg-surface: #0f172a;
+    --border-color: #1e293b;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+  }
+
   body {
-    @apply bg-slate-950 text-slate-100;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
+
+/* Default Light Theme Styles (MANDATORY DEFAULT) */
+html.light body,
+html:not(.dark) body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+html.dark body {
+  background-color: #020617;
+  color: #f8fafc;
+}
+
+/* Light Mode Card & Surface Overrides */
+html.light .bg-slate-950,
+html:not(.dark) .bg-slate-950 {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light .bg-slate-900,
+html:not(.dark) .bg-slate-900 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+}
+
+html.light .bg-slate-800,
+html:not(.dark) .bg-slate-800 {
+  background-color: #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+html.light .border-slate-800,
+html:not(.dark) .border-slate-800 {
+  border-color: #e2e8f0 !important;
+}
+
+html.light .border-slate-700,
+html:not(.dark) .border-slate-700 {
+  border-color: #cbd5e1 !important;
+}
+
+html.light .text-slate-100,
+html:not(.dark) .text-slate-100 {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-200,
+html:not(.dark) .text-slate-200 {
+  color: #1e293b !important;
+}
+
+html.light .text-slate-300,
+html:not(.dark) .text-slate-300 {
+  color: #334155 !important;
+}
+
+html.light .text-slate-400,
+html:not(.dark) .text-slate-400 {
+  color: #64748b !important;
+}
+
+html.light .text-white,
+html:not(.dark) .text-white {
+  color: #0f172a !important;
+}
+
+/* Preserve bright colored text for badges */
+html.light .text-emerald-400,
+html:not(.dark) .text-emerald-400 {
+  color: #059669 !important;
+}
+
+html.light .text-amber-400,
+html:not(.dark) .text-amber-400 {
+  color: #d97706 !important;
+}
+
+html.light .text-rose-400,
+html:not(.dark) .text-rose-400 {
+  color: #dc2626 !important;
+}
+
+html.light .text-sky-400,
+html:not(.dark) .text-sky-400 {
+  color: #0284c7 !important;
+}
+
+html.light .bg-emerald-950,
+html:not(.dark) .bg-emerald-950 {
+  background-color: #ecfdf5 !important;
+  color: #065f46 !important;
+  border-color: #a7f3d0 !important;
+}
+
+html.light .bg-amber-950,
+html:not(.dark) .bg-amber-950 {
+  background-color: #fffbeb !important;
+  color: #92400e !important;
+  border-color: #fde68a !important;
+}
+
+html.light .bg-rose-950,
+html:not(.dark) .bg-rose-950 {
+  background-color: #fef2f2 !important;
+  color: #991b1b !important;
+  border-color: #fecaca !important;
+}
+
+html.light input,
+html.light select,
+html.light textarea,
+html:not(.dark) input,
+html:not(.dark) select,
+html:not(.dark) textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Print Friendly Styles: Always clean white regardless of theme */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
   }
 }
 
@@ -14,12 +158,12 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #94a3b8;
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
 }

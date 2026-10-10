@@ -16,6 +16,7 @@ model User {
   isActive     Boolean     @default(true) @map("is_active")
   userRoles    UserRole[]
   auditEvents  AuditEvent[]
+  receipts     Receipt[]
   createdAt    DateTime    @default(now()) @map("created_at")
   updatedAt    DateTime    @updatedAt @map("updated_at")
 
@@ -168,6 +169,7 @@ model LedgerTransaction {
   reversal             LedgerTransaction?  @relation("TransactionReversal")
   isReversal           Boolean             @default(false) @map("is_reversal")
   notes                String?
+  receipt              Receipt?
   createdAt            DateTime            @default(now()) @map("created_at")
 
   @@index([effectiveDate, postedAt])
@@ -198,6 +200,7 @@ model Invoice {
   snapshots          InvoiceSnapshot[]
   shipmentInvoices   ShipmentInvoice[]
   paymentAllocations PaymentAllocation[]
+  receipts           Receipt[]
   createdAt          DateTime            @default(now()) @map("created_at")
   updatedAt          DateTime            @updatedAt @map("updated_at")
 
@@ -247,6 +250,7 @@ model Shipment {
   notes                String?
   shipmentInvoices     ShipmentInvoice[]
   statusHistory        ShipmentStatusHistory[]
+  receipts             Receipt[]
   createdAt            DateTime                @default(now()) @map("created_at")
   updatedAt            DateTime                @updatedAt @map("updated_at")
 
@@ -295,6 +299,7 @@ model Payment {
   currency           String              @default("USD")
   notes              String?
   allocations        PaymentAllocation[]
+  receipt            Receipt?
   createdAt          DateTime            @default(now()) @map("created_at")
 
   @@map("payments")
@@ -361,3 +366,41 @@ model AuditEvent {
   @@index([entityType, entityId])
   @@map("audit_events")
 }
+
+model Receipt {
+  id                     String             @id @default(uuid()) @db.Uuid
+  receiptNumber          String             @unique @map("receipt_number")
+  paymentId              String?            @unique @map("payment_id") @db.Uuid
+  payment                Payment?           @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  ledgerTransactionId    String?            @unique @map("ledger_transaction_id") @db.Uuid
+  ledgerTransaction      LedgerTransaction? @relation(fields: [ledgerTransactionId], references: [id], onDelete: SetNull)
+  issueDate              DateTime           @default(now()) @map("issue_date")
+  payerName              String             @map("payer_name")
+  receivingAccountName   String             @map("receiving_account_name")
+  receivingAccountMasked String             @map("receiving_account_masked")
+  amount                 Decimal            @db.Decimal(18, 4)
+  amountInWords          String?            @map("amount_in_words")
+  currency               String             @default("USD")
+  paymentMethod          String             @default("WIRE_TRANSFER") @map("payment_method")
+  referenceNumber        String?            @map("reference_number")
+  purpose                String
+  invoiceId              String?            @map("invoice_id") @db.Uuid
+  invoice                Invoice?           @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  shipmentId             String?            @map("shipment_id") @db.Uuid
+  shipment               Shipment?          @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  notes                  String?
+  status                 String             @default("ISSUED") // ISSUED, VOIDED
+  createdById            String?            @map("created_by_id") @db.Uuid
+  createdBy              User?              @relation(fields: [createdById], references: [id])
+  voidReason             String?            @map("void_reason")
+  voidedAt               DateTime?          @map("voided_at")
+  voidedById             String?            @map("voided_by_id") @db.Uuid
+  createdAt              DateTime           @default(now()) @map("created_at")
+  updatedAt              DateTime           @updatedAt @map("updated_at")
+
+  @@index([receiptNumber])
+  @@index([payerName])
+  @@index([issueDate])
+  @@map("receipts")
+}
+

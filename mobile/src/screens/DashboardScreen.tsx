@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { mobileApi } from '../services/api.js';
 import { DashboardMetrics, User } from '../types/index.js';
+import { useTheme } from '../theme/ThemeContext.js';
 
 interface DashboardScreenProps {
   user: User;
@@ -8,6 +9,7 @@ interface DashboardScreenProps {
 }
 
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNavigate }) => {
+  const { theme, colors } = useTheme();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,11 +38,22 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNaviga
   };
 
   return (
-    <div style={{ padding: 16, color: '#f8fafc' }}>
+    <div style={{ padding: 16, color: colors.text, backgroundColor: colors.bg, minHeight: '100%' }}>
       {/* Welcome header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 40, height: 40, backgroundColor: '#0f172a', borderRadius: 10, padding: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255, 255, 255, 0.12)' }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            backgroundColor: '#020617',
+            borderRadius: 10,
+            padding: 4,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+          }}>
             <img
               src="/logo.png"
               alt="AQ Companies Logo"
@@ -48,8 +61,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNaviga
             />
           </div>
           <div>
-            <span style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Mobile Overview</span>
-            <h2 style={{ margin: 0, fontSize: 16, color: '#ffffff', fontWeight: 700 }}>
+            <span style={{ fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>
+              Mobile Command Center
+            </span>
+            <h2 style={{ margin: 0, fontSize: 16, color: colors.text, fontWeight: 800 }}>
               Hello, {user.firstName || user.email.split('@')[0]}
             </h2>
           </div>
@@ -58,12 +73,12 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNaviga
           onClick={fetchDashboard}
           style={{
             padding: '8px 12px',
-            backgroundColor: '#1e293b',
-            border: '1px solid #334155',
+            backgroundColor: colors.card,
+            border: `1px solid ${colors.cardBorder}`,
             borderRadius: 8,
-            color: '#38bdf8',
+            color: colors.primary,
             fontSize: 12,
-            minHeight: 44,
+            minHeight: 40,
             cursor: 'pointer'
           }}
         >
@@ -72,62 +87,97 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNaviga
       </div>
 
       {error && (
-        <div style={{ padding: 12, backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', borderRadius: 8, color: '#fca5a5', fontSize: 13, marginBottom: 16 }}>
+        <div style={{
+          padding: 12,
+          backgroundColor: colors.dangerBg,
+          border: `1px solid ${colors.danger}`,
+          borderRadius: 8,
+          color: colors.danger,
+          fontSize: 13,
+          marginBottom: 16
+        }}>
           {error}
         </div>
       )}
 
       {/* Primary KPI Card: Available Balance */}
       <div style={{
-        background: 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)',
-        border: '1px solid #059669',
+        background: theme === 'light'
+          ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)'
+          : 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)',
+        border: theme === 'light' ? '1px solid #0284c7' : '1px solid #059669',
         borderRadius: 12,
         padding: 16,
         marginBottom: 16,
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)'
+        color: '#ffffff',
+        boxShadow: theme === 'light' ? '0 4px 12px rgba(2, 132, 199, 0.25)' : '0 4px 12px rgba(0, 0, 0, 0.4)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <span style={{ fontSize: 12, color: '#6ee7b7', fontWeight: 600, textTransform: 'uppercase' }}>
+          <span style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.9)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
             🏦 Available Bank Balance
           </span>
-          <span style={{ fontSize: 11, backgroundColor: '#059669', color: '#ffffff', padding: '2px 8px', borderRadius: 12, fontWeight: 700 }}>
+          <span style={{ fontSize: 11, backgroundColor: 'rgba(255, 255, 255, 0.2)', color: '#ffffff', padding: '2px 8px', borderRadius: 12, fontWeight: 700 }}>
             Live
           </span>
         </div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: '#ffffff', letterSpacing: -0.5 }}>
+        <div style={{ fontSize: 26, fontWeight: 900, color: '#ffffff', letterSpacing: -0.5 }}>
           {loading ? 'Loading...' : formatCurrency(metrics?.availableBalance)}
         </div>
-        <div style={{ marginTop: 8, fontSize: 11, color: '#a7f3d0' }}>
+        <div style={{ marginTop: 8, fontSize: 11, color: 'rgba(255, 255, 255, 0.85)' }}>
           Deterministic Balance: Opening + Total Inward Credits - Outward Debits
         </div>
       </div>
 
       {/* Secondary Metrics Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <div style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: 10, padding: 12 }}>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Total Inward Credits</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#34d399' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+        <div style={{
+          backgroundColor: colors.card,
+          border: `1px solid ${colors.cardBorder}`,
+          borderRadius: 10,
+          padding: 12,
+          boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
+        }}>
+          <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>Total Inward Credits</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: colors.accent }}>
             {loading ? '...' : formatCurrency(metrics?.totalCredits)}
           </div>
         </div>
 
-        <div style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: 10, padding: 12 }}>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Total Outward Debits</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#f87171' }}>
+        <div style={{
+          backgroundColor: colors.card,
+          border: `1px solid ${colors.cardBorder}`,
+          borderRadius: 10,
+          padding: 12,
+          boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
+        }}>
+          <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>Total Outward Debits</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: colors.danger }}>
             {loading ? '...' : formatCurrency(metrics?.totalDebits)}
           </div>
         </div>
 
-        <div style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: 10, padding: 12 }}>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Total Invoiced</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#38bdf8' }}>
+        <div style={{
+          backgroundColor: colors.card,
+          border: `1px solid ${colors.cardBorder}`,
+          borderRadius: 10,
+          padding: 12,
+          boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
+        }}>
+          <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>Total Invoiced</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: colors.primary }}>
             {loading ? '...' : formatCurrency(metrics?.totalInvoiced)}
           </div>
         </div>
 
-        <div style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: 10, padding: 12 }}>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Pending Receivables</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#fbbf24' }}>
+        <div style={{
+          backgroundColor: colors.card,
+          border: `1px solid ${colors.cardBorder}`,
+          borderRadius: 10,
+          padding: 12,
+          boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
+        }}>
+          <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>Pending Receivables</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: colors.warning }}>
             {loading ? '...' : formatCurrency(metrics?.pendingReceivables)}
           </div>
         </div>
@@ -135,28 +185,76 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNaviga
 
       {/* Quick Actions for Mobile */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 8, textTransform: 'uppercase' }}>
-          Quick Actions
+        <div style={{ fontSize: 12, fontWeight: 700, color: colors.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          Quick Navigation
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          <button
+            onClick={() => onNavigate('receipts')}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '12px 6px',
+              minHeight: 52,
+              backgroundColor: colors.card,
+              border: `1px solid ${colors.cardBorder}`,
+              borderRadius: 8,
+              color: colors.text,
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
+            }}
+          >
+            <span style={{ fontSize: 20, marginBottom: 4 }}>🧾</span>
+            <span>Receipts</span>
+          </button>
+
+          <button
+            onClick={() => onNavigate('payments')}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '12px 6px',
+              minHeight: 52,
+              backgroundColor: colors.card,
+              border: `1px solid ${colors.cardBorder}`,
+              borderRadius: 8,
+              color: colors.text,
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
+            }}
+          >
+            <span style={{ fontSize: 20, marginBottom: 4 }}>💳</span>
+            <span>Payments</span>
+          </button>
+
           <button
             onClick={() => onNavigate('invoices')}
             style={{
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              gap: 8,
-              padding: 12,
-              minHeight: 48,
-              backgroundColor: '#1e293b',
-              border: '1px solid #334155',
+              justifyContent: 'center',
+              padding: '12px 6px',
+              minHeight: 52,
+              backgroundColor: colors.card,
+              border: `1px solid ${colors.cardBorder}`,
               borderRadius: 8,
-              color: '#e2e8f0',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer'
+              color: colors.text,
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
             }}
           >
-            <span>📄</span>
+            <span style={{ fontSize: 20, marginBottom: 4 }}>📄</span>
             <span>Invoices</span>
           </button>
 
@@ -164,20 +262,22 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNaviga
             onClick={() => onNavigate('shipments')}
             style={{
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              gap: 8,
-              padding: 12,
-              minHeight: 48,
-              backgroundColor: '#1e293b',
-              border: '1px solid #334155',
+              justifyContent: 'center',
+              padding: '12px 6px',
+              minHeight: 52,
+              backgroundColor: colors.card,
+              border: `1px solid ${colors.cardBorder}`,
               borderRadius: 8,
-              color: '#e2e8f0',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer'
+              color: colors.text,
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
             }}
           >
-            <span>🚢</span>
+            <span style={{ fontSize: 20, marginBottom: 4 }}>🚢</span>
             <span>Shipments</span>
           </button>
 
@@ -185,54 +285,64 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNaviga
             onClick={() => onNavigate('ledger')}
             style={{
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              gap: 8,
-              padding: 12,
-              minHeight: 48,
-              backgroundColor: '#1e293b',
-              border: '1px solid #334155',
+              justifyContent: 'center',
+              padding: '12px 6px',
+              minHeight: 52,
+              backgroundColor: colors.card,
+              border: `1px solid ${colors.cardBorder}`,
               borderRadius: 8,
-              color: '#e2e8f0',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer'
+              color: colors.text,
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
             }}
           >
-            <span>📊</span>
-            <span>Statement</span>
+            <span style={{ fontSize: 20, marginBottom: 4 }}>📊</span>
+            <span>Ledger</span>
           </button>
 
           <button
             onClick={() => onNavigate('bank')}
             style={{
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              gap: 8,
-              padding: 12,
-              minHeight: 48,
-              backgroundColor: '#1e293b',
-              border: '1px solid #334155',
+              justifyContent: 'center',
+              padding: '12px 6px',
+              minHeight: 52,
+              backgroundColor: colors.card,
+              border: `1px solid ${colors.cardBorder}`,
               borderRadius: 8,
-              color: '#e2e8f0',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer'
+              color: colors.text,
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
             }}
           >
-            <span>🔒</span>
+            <span style={{ fontSize: 20, marginBottom: 4 }}>🔒</span>
             <span>Bank Routing</span>
           </button>
         </div>
       </div>
 
       {/* Security & Invariant Notice */}
-      <div style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, padding: 12 }}>
+      <div style={{
+        backgroundColor: colors.card,
+        border: `1px solid ${colors.cardBorder}`,
+        borderRadius: 8,
+        padding: 12,
+        boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
           <span style={{ fontSize: 14 }}>🛡️</span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#10b981' }}>Idempotency & Precision Active</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: colors.accent }}>Automatic Receipts & Idempotency</span>
         </div>
-        <p style={{ margin: 0, fontSize: 11, color: '#64748b', lineHeight: 1.4 }}>
-          Mobile transactions are secured with double-tap idempotency keys. All monetary calculations use 128-bit decimal precision.
+        <p style={{ margin: 0, fontSize: 11, color: colors.textMuted, lineHeight: 1.4 }}>
+          Inward payments generate instant numbered receipts. Transactions are secured with idempotency guards and 128-bit decimal precision.
         </p>
       </div>
     </div>

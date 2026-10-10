@@ -79,3 +79,32 @@ export interface DashboardMetrics {
   pendingReceivables: string;
   activeShipmentsCount: number;
 }
+
+export interface Receipt {
+  id: string;
+  receiptNumber: string;
+  paymentId?: string;
+  ledgerTransactionId?: string;
+  invoiceId?: string;
+  shipmentId?: string;
+  userId?: string;
+  receivedFrom: string;
+  customerName?: string;
+  amount: number | string;
+  amountInWords: string;
+  currency: string;
+  paymentMethod: string;
+  referenceNumber?: string;
+  bankAccountMasked?: string;
+  purpose?: string;
+  notes?: string;
+  issuedAt: string;
+  status: 'ISSUED' | 'VOID';
+  voidReason?: string;
+  voidedAt?: string;
+  user?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+}

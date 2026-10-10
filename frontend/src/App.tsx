@@ -12,6 +12,8 @@ import { BankRouting } from './pages/BankRouting';
 import { ImportCenter } from './pages/ImportCenter';
 import { Reports } from './pages/Reports';
 import { Admin } from './pages/Admin';
+import { Receipts } from './pages/Receipts';
+import { useTheme } from './context/ThemeContext';
 import {
   LayoutDashboard,
   FileText,
@@ -27,10 +29,14 @@ import {
   Building2,
   Menu,
   X,
-  MoreHorizontal
+  MoreHorizontal,
+  Sun,
+  Moon,
+  Receipt as ReceiptIcon
 } from 'lucide-react';
 
 export const App: React.FC = () => {
+  const { theme, toggleTheme } = useTheme();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -66,7 +72,7 @@ export const App: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
         <div className="text-center p-4">
           <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-xs text-slate-400">Initializing AQ Companies System...</p>
@@ -82,6 +88,7 @@ export const App: React.FC = () => {
   const navItems = [
     { id: 'dashboard', label: 'Overview Dashboard', icon: LayoutDashboard },
     { id: 'invoices', label: 'Proforma Invoices', icon: FileText },
+    { id: 'receipts', label: 'Deposit Receipts', icon: ReceiptIcon },
     { id: 'logistics', label: 'Freight Logistics', icon: Ship },
     { id: 'ledger', label: 'Account Statement', icon: DollarSign },
     { id: 'payments', label: 'Payments & Allocations', icon: CreditCard },
@@ -155,6 +162,15 @@ export const App: React.FC = () => {
                 {currentUser.roles[0]}
               </span>
             </div>
+            {/* Light / Dark Mode Toggle (Light Theme Default) */}
+            <button
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Switch to Light Mode (Default)' : 'Switch to Dark Mode'}
+              aria-label="Toggle Theme"
+              className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-sky-400" />}
+            </button>
             <button
               onClick={handleLogout}
               title="Sign Out"
@@ -242,6 +258,7 @@ export const App: React.FC = () => {
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-5 md:p-6 lg:p-8 pb-20 md:pb-8 w-full max-w-full">
           {activeTab === 'dashboard' && <Dashboard onNavigate={t => setActiveTab(t)} />}
           {activeTab === 'invoices' && <Invoices />}
+          {activeTab === 'receipts' && <Receipts />}
           {activeTab === 'logistics' && <Logistics />}
           {activeTab === 'ledger' && <Ledger />}
           {activeTab === 'payments' && <Payments />}

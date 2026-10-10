@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { mobileApi } from '../services/api.js';
 import { BankAccount, User } from '../types/index.js';
+import { useTheme } from '../theme/ThemeContext.js';
 
 interface BankRoutingScreenProps {
   user: User;
 }
 
 export const BankRoutingScreen: React.FC<BankRoutingScreenProps> = ({ user }) => {
+  const { theme, colors } = useTheme();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [revealedAccounts, setRevealedAccounts] = useState<Record<string, string>>({});
@@ -74,22 +76,22 @@ export const BankRoutingScreen: React.FC<BankRoutingScreenProps> = ({ user }) =>
   const canReveal = user.roles?.includes('ADMIN') || user.roles?.includes('FINANCE') || user.roles?.includes('AUDITOR');
 
   return (
-    <div style={{ padding: 16, color: '#f8fafc' }}>
+    <div style={{ padding: 16, color: colors.text, backgroundColor: colors.bg, minHeight: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div>
-          <span style={{ fontSize: 12, color: '#94a3b8', textTransform: 'uppercase' }}>Verified Instructions</span>
-          <h2 style={{ margin: 0, fontSize: 18, color: '#ffffff', fontWeight: 700 }}>Bank Wire Routing</h2>
+          <span style={{ fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', fontWeight: 600 }}>Verified Instructions</span>
+          <h2 style={{ margin: 0, fontSize: 18, color: colors.text, fontWeight: 800 }}>Bank Wire Routing</h2>
         </div>
         <button
           onClick={fetchBankAccounts}
           style={{
             padding: '8px 12px',
-            backgroundColor: '#1e293b',
-            border: '1px solid #334155',
+            backgroundColor: colors.card,
+            border: `1px solid ${colors.cardBorder}`,
             borderRadius: 8,
-            color: '#38bdf8',
+            color: colors.primary,
             fontSize: 12,
-            minHeight: 44,
+            minHeight: 40,
             cursor: 'pointer'
           }}
         >
@@ -100,33 +102,34 @@ export const BankRoutingScreen: React.FC<BankRoutingScreenProps> = ({ user }) =>
       {message && (
         <div style={{
           padding: 12,
-          backgroundColor: message.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-          border: `1px solid ${message.type === 'success' ? '#10b981' : '#ef4444'}`,
+          backgroundColor: message.type === 'success' ? colors.accentBg : colors.dangerBg,
+          border: `1px solid ${message.type === 'success' ? colors.accent : colors.danger}`,
           borderRadius: 8,
-          color: message.type === 'success' ? '#6ee7b7' : '#fca5a5',
+          color: message.type === 'success' ? colors.accent : colors.danger,
           fontSize: 13,
-          marginBottom: 12
+          marginBottom: 12,
+          fontWeight: 600
         }}>
           {message.text}
         </div>
       )}
 
       {/* Security Banner */}
-      <div style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, padding: 12, marginBottom: 16 }}>
+      <div style={{ backgroundColor: colors.card, border: `1px solid ${colors.cardBorder}`, borderRadius: 8, padding: 12, marginBottom: 16, boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
           <span style={{ fontSize: 14 }}>🔒</span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8' }}>SOC-2 / PCI-DSS Masking Invariant</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: colors.primary }}>SOC-2 / PCI-DSS Masking Invariant</span>
         </div>
-        <p style={{ margin: 0, fontSize: 11, color: '#64748b', lineHeight: 1.4 }}>
+        <p style={{ margin: 0, fontSize: 11, color: colors.textMuted, lineHeight: 1.4 }}>
           Bank account numbers are masked by default. Revealing unmasked numbers generates an immutable audit log timestamped with your user ID and IP address.
         </p>
       </div>
 
       {/* Account Cards */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 32, color: '#64748b' }}>Loading banking instructions...</div>
+        <div style={{ textAlign: 'center', padding: 32, color: colors.textMuted }}>Loading banking instructions...</div>
       ) : accounts.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 32, color: '#64748b', backgroundColor: '#0f172a', borderRadius: 8 }}>
+        <div style={{ textAlign: 'center', padding: 32, color: colors.textMuted, backgroundColor: colors.card, border: `1px solid ${colors.cardBorder}`, borderRadius: 10 }}>
           No bank accounts configured.
         </div>
       ) : (
@@ -139,20 +142,22 @@ export const BankRoutingScreen: React.FC<BankRoutingScreenProps> = ({ user }) =>
               <div
                 key={acc.id}
                 style={{
-                  backgroundColor: '#0f172a',
-                  border: isRevealed ? '1px solid #38bdf8' : '1px solid #1e293b',
+                  backgroundColor: colors.card,
+                  border: isRevealed ? `1px solid ${colors.primary}` : `1px solid ${colors.cardBorder}`,
                   borderRadius: 10,
                   padding: 16,
-                  boxShadow: isRevealed ? '0 0 12px rgba(56, 189, 248, 0.2)' : 'none'
+                  boxShadow: isRevealed
+                    ? (theme === 'light' ? '0 0 12px rgba(2, 132, 199, 0.2)' : '0 0 12px rgba(56, 189, 248, 0.2)')
+                    : (theme === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none')
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                   <div>
-                    <span style={{ fontSize: 16, fontWeight: 700, color: '#ffffff' }}>
+                    <span style={{ fontSize: 16, fontWeight: 800, color: colors.text }}>
                       {acc.bankName}
                     </span>
-                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-                      Currency: <strong style={{ color: '#34d399' }}>{acc.currency}</strong>
+                    <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
+                      Currency: <strong style={{ color: colors.accent }}>{acc.currency}</strong>
                     </div>
                   </div>
                   <span style={{
@@ -160,9 +165,9 @@ export const BankRoutingScreen: React.FC<BankRoutingScreenProps> = ({ user }) =>
                     fontWeight: 700,
                     padding: '3px 8px',
                     borderRadius: 12,
-                    backgroundColor: isRevealed ? 'rgba(56, 189, 248, 0.2)' : 'rgba(148, 163, 184, 0.1)',
-                    color: isRevealed ? '#38bdf8' : '#94a3b8',
-                    border: `1px solid ${isRevealed ? '#0284c7' : '#334155'}`
+                    backgroundColor: isRevealed ? colors.primaryBg : colors.badgeBg,
+                    color: isRevealed ? colors.primary : colors.textMuted,
+                    border: `1px solid ${isRevealed ? colors.primary : colors.cardBorder}`
                   }}>
                     {isRevealed ? '🔓 REVEALED (AUDITED)' : '🔒 MASKED'}
                   </span>
@@ -170,26 +175,26 @@ export const BankRoutingScreen: React.FC<BankRoutingScreenProps> = ({ user }) =>
 
                 {/* Beneficiary */}
                 <div style={{ marginBottom: 10 }}>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Beneficiary Name:</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f8fafc' }}>
+                  <div style={{ fontSize: 11, color: colors.textMuted }}>Beneficiary Name:</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: colors.text }}>
                     {acc.beneficiaryName}
                   </div>
                 </div>
 
                 {/* Account Number Field */}
-                <div style={{ backgroundColor: '#020617', padding: 12, borderRadius: 8, marginBottom: 10 }}>
+                <div style={{ backgroundColor: colors.inputBg, border: `1px solid ${colors.cardBorder}`, padding: 12, borderRadius: 8, marginBottom: 10 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, color: '#64748b' }}>Account Number:</span>
+                    <span style={{ fontSize: 11, color: colors.textMuted }}>Account Number:</span>
                     {isRevealed && (
-                      <span style={{ fontSize: 10, color: '#fbbf24' }}>Auto-hides in 45s</span>
+                      <span style={{ fontSize: 10, color: colors.warning, fontWeight: 600 }}>Auto-hides in 45s</span>
                     )}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{
                       fontSize: 15,
-                      fontWeight: 700,
+                      fontWeight: 800,
                       fontFamily: 'monospace',
-                      color: isRevealed ? '#34d399' : '#e2e8f0',
+                      color: isRevealed ? colors.accent : colors.text,
                       letterSpacing: isRevealed ? 1 : 2
                     }}>
                       {displayAccNum}
@@ -199,11 +204,12 @@ export const BankRoutingScreen: React.FC<BankRoutingScreenProps> = ({ user }) =>
                         onClick={() => copyToClipboard(displayAccNum, acc.id)}
                         style={{
                           padding: '4px 8px',
-                          backgroundColor: '#1e293b',
-                          border: '1px solid #334155',
+                          backgroundColor: colors.card,
+                          border: `1px solid ${colors.cardBorder}`,
                           borderRadius: 4,
-                          color: copiedId === acc.id ? '#34d399' : '#38bdf8',
+                          color: copiedId === acc.id ? colors.accent : colors.primary,
                           fontSize: 11,
+                          fontWeight: 600,
                           cursor: 'pointer'
                         }}
                       >
@@ -215,16 +221,16 @@ export const BankRoutingScreen: React.FC<BankRoutingScreenProps> = ({ user }) =>
 
                 {/* SWIFT & Intermediary */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-                  <div style={{ backgroundColor: '#020617', padding: 8, borderRadius: 6 }}>
-                    <div style={{ fontSize: 10, color: '#64748b' }}>SWIFT / BIC</div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', fontFamily: 'monospace' }}>
+                  <div style={{ backgroundColor: colors.inputBg, border: `1px solid ${colors.cardBorder}`, padding: 8, borderRadius: 6 }}>
+                    <div style={{ fontSize: 10, color: colors.textMuted }}>SWIFT / BIC</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: colors.primary, fontFamily: 'monospace' }}>
                       {acc.swiftCode}
                     </div>
                   </div>
                   {acc.correspondentSwift && (
-                    <div style={{ backgroundColor: '#020617', padding: 8, borderRadius: 6 }}>
-                      <div style={{ fontSize: 10, color: '#64748b' }}>Intermediary SWIFT</div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24', fontFamily: 'monospace' }}>
+                    <div style={{ backgroundColor: colors.inputBg, border: `1px solid ${colors.cardBorder}`, padding: 8, borderRadius: 6 }}>
+                      <div style={{ fontSize: 10, color: colors.textMuted }}>Intermediary SWIFT</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: colors.warning, fontFamily: 'monospace' }}>
                         {acc.correspondentSwift}
                       </div>
                     </div>
@@ -232,8 +238,8 @@ export const BankRoutingScreen: React.FC<BankRoutingScreenProps> = ({ user }) =>
                 </div>
 
                 {acc.correspondentBank && (
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12 }}>
-                    Intermediary Bank: <span style={{ color: '#cbd5e1' }}>{acc.correspondentBank}</span>
+                  <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 12 }}>
+                    Intermediary Bank: <span style={{ color: colors.text }}>{acc.correspondentBank}</span>
                   </div>
                 )}
 
@@ -244,12 +250,12 @@ export const BankRoutingScreen: React.FC<BankRoutingScreenProps> = ({ user }) =>
                     style={{
                       width: '100%',
                       minHeight: 44,
-                      backgroundColor: '#1e293b',
-                      border: '1px solid #334155',
+                      backgroundColor: colors.card,
+                      border: `1px solid ${colors.cardBorder}`,
                       borderRadius: 8,
-                      color: '#38bdf8',
+                      color: colors.primary,
                       fontSize: 13,
-                      fontWeight: 600,
+                      fontWeight: 700,
                       cursor: 'pointer'
                     }}
                   >
@@ -277,21 +283,22 @@ export const BankRoutingScreen: React.FC<BankRoutingScreenProps> = ({ user }) =>
           zIndex: 100
         }}>
           <div style={{
-            backgroundColor: '#0f172a',
-            borderTop: '2px solid #334155',
+            backgroundColor: colors.card,
+            borderTop: `2px solid ${colors.primary}`,
             borderTopLeftRadius: 16,
             borderTopRightRadius: 16,
-            padding: 20
+            padding: 20,
+            color: colors.text
           }}>
-            <h3 style={{ margin: '0 0 8px', fontSize: 16, color: '#ffffff' }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: 16, color: colors.text, fontWeight: 800 }}>
               Audited Reveal Authorization
             </h3>
-            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#94a3b8', lineHeight: 1.4 }}>
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: colors.textMuted, lineHeight: 1.4 }}>
               Enter the business justification. Your user identity, device timestamp, and this justification will be permanently saved to the immutable audit trail.
             </p>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', color: '#cbd5e1', fontSize: 12, marginBottom: 6 }}>
+              <label style={{ display: 'block', color: colors.textSecondary, fontSize: 12, marginBottom: 6, fontWeight: 600 }}>
                 Business Reason / Purpose:
               </label>
               <input
@@ -304,9 +311,9 @@ export const BankRoutingScreen: React.FC<BankRoutingScreenProps> = ({ user }) =>
                   padding: '12px 14px',
                   minHeight: 44,
                   borderRadius: 8,
-                  backgroundColor: '#020617',
-                  border: '1px solid #334155',
-                  color: '#ffffff',
+                  backgroundColor: colors.inputBg,
+                  border: `1px solid ${colors.inputBorder}`,
+                  color: colors.text,
                   fontSize: 14,
                   boxSizing: 'border-box'
                 }}
@@ -320,11 +327,12 @@ export const BankRoutingScreen: React.FC<BankRoutingScreenProps> = ({ user }) =>
                 style={{
                   flex: 1,
                   minHeight: 44,
-                  backgroundColor: '#1e293b',
-                  border: '1px solid #334155',
+                  backgroundColor: colors.card,
+                  border: `1px solid ${colors.cardBorder}`,
                   borderRadius: 8,
-                  color: '#cbd5e1',
+                  color: colors.textMuted,
                   fontSize: 13,
+                  fontWeight: 600,
                   cursor: 'pointer'
                 }}
               >
@@ -337,13 +345,13 @@ export const BankRoutingScreen: React.FC<BankRoutingScreenProps> = ({ user }) =>
                 style={{
                   flex: 2,
                   minHeight: 44,
-                  backgroundColor: '#0284c7',
+                  backgroundColor: colors.primary,
                   border: 'none',
                   borderRadius: 8,
                   color: '#ffffff',
                   fontSize: 13,
                   fontWeight: 700,
-                  cursor: 'pointer'
+                  cursor: revealing ? 'not-allowed' : 'pointer'
                 }}
               >
                 {revealing ? 'Authenticating & Logging...' : 'Authorize & Reveal'}

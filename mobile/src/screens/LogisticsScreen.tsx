@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { mobileApi } from '../services/api.js';
 import { Shipment, User } from '../types/index.js';
+import { useTheme } from '../theme/ThemeContext.js';
 
 interface LogisticsScreenProps {
   user: User;
 }
 
 export const LogisticsScreen: React.FC<LogisticsScreenProps> = ({ user }) => {
+  const { theme, colors } = useTheme();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -60,35 +62,35 @@ export const LogisticsScreen: React.FC<LogisticsScreenProps> = ({ user }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'DELIVERED':
-        return { bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399', border: '#059669' };
+        return { bg: colors.accentBg, text: colors.accent, border: colors.accent };
       case 'IN_TRANSIT':
-        return { bg: 'rgba(56, 189, 248, 0.15)', text: '#38bdf8', border: '#0284c7' };
+        return { bg: theme === 'light' ? '#e0f2fe' : 'rgba(56, 189, 248, 0.15)', text: colors.primary, border: colors.primary };
       case 'CUSTOMS_CLEARANCE':
-        return { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: '#d97706' };
+        return { bg: colors.warningBg, text: colors.warning, border: colors.warning };
       default:
-        return { bg: 'rgba(148, 163, 184, 0.15)', text: '#94a3b8', border: '#475569' };
+        return { bg: colors.badgeBg, text: colors.textMuted, border: colors.cardBorder };
     }
   };
 
   const canEdit = user.roles?.includes('ADMIN') || user.roles?.includes('LOGISTICS');
 
   return (
-    <div style={{ padding: 16, color: '#f8fafc' }}>
+    <div style={{ padding: 16, color: colors.text, backgroundColor: colors.bg, minHeight: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div>
-          <span style={{ fontSize: 12, color: '#94a3b8', textTransform: 'uppercase' }}>Ocean Freight & Cargo</span>
-          <h2 style={{ margin: 0, fontSize: 18, color: '#ffffff', fontWeight: 700 }}>Logistics & Containers</h2>
+          <span style={{ fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', fontWeight: 600 }}>Ocean Freight & Cargo</span>
+          <h2 style={{ margin: 0, fontSize: 18, color: colors.text, fontWeight: 800 }}>Logistics & Containers</h2>
         </div>
         <button
           onClick={fetchShipments}
           style={{
             padding: '8px 12px',
-            backgroundColor: '#1e293b',
-            border: '1px solid #334155',
+            backgroundColor: colors.card,
+            border: `1px solid ${colors.cardBorder}`,
             borderRadius: 8,
-            color: '#38bdf8',
+            color: colors.primary,
             fontSize: 12,
-            minHeight: 44,
+            minHeight: 40,
             cursor: 'pointer'
           }}
         >
@@ -99,12 +101,13 @@ export const LogisticsScreen: React.FC<LogisticsScreenProps> = ({ user }) => {
       {message && (
         <div style={{
           padding: 12,
-          backgroundColor: message.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-          border: `1px solid ${message.type === 'success' ? '#10b981' : '#ef4444'}`,
+          backgroundColor: message.type === 'success' ? colors.accentBg : colors.dangerBg,
+          border: `1px solid ${message.type === 'success' ? colors.accent : colors.danger}`,
           borderRadius: 8,
-          color: message.type === 'success' ? '#6ee7b7' : '#fca5a5',
+          color: message.type === 'success' ? colors.accent : colors.danger,
           fontSize: 13,
-          marginBottom: 12
+          marginBottom: 12,
+          fontWeight: 600
         }}>
           {message.text}
         </div>
@@ -122,9 +125,9 @@ export const LogisticsScreen: React.FC<LogisticsScreenProps> = ({ user }) => {
             padding: '12px 14px',
             minHeight: 44,
             borderRadius: 8,
-            backgroundColor: '#0f172a',
-            border: '1px solid #334155',
-            color: '#ffffff',
+            backgroundColor: colors.inputBg,
+            border: `1px solid ${colors.inputBorder}`,
+            color: colors.text,
             fontSize: 14,
             boxSizing: 'border-box'
           }}
@@ -133,9 +136,9 @@ export const LogisticsScreen: React.FC<LogisticsScreenProps> = ({ user }) => {
 
       {/* Shipments List */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 32, color: '#64748b' }}>Loading logistics tracking...</div>
+        <div style={{ textAlign: 'center', padding: 32, color: colors.textMuted }}>Loading logistics tracking...</div>
       ) : filteredShipments.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 32, color: '#64748b', backgroundColor: '#0f172a', borderRadius: 8 }}>
+        <div style={{ textAlign: 'center', padding: 32, color: colors.textMuted, backgroundColor: colors.card, border: `1px solid ${colors.cardBorder}`, borderRadius: 10 }}>
           No active shipments found.
         </div>
       ) : (
@@ -146,19 +149,20 @@ export const LogisticsScreen: React.FC<LogisticsScreenProps> = ({ user }) => {
               <div
                 key={s.id}
                 style={{
-                  backgroundColor: '#0f172a',
-                  border: '1px solid #1e293b',
+                  backgroundColor: colors.card,
+                  border: `1px solid ${colors.cardBorder}`,
                   borderRadius: 10,
-                  padding: 14
+                  padding: 14,
+                  boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                   <div>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: '#ffffff' }}>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: colors.text }}>
                       {s.shipmentRef}
                     </span>
-                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-                      Carrier: <strong style={{ color: '#cbd5e1' }}>{s.carrier || 'Ocean Line'}</strong>
+                    <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
+                      Carrier: <strong style={{ color: colors.text }}>{s.carrier || 'Ocean Line'}</strong>
                     </div>
                   </div>
                   <span style={{
@@ -175,44 +179,44 @@ export const LogisticsScreen: React.FC<LogisticsScreenProps> = ({ user }) => {
                 </div>
 
                 {/* Container & BL */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, margin: '8px 0', backgroundColor: '#020617', padding: 10, borderRadius: 6 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, margin: '8px 0', backgroundColor: colors.inputBg, border: `1px solid ${colors.cardBorder}`, padding: 10, borderRadius: 6 }}>
                   <div>
-                    <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase' }}>Container Number</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#38bdf8', fontFamily: 'monospace' }}>
+                    <div style={{ fontSize: 10, color: colors.textMuted, textTransform: 'uppercase' }}>Container Number</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: colors.primary, fontFamily: 'monospace' }}>
                       {s.containerNumber || 'N/A'}
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase' }}>Bill of Lading</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0', fontFamily: 'monospace' }}>
+                    <div style={{ fontSize: 10, color: colors.textMuted, textTransform: 'uppercase' }}>Bill of Lading</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: colors.text, fontFamily: 'monospace' }}>
                       {s.billOfLading || 'N/A'}
                     </div>
                   </div>
                 </div>
 
                 {/* Route & Dates */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, fontSize: 12, color: '#94a3b8' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, fontSize: 12, color: colors.textMuted }}>
                   <div>
                     <span>📍 {s.origin || 'Origin'}</span> → <span>🏁 {s.destination || 'Destination'}</span>
                   </div>
                   {s.estimatedArrivalDate && (
-                    <div style={{ fontSize: 11, color: '#fbbf24' }}>
+                    <div style={{ fontSize: 11, color: colors.warning, fontWeight: 600 }}>
                       ETA: {new Date(s.estimatedArrivalDate).toLocaleDateString()}
                     </div>
                   )}
                 </div>
 
                 {canEdit && (
-                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid #1e293b' }}>
+                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${colors.divider}` }}>
                     <button
                       onClick={() => { setSelectedShipment(s); setNewStatus(s.status); }}
                       style={{
                         width: '100%',
                         minHeight: 40,
-                        backgroundColor: '#1e293b',
-                        border: '1px solid #334155',
+                        backgroundColor: colors.card,
+                        border: `1px solid ${colors.cardBorder}`,
                         borderRadius: 6,
-                        color: '#38bdf8',
+                        color: colors.primary,
                         fontSize: 12,
                         fontWeight: 600,
                         cursor: 'pointer'
@@ -243,27 +247,28 @@ export const LogisticsScreen: React.FC<LogisticsScreenProps> = ({ user }) => {
           zIndex: 100
         }}>
           <div style={{
-            backgroundColor: '#0f172a',
-            borderTop: '2px solid #334155',
+            backgroundColor: colors.card,
+            borderTop: `2px solid ${colors.primary}`,
             borderTopLeftRadius: 16,
             borderTopRightRadius: 16,
-            padding: 20
+            padding: 20,
+            color: colors.text
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
-                <span style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase' }}>Update Milestone</span>
-                <h3 style={{ margin: 0, fontSize: 16, color: '#ffffff' }}>{selectedShipment.shipmentRef}</h3>
+                <span style={{ fontSize: 11, color: colors.textMuted, textTransform: 'uppercase' }}>Update Milestone</span>
+                <h3 style={{ margin: 0, fontSize: 16, color: colors.text, fontWeight: 800 }}>{selectedShipment.shipmentRef}</h3>
               </div>
               <button
                 onClick={() => setSelectedShipment(null)}
-                style={{ padding: '6px 12px', backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: 6, color: '#ffffff', minHeight: 36, cursor: 'pointer' }}
+                style={{ padding: '6px 12px', backgroundColor: colors.card, border: `1px solid ${colors.cardBorder}`, borderRadius: 6, color: colors.text, minHeight: 36, cursor: 'pointer' }}
               >
                 ✕ Close
               </button>
             </div>
 
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: 'block', color: '#cbd5e1', fontSize: 12, marginBottom: 6 }}>Milestone Status</label>
+              <label style={{ display: 'block', color: colors.textSecondary, fontSize: 12, marginBottom: 6, fontWeight: 600 }}>Milestone Status</label>
               <select
                 value={newStatus}
                 onChange={e => setNewStatus(e.target.value)}
@@ -272,9 +277,9 @@ export const LogisticsScreen: React.FC<LogisticsScreenProps> = ({ user }) => {
                   padding: '12px 14px',
                   minHeight: 44,
                   borderRadius: 8,
-                  backgroundColor: '#020617',
-                  border: '1px solid #334155',
-                  color: '#ffffff',
+                  backgroundColor: colors.inputBg,
+                  border: `1px solid ${colors.inputBorder}`,
+                  color: colors.text,
                   fontSize: 14
                 }}
               >
@@ -288,7 +293,7 @@ export const LogisticsScreen: React.FC<LogisticsScreenProps> = ({ user }) => {
             </div>
 
             <div style={{ marginBottom: 18 }}>
-              <label style={{ display: 'block', color: '#cbd5e1', fontSize: 12, marginBottom: 6 }}>Update Note / Location</label>
+              <label style={{ display: 'block', color: colors.textSecondary, fontSize: 12, marginBottom: 6, fontWeight: 600 }}>Update Note / Location</label>
               <input
                 type="text"
                 placeholder="e.g. Vessel cleared customs at Port of Jebel Ali"
@@ -299,9 +304,9 @@ export const LogisticsScreen: React.FC<LogisticsScreenProps> = ({ user }) => {
                   padding: '12px 14px',
                   minHeight: 44,
                   borderRadius: 8,
-                  backgroundColor: '#020617',
-                  border: '1px solid #334155',
-                  color: '#ffffff',
+                  backgroundColor: colors.inputBg,
+                  border: `1px solid ${colors.inputBorder}`,
+                  color: colors.text,
                   fontSize: 14,
                   boxSizing: 'border-box'
                 }}
@@ -314,7 +319,7 @@ export const LogisticsScreen: React.FC<LogisticsScreenProps> = ({ user }) => {
               style={{
                 width: '100%',
                 minHeight: 48,
-                backgroundColor: '#059669',
+                backgroundColor: colors.accent,
                 border: 'none',
                 borderRadius: 8,
                 color: '#ffffff',

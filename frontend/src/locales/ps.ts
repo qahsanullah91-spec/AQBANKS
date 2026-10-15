@@ -311,5 +311,28 @@ export const ps: Record<TranslationKey, string> = {
   'login.password': 'پټنوم (پاسورډ)',
   'login.signIn': 'پورټل ته ننوځئ',
   'login.helpText': 'آزمایښتي پټنوم: AQCompanies@2026',
-  'login.invalidCredentials': 'بریښنالیک یا پټنوم ناسم دی'
+  'login.invalidCredentials': 'بریښنالیک یا پټنوم ناسم دی',
+
+  // Dashboard Metrics & Overview
+  'dashboard.liveSystem': 'ژوندی سیسټم',
+  'dashboard.aubAccount': 'ای کیو شرکتونه • د افغان یونایټیډ بانک عملیاتي حساب (101502******0472)',
+  'dashboard.refreshMetrics': 'معلومات نوي کول',
+  'dashboard.availableBalance': 'ټول موجود بیلانس',
+  'dashboard.deterministicBalance': 'اصلاح شوی قطعي بیلانس',
+  'dashboard.pendingReceivables': 'پاتې طلبات (ترلاسه کېدونکي)',
+  'dashboard.pendingNote': 'د انوائسونو متوقع پاتې رقمونه',
+  'dashboard.creditsNote': 'ټول ثبت شوي وارداتي حسابونه',
+  'dashboard.debitsNote': 'تادیات او وتلې پیسې',
+  'dashboard.cashFlow': 'د نغدو پیسو جریان لیدلوری',
+  'dashboard.incomingCredits': 'ټولې راغلې پیسې (کریډیټ)',
+  'dashboard.outgoingDebits': 'ټولې وتلې پیسې (ډیبیټ)',
+  'dashboard.allTimeInvoiced': 'ټول صادر شوي انوائسونه:',
+  'dashboard.activeShipments': 'فعاله بار وړنې:',
+  'dashboard.inTransit': 'په لاره کې',
+  'dashboard.shortcuts': 'د سیسټم چټکې لارې',
+  'dashboard.activeFreight': 'فعاله کارګو بارونه',
+  'dashboard.viewAll': 'ټول کتل',
+  'dashboard.latestTransactions': 'وروستي حسابي معاملې',
+  'dashboard.drillDownNote': 'د افغان یونایټیډ بانک د حساب له صورت حساب څخه',
+  'dashboard.fullStatement': 'بشپړ صورت حساب'
 };

@@ -64,6 +64,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     netOperatingCashFlow: '0.00'
   };
 
+  const inVal = Number(cashFlow.totalIncoming) || 0;
+  const outVal = Number(cashFlow.totalOutgoing) || 0;
+  const totalVol = inVal + outVal;
+  const incomingPct = totalVol > 0 ? Math.round((inVal / totalVol) * 100) : 50;
+  const outgoingPct = totalVol > 0 ? (100 - incomingPct) : 50;
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Title & Organization Header */}
@@ -80,11 +86,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{t('nav.dashboard')}</h1>
               <span className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800">
-                LIVE SYSTEM
+                {t('dashboard.liveSystem', 'LIVE SYSTEM')}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-              AQ Companies • Afghan United Bank Operating Account (101502******0472)
+              {t('dashboard.aubAccount', 'AQ Companies • Afghan United Bank Operating Account (101502******0472)')}
             </p>
           </div>
         </div>
@@ -92,7 +98,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           onClick={fetchOverview}
           className="self-start sm:self-auto flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
         >
-          <RefreshCw className="w-3.5 h-3.5" /> {t('common.refresh', 'Refresh Metrics')}
+          <RefreshCw className="w-3.5 h-3.5" /> {t('dashboard.refreshMetrics', 'Refresh Metrics')}
         </button>
       </div>
 
@@ -101,7 +107,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         {/* Available Balance */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Total Available Balance</span>
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">{t('dashboard.availableBalance', 'Total Available Balance')}</span>
             <div className="w-9 h-9 rounded-lg bg-emerald-950 border border-emerald-800 text-emerald-400 flex items-center justify-center">
               <DollarSign className="w-5 h-5" />
             </div>
@@ -111,7 +117,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               ${Number(metrics.availableBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> Corrected Deterministic Balance
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> {t('dashboard.deterministicBalance', 'Corrected Deterministic Balance')}
             </p>
           </div>
         </div>
@@ -119,7 +125,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         {/* Pending Receivables */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Pending Receivables</span>
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">{t('dashboard.pendingReceivables', 'Pending Receivables')}</span>
             <div className="w-9 h-9 rounded-lg bg-amber-950 border border-amber-800 text-amber-400 flex items-center justify-center">
               <Clock className="w-5 h-5" />
             </div>
@@ -128,7 +134,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <div className="text-2xl sm:text-3xl font-extrabold text-amber-400 tracking-tight font-mono" dir="ltr">
               ${Number(metrics.pendingReceivables).toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">Invoiced expected amounts pending</p>
+            <p className="text-[11px] text-slate-400 mt-1">{t('dashboard.pendingNote', 'Invoiced expected amounts pending')}</p>
           </div>
         </div>
 
@@ -144,7 +150,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <div className="text-2xl sm:text-3xl font-extrabold text-blue-400 tracking-tight font-mono" dir="ltr">
               ${Number(metrics.totalCredits).toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">Total posted inward transfers</p>
+            <p className="text-[11px] text-slate-400 mt-1">{t('dashboard.creditsNote', 'Total posted inward transfers')}</p>
           </div>
         </div>
 
@@ -160,7 +166,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <div className="text-2xl sm:text-3xl font-extrabold text-rose-400 tracking-tight font-mono" dir="ltr">
               ${Number(metrics.totalDebits).toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">Disbursements and payments</p>
+            <p className="text-[11px] text-slate-400 mt-1">{t('dashboard.debitsNote', 'Disbursements and payments')}</p>
           </div>
         </div>
       </div>
@@ -170,36 +176,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         {/* Cash Flow Breakdown */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg">
           <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-300 mb-3 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-emerald-400" /> Cash Flow Visualization
+            <TrendingUp className="w-4 h-4 text-emerald-400" /> {t('dashboard.cashFlow', 'Cash Flow Visualization')}
           </h2>
           <div className="space-y-3">
             <div>
               <div className="flex justify-between text-xs text-slate-300 mb-1">
-                <span>Total Incoming (Credits)</span>
+                <span>{t('dashboard.incomingCredits', 'Total Incoming (Credits)')}</span>
                 <span className="font-semibold text-blue-400 font-mono" dir="ltr">${Number(cashFlow.totalIncoming).toLocaleString()}</span>
               </div>
               <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                <div className="bg-blue-500 h-full rounded-full" style={{ width: '54%' }} />
+                <div className="bg-blue-500 h-full rounded-full transition-all duration-500" style={{ width: `${incomingPct}%` }} />
               </div>
             </div>
 
             <div>
               <div className="flex justify-between text-xs text-slate-300 mb-1">
-                <span>Total Outgoing (Debits)</span>
+                <span>{t('dashboard.outgoingDebits', 'Total Outgoing (Debits)')}</span>
                 <span className="font-semibold text-rose-400 font-mono" dir="ltr">${Number(cashFlow.totalOutgoing).toLocaleString()}</span>
               </div>
               <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                <div className="bg-rose-500 h-full rounded-full" style={{ width: '46%' }} />
+                <div className="bg-rose-500 h-full rounded-full transition-all duration-500" style={{ width: `${outgoingPct}%` }} />
               </div>
             </div>
 
             <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
-              <span className="text-slate-400">All-Time Invoiced:</span>
+              <span className="text-slate-400">{t('dashboard.allTimeInvoiced', 'All-Time Invoiced:')}</span>
               <span className="font-bold text-white font-mono" dir="ltr">${Number(metrics.totalInvoiced).toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-400">Active Shipments:</span>
-              <span className="font-bold text-emerald-400">{metrics.activeShipmentsCount} In-Transit</span>
+              <span className="text-slate-400">{t('dashboard.activeShipments', 'Active Shipments:')}</span>
+              <span className="font-bold text-emerald-400">{metrics.activeShipmentsCount} {t('dashboard.inTransit', 'In-Transit')}</span>
             </div>
           </div>
         </div>
@@ -207,7 +213,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         {/* System Shortcuts */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg">
           <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-300 mb-3">
-            System Shortcuts
+            {t('dashboard.shortcuts', 'System Shortcuts')}
           </h2>
           <div className="grid grid-cols-1 gap-2">
             <button
@@ -253,13 +259,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-              <Ship className="w-4 h-4 text-cyan-400" /> {t('logistics.title', 'Active Freight')}
+              <Ship className="w-4 h-4 text-cyan-400" /> {t('dashboard.activeFreight', 'Active Freight')}
             </h2>
             <button
               onClick={() => onNavigate('logistics')}
               className="text-xs text-emerald-400 hover:underline min-h-[44px] px-2 flex items-center"
             >
-              {t('common.view', 'View All')}
+              {t('dashboard.viewAll', 'View All')}
             </button>
           </div>
           <div className="space-y-2.5">
@@ -291,14 +297,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg">
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <div>
-            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-200">Latest Account Transactions</h2>
-            <p className="text-[11px] sm:text-xs text-slate-400">Drill-down from Afghan United Bank account statement</p>
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-200">{t('dashboard.latestTransactions', 'Latest Account Transactions')}</h2>
+            <p className="text-[11px] sm:text-xs text-slate-400">{t('dashboard.drillDownNote', 'Drill-down from Afghan United Bank account statement')}</p>
           </div>
           <button
             onClick={() => onNavigate('ledger')}
             className="text-xs text-emerald-400 hover:underline flex items-center gap-1 font-medium min-h-[44px] px-2"
           >
-            {t('common.details', 'Full Statement')} <ArrowRight className={`w-3.5 h-3.5 ${isRtl ? 'rotate-180' : ''}`} />
+            {t('dashboard.fullStatement', 'Full Statement')} <ArrowRight className={`w-3.5 h-3.5 ${isRtl ? 'rotate-180' : ''}`} />
           </button>
         </div>
 

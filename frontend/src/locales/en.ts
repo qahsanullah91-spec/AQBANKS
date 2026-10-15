@@ -309,7 +309,30 @@ export const en = {
   'login.password': 'Password',
   'login.signIn': 'Sign In to Portal',
   'login.helpText': 'Default demo password: AQCompanies@2026',
-  'login.invalidCredentials': 'Invalid email or password'
+  'login.invalidCredentials': 'Invalid email or password',
+
+  // Dashboard Metrics & Overview
+  'dashboard.liveSystem': 'LIVE SYSTEM',
+  'dashboard.aubAccount': 'AQ Companies • Afghan United Bank Operating Account (101502******0472)',
+  'dashboard.refreshMetrics': 'Refresh Metrics',
+  'dashboard.availableBalance': 'Total Available Balance',
+  'dashboard.deterministicBalance': 'Corrected Deterministic Balance',
+  'dashboard.pendingReceivables': 'Pending Receivables',
+  'dashboard.pendingNote': 'Invoiced expected amounts pending',
+  'dashboard.creditsNote': 'Total posted inward transfers',
+  'dashboard.debitsNote': 'Disbursements and payments',
+  'dashboard.cashFlow': 'Cash Flow Visualization',
+  'dashboard.incomingCredits': 'Total Incoming (Credits)',
+  'dashboard.outgoingDebits': 'Total Outgoing (Debits)',
+  'dashboard.allTimeInvoiced': 'All-Time Invoiced:',
+  'dashboard.activeShipments': 'Active Shipments:',
+  'dashboard.inTransit': 'In-Transit',
+  'dashboard.shortcuts': 'System Shortcuts',
+  'dashboard.activeFreight': 'Active Freight',
+  'dashboard.viewAll': 'View All',
+  'dashboard.latestTransactions': 'Latest Account Transactions',
+  'dashboard.drillDownNote': 'Drill-down from Afghan United Bank account statement',
+  'dashboard.fullStatement': 'Full Statement'
 };
 
 export type TranslationKey = keyof typeof en;

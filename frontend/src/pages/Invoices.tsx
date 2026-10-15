@@ -14,7 +14,9 @@ import {
   RotateCcw,
   Check,
   Building2,
-  Globe
+  Globe,
+  Eye,
+  ShieldCheck
 } from 'lucide-react';
 
 export const Invoices: React.FC = () => {
@@ -539,24 +541,132 @@ export const Invoices: React.FC = () => {
                   ))}
                 </select>
 
-                {/* Dynamic Remittance Preview in Modal */}
+                {/* Dynamic Remittance Preview in Modal - Full Bank Instructions */}
                 {(() => {
                   const activeP = remittanceProfiles.find(p => p.id === remittanceProfileId);
-                  if (!activeP) return null;
-                  const isIntl = activeP.profileType === 'INTERNATIONAL';
+                  const isIntl = !activeP || activeP.profileType === 'INTERNATIONAL';
+
                   return (
-                    <div className="mt-2 p-3 bg-slate-950 rounded-lg border border-slate-800 text-[11px] space-y-1.5 text-slate-300">
-                      <div className="font-semibold text-emerald-400 flex items-center justify-between">
-                        <span>{activeP.beneficiaryBank} ({activeP.profileType})</span>
-                        <span className="font-mono text-slate-400" dir="ltr">SWIFT: {activeP.beneficiarySwift}</span>
-                      </div>
-                      <div>Beneficiary: <strong className="text-white">{activeP.beneficiaryName}</strong> (Acc: <span dir="ltr" className="font-mono text-emerald-400">{activeP.beneficiaryAccount}</span>)</div>
-                      <div>Correspondent: <span className="text-white">{activeP.correspondentBank}</span> (SWIFT: <span dir="ltr" className="font-mono text-slate-300">{activeP.correspondentSwift}</span>)</div>
-                      {isIntl && activeP.intermediaryBank && (
-                        <div className="text-amber-300 pt-1 border-t border-slate-900">
-                          Intermediary (Field 54A): {activeP.intermediaryBank} (SWIFT: <span dir="ltr" className="font-mono">{activeP.intermediarySwift}</span>)
+                    <div className="mt-3 bg-slate-950 rounded-xl border border-slate-800 p-3.5 sm:p-4 text-xs space-y-3 shadow-inner">
+                      {/* Section Title */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-800 gap-1">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span className="font-bold uppercase tracking-wider text-white text-xs">
+                            {t('invoices.bankInstructionsTitle', 'BANK / PAYMENT INSTRUCTIONS - USD')}
+                          </span>
                         </div>
-                      )}
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-950 text-emerald-300 border border-emerald-800 self-start sm:self-auto">
+                          {isIntl ? 'International USD Payment Routing' : 'Local USD Inward Remittance'}
+                        </span>
+                      </div>
+
+                      {/* 2-Column Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-slate-300">
+                        {/* BENEFICIARY / BANK */}
+                        <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-lg space-y-1.5 text-[11px]">
+                          <div className="font-bold uppercase tracking-wider text-emerald-400 border-b border-slate-800 pb-1 flex justify-between items-center">
+                            <span>{t('invoices.beneficiaryBankSection', 'BENEFICIARY / BANK')}</span>
+                            <span className="text-[10px] font-mono text-slate-400">USD</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">{t('invoices.beneficiaryNameLabel', 'Beneficiary Name')}: </span>
+                            <strong className="text-white font-semibold">SKY ARIANA LTD</strong>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">{t('invoices.accountNoLabel', 'Account No.')}: </span>
+                            <span dir="ltr" className="font-mono font-bold text-emerald-400 text-xs">101502USD2940472</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">{t('invoices.bankLabel', 'Bank')}: </span>
+                            <span className="text-slate-200 font-medium">AFGHAN UNITED BANK</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">{t('invoices.bankAddressLabel', 'Bank Address')}: </span>
+                            <span className="text-slate-300">AUB Building, Zarghona Maidan, Shahr-e-Now, Kabul</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">{t('invoices.swiftLabel', 'SWIFT')}: </span>
+                            <span dir="ltr" className="font-mono font-bold text-emerald-300">AFGUAFKAXXX</span>
+                          </div>
+                          <div className="pt-1 border-t border-slate-800/80 text-[10px] font-mono text-slate-400" dir="ltr">
+                            MT103: Beneficiary account in field 59A; AFGUAFKAXXX in field 57A.
+                          </div>
+                        </div>
+
+                        {/* INTERNATIONAL USD PAYMENT ROUTING */}
+                        <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-lg space-y-1.5 text-[11px]">
+                          <div className="font-bold uppercase tracking-wider text-cyan-400 border-b border-slate-800 pb-1 flex justify-between items-center">
+                            <span>{t('invoices.intlRoutingSection', 'INTERNATIONAL USD PAYMENT ROUTING')}</span>
+                            <span className="text-[10px] font-mono text-cyan-300">SWIFT MT103</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">{t('invoices.correspondentBankLabel', 'Correspondent Bank')}: </span>
+                            <strong className="text-white font-semibold">AL SALAM BANK BAHRAIN</strong>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">SWIFT: </span>
+                            <span dir="ltr" className="font-mono font-bold text-cyan-300 text-xs">ALSABHBMXXX</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">{t('invoices.aubAcWithCorrespondentLabel', 'AUB A/C with Al Salam')}: </span>
+                            <span dir="ltr" className="font-mono text-slate-200">BH61ALSA00500951200102</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">{t('invoices.intermediaryAcLabel', 'Intermediary A/C')}: </span>
+                            <span dir="ltr" className="font-mono text-slate-200">400758954</span>
+                            <span className="text-slate-500 mx-1">|</span>
+                            <span className="text-slate-300">Sanabis, Bahrain</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">{t('invoices.intermediaryBankLabel', 'Intermediary Bank')}: </span>
+                            <span className="text-amber-300 font-semibold">JPMorgan Chase Bank, New York</span>
+                            <span className="text-slate-500 mx-1">|</span>
+                            <span className="text-slate-400">SWIFT: </span>
+                            <span dir="ltr" className="font-mono font-bold text-amber-300">CHASUS33</span>
+                          </div>
+                          <div className="pt-1 border-t border-slate-800/80 text-[10px] font-mono text-slate-400" dir="ltr">
+                            MT103: ALSABHBM in field 56A; intermediary bank mandatory in field 54A.
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* LOCAL USD CORRESPONDENT STRIP */}
+                      <div className="p-2.5 bg-slate-900/60 border border-slate-800 rounded-lg text-[11px] text-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                        <div>
+                          <span className="font-bold text-slate-400 uppercase text-[10px] mr-2">
+                            {t('invoices.localCorrespondentSection', 'LOCAL USD CORRESPONDENT')}:
+                          </span>
+                          <span className="text-white font-semibold">DA AFGHANISTAN BANK (DAB)</span>
+                        </div>
+                        <div className="flex items-center gap-2 font-mono text-[11px] flex-wrap text-slate-300" dir="ltr">
+                          <span>SWIFT: <strong className="text-white">AFGBAFKA</strong></span>
+                          <span className="text-slate-600">•</span>
+                          <span>A/C: <strong className="text-white">3000205027231</strong></span>
+                          <span className="text-slate-600">•</span>
+                          <span>Ibni-sina Watt, Kabul</span>
+                        </div>
+                      </div>
+
+                      {/* IMPORTANT USD PAYMENT NOTE */}
+                      <div className="p-3 bg-amber-950/40 border border-amber-800/80 rounded-lg text-amber-200 space-y-1.5">
+                        <div className="font-bold text-amber-300 flex items-center gap-1.5 text-xs uppercase tracking-wide">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span>{t('invoices.importantPaymentNoteTitle', 'IMPORTANT USD PAYMENT NOTE')}</span>
+                        </div>
+                        <p className="text-[11px] text-amber-200/90 leading-relaxed font-sans">
+                          NOTE: For all USD payments, it is mandatory to include the following correspondent bank details in the payment instructions:
+                        </p>
+                        <div className="text-[11px] font-mono space-y-0.5 text-amber-100 bg-amber-950/60 p-2.5 rounded border border-amber-800/50" dir="ltr">
+                          <div>CORRESPONDENT BANK: <strong>AL SALAM BANK BAHRAIN</strong></div>
+                          <div>SWIFT CODE: <strong>ALSABHBMXXX</strong></div>
+                          <div>A/C NO. WITH INTERMEDIARY BANK: <strong>400758954</strong></div>
+                          <div>LOCATION: <strong>SANABIS, BAHRAIN</strong></div>
+                          <div className="text-amber-300 font-semibold pt-1 border-t border-amber-800/50">
+                            Please mention “ALSABHBM” in Field 56A of the MT103.
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   );
                 })()}
@@ -735,36 +845,24 @@ export const Invoices: React.FC = () => {
               </div>
             </div>
 
-            {/* Payment & Banking Wire Instructions */}
+            {/* Payment & Banking Wire Instructions - Full Commercial Document Layout */}
             {(() => {
               const snap = previewInvoice.bankSnapshot;
               const prof = previewInvoice.remittanceProfile;
-              const fallback = previewInvoice.bankingDetails;
-
+              const pInst = previewInvoice.paymentInstructions;
               const isSnapshot = !!snap;
-              const data = snap || prof || fallback;
-              if (!data) return null;
-
-              const isIntl = data.profileType === 'INTERNATIONAL' || (data.profile && data.profile.profileType === 'INTERNATIONAL');
-              const bankName = data.beneficiaryBank || data.bankName || 'Afghan United Bank (AUB)';
-              const beneName = data.beneficiaryName || 'Sky Ariana LTD';
-              const accNo = data.beneficiaryAccount || data.accountNumber || '101502USD2940472';
-              const swift = data.beneficiarySwift || data.swiftCode || 'AFGUAFKAXXX';
-              const corrBank = data.correspondentBank || (isIntl ? 'AL SALAM BANK BAHRAIN' : '(DAB) DA AFGHANISTAN BANK');
-              const corrSwift = data.correspondentSwift || (isIntl ? 'ALSABHBMXXX' : 'AFGBAFKA');
-              const corrAcc = data.correspondentAccount || (!isIntl ? '3000205027231' : '400758954');
-              const interBank = data.intermediaryBank || (isIntl ? 'JPMorgan Chase Bank, New York' : null);
-              const interSwift = data.intermediarySwift || (isIntl ? 'CHASUS33' : null);
+              const isIntl = !prof || prof.profileType === 'INTERNATIONAL' || (snap && snap.profileType === 'INTERNATIONAL');
 
               return (
-                <div className="bg-slate-50 p-3 sm:p-4 rounded-lg border border-slate-200 text-xs mt-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2 pb-1.5 border-b border-slate-200">
-                    <h3 className="font-bold uppercase tracking-wider text-slate-800 text-xs">
-                      OFFICIAL PAYMENT & WIRE REMITTANCE INSTRUCTIONS
+                <div className="bg-slate-50 p-3.5 sm:p-5 rounded-lg border border-slate-300 text-xs mt-4 text-slate-800 space-y-3">
+                  {/* Title & Badge */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-300 gap-1">
+                    <h3 className="font-extrabold uppercase tracking-wider text-slate-900 text-xs sm:text-sm">
+                      {t('invoices.bankInstructionsTitle', 'BANK / PAYMENT INSTRUCTIONS - USD')}
                     </h3>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-200 text-slate-700">
-                        {isIntl ? 'International USD Remittance' : 'Local USD Remittance'}
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-200 text-slate-800 border border-slate-300">
+                        {isIntl ? 'International USD Payment Routing' : 'Local USD Inward Remittance'}
                       </span>
                       {isSnapshot && (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
@@ -774,24 +872,76 @@ export const Invoices: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700">
-                    <div>Beneficiary (Field 59A): <strong className="text-slate-900">{beneName}</strong></div>
-                    <div>Account No (USD): <span dir="ltr" className="font-mono font-bold text-slate-900">{accNo}</span></div>
-                    <div>Beneficiary Bank {isIntl ? '(Field 57A)' : ''}: <span className="font-semibold text-slate-900">{bankName}</span></div>
-                    <div>SWIFT / BIC: <span dir="ltr" className="font-mono font-bold text-emerald-800">{swift}</span></div>
-                    <div>Correspondent Bank {isIntl ? '(Field 56A)' : ''}: <span className="font-semibold text-slate-900">{corrBank}</span></div>
-                    <div>Correspondent SWIFT: <span dir="ltr" className="font-mono font-bold text-slate-900">{corrSwift}</span></div>
-                    {corrAcc && (
-                      <div>Correspondent Account: <span dir="ltr" className="font-mono text-slate-900">{corrAcc}</span></div>
-                    )}
-                    {data.aubAccountWithCorrespondent && (
-                      <div>AUB Account with Al Salam: <span dir="ltr" className="font-mono text-slate-900">{data.aubAccountWithCorrespondent}</span></div>
-                    )}
-                    {interBank && (
-                      <div className="sm:col-span-2 pt-1 border-t border-slate-200 text-amber-900">
-                        Intermediary Bank (Field 54A - Mandatory): <strong className="font-bold">{interBank}</strong> (SWIFT: <span dir="ltr" className="font-mono font-bold">{interSwift}</span>)
+                  {/* Two Column Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    {/* BENEFICIARY / BANK */}
+                    <div className="bg-white p-3 rounded border border-slate-200 space-y-1">
+                      <div className="font-bold uppercase tracking-wider text-slate-900 border-b border-slate-200 pb-1 text-[11px] flex justify-between items-center">
+                        <span>{t('invoices.beneficiaryBankSection', 'BENEFICIARY / BANK')}</span>
+                        <span className="text-[10px] font-mono text-slate-500">USD</span>
                       </div>
-                    )}
+                      <div>{t('invoices.beneficiaryNameLabel', 'Beneficiary Name')}: <strong className="text-slate-900">SKY ARIANA LTD</strong></div>
+                      <div>{t('invoices.accountNoLabel', 'Account No.')}: <span dir="ltr" className="font-mono font-bold text-slate-900">101502USD2940472</span></div>
+                      <div>{t('invoices.bankLabel', 'Bank')}: <span className="font-semibold text-slate-900">AFGHAN UNITED BANK</span></div>
+                      <div>{t('invoices.bankAddressLabel', 'Bank Address')}: <span className="text-slate-700">AUB Building, Zarghona Maidan, Shahr-e-Now, Kabul</span></div>
+                      <div>{t('invoices.swiftLabel', 'SWIFT')}: <span dir="ltr" className="font-mono font-bold text-emerald-800">AFGUAFKAXXX</span></div>
+                      <div className="pt-1 border-t border-slate-200 text-[10px] font-mono text-slate-600" dir="ltr">
+                        MT103: Beneficiary account in field 59A; AFGUAFKAXXX in field 57A.
+                      </div>
+                    </div>
+
+                    {/* INTERNATIONAL USD PAYMENT ROUTING */}
+                    <div className="bg-white p-3 rounded border border-slate-200 space-y-1">
+                      <div className="font-bold uppercase tracking-wider text-slate-900 border-b border-slate-200 pb-1 text-[11px] flex justify-between items-center">
+                        <span>{t('invoices.intlRoutingSection', 'INTERNATIONAL USD PAYMENT ROUTING')}</span>
+                        <span className="text-[10px] font-mono text-slate-500">SWIFT MT103</span>
+                      </div>
+                      <div>{t('invoices.correspondentBankLabel', 'Correspondent Bank')}: <strong className="text-slate-900">AL SALAM BANK BAHRAIN</strong></div>
+                      <div>SWIFT: <span dir="ltr" className="font-mono font-bold text-slate-900">ALSABHBMXXX</span></div>
+                      <div>{t('invoices.aubAcWithCorrespondentLabel', 'AUB A/C with Al Salam')}: <span dir="ltr" className="font-mono font-medium text-slate-800">BH61ALSA00500951200102</span></div>
+                      <div>{t('invoices.intermediaryAcLabel', 'Intermediary A/C')}: <span dir="ltr" className="font-mono font-medium text-slate-800">400758954</span> <span className="text-slate-400">|</span> <span className="text-slate-600">Sanabis, Bahrain</span></div>
+                      <div>{t('invoices.intermediaryBankLabel', 'Intermediary Bank')}: <strong className="text-slate-900">JPMorgan Chase Bank, New York</strong> <span className="text-slate-400">|</span> SWIFT: <span dir="ltr" className="font-mono font-bold">CHASUS33</span></div>
+                      <div className="pt-1 border-t border-slate-200 text-[10px] font-mono text-slate-600" dir="ltr">
+                        MT103: ALSABHBM in field 56A; intermediary bank mandatory in field 54A.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* LOCAL USD CORRESPONDENT */}
+                  <div className="bg-white p-2.5 rounded border border-slate-200 text-[11px] text-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <div>
+                      <strong className="text-slate-900 uppercase text-[10px] mr-2">
+                        {t('invoices.localCorrespondentSection', 'LOCAL USD CORRESPONDENT')}:
+                      </strong>
+                      <span className="font-semibold text-slate-900">DA AFGHANISTAN BANK (DAB)</span>
+                    </div>
+                    <div className="font-mono text-[11px] text-slate-700 flex items-center gap-2 flex-wrap" dir="ltr">
+                      <span>SWIFT: <strong>AFGBAFKA</strong></span>
+                      <span className="text-slate-400">•</span>
+                      <span>A/C: <strong>3000205027231</strong></span>
+                      <span className="text-slate-400">•</span>
+                      <span>Ibni-sina Watt, Kabul</span>
+                    </div>
+                  </div>
+
+                  {/* IMPORTANT USD PAYMENT NOTE */}
+                  <div className="p-3 bg-amber-50 rounded border border-amber-300 text-amber-950 space-y-1">
+                    <div className="font-bold text-xs text-amber-900 flex items-center gap-1.5 uppercase tracking-wide">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>{t('invoices.importantPaymentNoteTitle', 'IMPORTANT USD PAYMENT NOTE')}</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-slate-800">
+                      NOTE: For all USD payments, it is mandatory to include the following correspondent bank details in the payment instructions:
+                    </p>
+                    <div className="text-[11px] font-mono bg-white/90 p-2.5 rounded border border-amber-200 space-y-0.5 text-slate-900" dir="ltr">
+                      <div>CORRESPONDENT BANK: <strong>AL SALAM BANK BAHRAIN</strong></div>
+                      <div>SWIFT CODE: <strong>ALSABHBMXXX</strong></div>
+                      <div>A/C NO. WITH INTERMEDIARY BANK: <strong>400758954</strong></div>
+                      <div>LOCATION: <strong>SANABIS, BAHRAIN</strong></div>
+                      <div className="text-amber-900 font-bold pt-1 border-t border-amber-200">
+                        Please mention “ALSABHBM” in Field 56A of the MT103.
+                      </div>
+                    </div>
                   </div>
                 </div>
               );

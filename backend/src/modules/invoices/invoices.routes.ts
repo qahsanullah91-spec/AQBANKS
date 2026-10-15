@@ -353,10 +353,36 @@ router.post('/:id/issue', authenticate, requirePermission('invoice:issue'), asyn
       profileType: profile.profileType,
       name: profile.name,
       currency: 'USD',
+      title: 'BANK / PAYMENT INSTRUCTIONS - USD',
       beneficiary: {
-        name: profile.beneficiaryName,
-        accountNumber: profile.beneficiaryAccount,
-        swiftField59A: profile.swiftField59A || profile.beneficiaryAccount
+        name: profile.beneficiaryName || 'SKY ARIANA LTD',
+        accountNumber: profile.beneficiaryAccount || '101502USD2940472',
+        bankName: profile.beneficiaryBank || 'AFGHAN UNITED BANK',
+        address: profile.beneficiaryBankAddress || 'AUB Building, Zarghona Maidan, Shahr-e-Now, Kabul',
+        swiftBic: profile.beneficiarySwift || 'AFGUAFKAXXX',
+        swiftField57A: profile.swiftField57A || 'AFGUAFKAXXX',
+        swiftField59A: profile.swiftField59A || 'Beneficiary account in field 59A; AFGUAFKAXXX in field 57A.',
+        mt103Note: 'Beneficiary account in field 59A; AFGUAFKAXXX in field 57A.'
+      },
+      internationalRouting: {
+        correspondentBank: 'AL SALAM BANK BAHRAIN',
+        swiftCode: 'ALSABHBMXXX',
+        aubAccountWithCorrespondent: 'BH61ALSA00500951200102',
+        intermediaryAccount: '400758954',
+        location: 'Sanabis, Bahrain',
+        intermediaryBank: 'JPMorgan Chase Bank, New York',
+        intermediarySwift: 'CHASUS33',
+        mt103Note: 'ALSABHBM in field 56A; intermediary bank mandatory in field 54A.'
+      },
+      localCorrespondent: {
+        bank: '(DAB) DA AFGHANISTAN BANK',
+        swiftCode: 'AFGBAFKA',
+        accountNumber: '3000205027231',
+        location: 'Ibni-sina Watt, Kabul'
+      },
+      importantPaymentNote: {
+        title: 'IMPORTANT USD PAYMENT NOTE',
+        text: 'NOTE: For all USD payments, it is mandatory to include the following correspondent bank details in the payment instructions:\nCORRESPONDENT BANK: AL SALAM BANK BAHRAIN\nSWIFT CODE: ALSABHBMXXX\nA/C NO. WITH INTERMEDIARY BANK: 400758954\nLOCATION: SANABIS, BAHRAIN\nPlease mention “ALSABHBM” in Field 56A of the MT103.'
       },
       beneficiaryBank: {
         name: profile.beneficiaryBank,
@@ -375,7 +401,7 @@ router.post('/:id/issue', authenticate, requirePermission('invoice:issue'), asyn
       intermediaryBank: profile.intermediaryBank ? {
         name: profile.intermediaryBank,
         swiftBic: profile.intermediarySwift,
-        swiftField54A: profile.swiftField54A
+        swiftField54A: profile.swiftField54A || 'Intermediary bank mandatory in field 54A'
       } : null,
       issuedAt: new Date().toISOString()
     } : null;
@@ -536,6 +562,8 @@ router.get('/:id/pdf-data', authenticate, requirePermission('invoice:view'), asy
         customer: true,
         lines: { orderBy: { lineNumber: 'asc' } },
         bankAccount: true,
+        remittanceProfile: true,
+        bankSnapshot: true,
         snapshots: { orderBy: { issuedAt: 'desc' } }
       }
     });
@@ -551,6 +579,61 @@ router.get('/:id/pdf-data', authenticate, requirePermission('invoice:view'), asy
       legalName: 'SKY ARIANA LTD',
       email: 'info@skyariana.com',
       website: 'www.skyariana.com'
+    };
+
+    // Parse snapshot if invoice was issued, otherwise use attached or default profile
+    let bankData: any = null;
+    let isSnapshot = false;
+    if (invoice.bankSnapshot && (invoice.bankSnapshot as any).snapshotJson) {
+      try {
+        bankData = JSON.parse((invoice.bankSnapshot as any).snapshotJson);
+        isSnapshot = true;
+      } catch (e) {}
+    }
+    if (!bankData && invoice.remittanceProfile) {
+      bankData = invoice.remittanceProfile;
+    }
+    if (!bankData) {
+      bankData = await prisma.remittanceProfile.findFirst({
+        where: { isDefault: true, isActive: true }
+      });
+    }
+
+    const defaultBankAddress = 'AUB Building, Zarghona Maidan, Shahr-e-Now, Kabul';
+    const isIntl = !bankData || bankData.profileType === 'INTERNATIONAL' || (bankData.profile && bankData.profile.profileType === 'INTERNATIONAL');
+
+    const paymentInstructions = {
+      title: 'BANK / PAYMENT INSTRUCTIONS - USD',
+      isSnapshot,
+      profileType: isIntl ? 'INTERNATIONAL' : 'LOCAL',
+      beneficiary: {
+        name: 'SKY ARIANA LTD',
+        accountNumber: '101502USD2940472',
+        bankName: 'AFGHAN UNITED BANK',
+        bankAddress: bankData?.beneficiary?.address || bankData?.beneficiaryBankAddress || bankData?.beneficiaryBank?.address || defaultBankAddress,
+        swiftCode: 'AFGUAFKAXXX',
+        mt103Note: 'Beneficiary account in field 59A; AFGUAFKAXXX in field 57A.'
+      },
+      internationalRouting: {
+        correspondentBank: 'AL SALAM BANK BAHRAIN',
+        swiftCode: 'ALSABHBMXXX',
+        aubAccountWithCorrespondent: 'BH61ALSA00500951200102',
+        intermediaryAccount: '400758954',
+        location: 'Sanabis, Bahrain',
+        intermediaryBank: 'JPMorgan Chase Bank, New York',
+        intermediarySwift: 'CHASUS33',
+        mt103Note: 'ALSABHBM in field 56A; intermediary bank mandatory in field 54A.'
+      },
+      localCorrespondent: {
+        bank: '(DAB) DA AFGHANISTAN BANK',
+        swiftCode: 'AFGBAFKA',
+        accountNumber: '3000205027231',
+        location: 'Ibni-sina Watt, Kabul'
+      },
+      importantPaymentNote: {
+        title: 'IMPORTANT USD PAYMENT NOTE',
+        text: 'NOTE: For all USD payments, it is mandatory to include the following correspondent bank details in the payment instructions:\nCORRESPONDENT BANK: AL SALAM BANK BAHRAIN\nSWIFT CODE: ALSABHBMXXX\nA/C NO. WITH INTERMEDIARY BANK: 400758954\nLOCATION: SANABIS, BAHRAIN\nPlease mention “ALSABHBM” in Field 56A of the MT103.'
+      }
     };
 
     const printableData = {
@@ -582,14 +665,23 @@ router.get('/:id/pdf-data', authenticate, requirePermission('invoice:view'), asy
       })),
       subtotal: '$' + Number(invoice.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
       grandTotal: '$' + Number(invoice.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-      bankingDetails: invoice.bankAccount ? {
-        bankName: invoice.bankAccount.bankName,
-        beneficiaryName: invoice.bankAccount.beneficiaryName,
-        accountNumber: invoice.bankAccount.accountNumberMasked,
-        swiftCode: invoice.bankAccount.swiftCode,
-        correspondentBank: invoice.bankAccount.correspondentBank,
-        correspondentSwift: invoice.bankAccount.correspondentSwift
-      } : null
+      paymentInstructions,
+      bankSnapshot: bankData,
+      remittanceProfile: invoice.remittanceProfile || bankData,
+      bankingDetails: {
+        bankName: 'AFGHAN UNITED BANK',
+        beneficiaryName: 'SKY ARIANA LTD',
+        accountNumber: '101502USD2940472',
+        swiftCode: 'AFGUAFKAXXX',
+        bankAddress: defaultBankAddress,
+        correspondentBank: 'AL SALAM BANK BAHRAIN',
+        correspondentSwift: 'ALSABHBMXXX',
+        aubAccountWithCorrespondent: 'BH61ALSA00500951200102',
+        intermediaryAccount: '400758954',
+        correspondentLocation: 'Sanabis, Bahrain',
+        intermediaryBank: 'JPMorgan Chase Bank, New York',
+        intermediarySwift: 'CHASUS33'
+      }
     };
 
     res.json(printableData);

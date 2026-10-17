@@ -1,18 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api, getUserRole } from '../services/api';
 import { Shipment, Invoice } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
+import { formatDisplayDate } from '../utils/date';
 import {
   Ship,
   Search,
   Plus,
   Anchor,
   X,
-  History
+  History,
+  Package,
+  ArrowRight,
+  Clock,
+  ShieldCheck
 } from 'lucide-react';
 
 export const Logistics: React.FC = () => {
   const { t, isRtl } = useLanguage();
+  const { toast } = useToast();
+  const userRole = getUserRole();
+  const canMutateLogistics = userRole === 'ADMIN' || userRole === 'LOGISTICS_COORD' || userRole === 'LOGISTICS_COORDINATOR';
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +33,18 @@ export const Logistics: React.FC = () => {
   const [statusModalShipment, setStatusModalShipment] = useState<Shipment | null>(null);
   const [newStatus, setNewStatus] = useState('IN_TRANSIT');
   const [statusReason, setStatusReason] = useState('');
+
+  // Close modals on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showCreateModal) setShowCreateModal(false);
+        else if (statusModalShipment) setStatusModalShipment(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showCreateModal, statusModalShipment]);
 
   // Create Form State
   const [shipmentRef, setShipmentRef] = useState('');
@@ -57,6 +78,10 @@ export const Logistics: React.FC = () => {
 
   const handleCreateShipment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canMutateLogistics) {
+      toast.error('Access Denied: Only Administrator or Logistics Coordinator can create shipments.');
+      return;
+    }
     try {
       await api.createShipment({
         shipmentRef,
@@ -70,21 +95,27 @@ export const Logistics: React.FC = () => {
         invoiceIds: selectedInvoiceIds
       });
       setShowCreateModal(false);
+      toast.success('Shipment created successfully');
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to create shipment');
+      toast.error(err.message || 'Failed to create shipment');
     }
   };
 
   const handleUpdateStatus = async () => {
+    if (!canMutateLogistics) {
+      toast.error('Access Denied: Only Administrator or Logistics Coordinator can update shipment status.');
+      return;
+    }
     if (!statusModalShipment) return;
     try {
       await api.updateShipmentStatus(statusModalShipment.id, newStatus, statusReason);
       setStatusModalShipment(null);
       setStatusReason('');
+      toast.success('Shipment tracking status updated');
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to update status');
+      toast.error(err.message || 'Failed to update status');
     }
   };
 
@@ -98,15 +129,22 @@ export const Logistics: React.FC = () => {
             {t('logistics.subtitle')}
           </p>
         </div>
-        <button
-          onClick={() => {
-            setShipmentRef(`SHP-${Math.floor(9000 + Math.random() * 1000)}`);
-            setShowCreateModal(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" /> {t('logistics.newShipment')}
-        </button>
+        {canMutateLogistics ? (
+          <button
+            onClick={() => {
+              setShipmentRef(`SHP-${Math.floor(9000 + Math.random() * 1000)}`);
+              setShowCreateModal(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" /> {t('logistics.newShipment')}
+          </button>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-400 font-mono">
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>Read-Only Logistics View ({userRole})</span>
+          </div>
+        )}
       </div>
 
       {/* Filter and Search Bar */}
@@ -152,13 +190,15 @@ export const Logistics: React.FC = () => {
                       <span dir="ltr" className="font-mono">{s.shipmentRef}</span>
                     </h2>
                   </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                    s.status === 'IN_TRANSIT' ? 'bg-cyan-950 text-cyan-300 border border-cyan-800' :
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 ${
+                    s.status === 'IN_TRANSIT' ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/80 shadow-[0_0_12px_rgba(6,182,212,0.35)]' :
                     s.status === 'AT_ORIGIN_PORT' ? 'bg-amber-950 text-amber-300 border border-amber-800' :
                     s.status === 'DELIVERED' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' :
                     'bg-slate-800 text-slate-300'
                   }`}>
-                    {s.status.replace('_', ' ')}
+                    {s.status === 'IN_TRANSIT' && <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping inline-block" />}
+                    {s.status === 'AT_ORIGIN_PORT' && <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />}
+                    <span>{s.status.replace('_', ' ')}</span>
                   </span>
                 </div>
 
@@ -184,7 +224,7 @@ export const Logistics: React.FC = () => {
                   <div>{t('logistics.containerNo')}: <span dir="ltr" className="font-mono text-white font-medium">{s.containerNumber || 'N/A'}</span></div>
                   <div>{t('logistics.carrier')}: <span className="text-white font-medium">{s.carrier || 'N/A'}</span></div>
                   <div>{t('logistics.billOfLading')}: <span dir="ltr" className="font-mono text-white font-medium">{s.billOfLading || 'N/A'}</span></div>
-                  <div>{t('logistics.eta')}: <span dir="ltr" className="text-white font-medium">{s.estimatedArrivalDate ? new Date(s.estimatedArrivalDate).toLocaleDateString() : 'N/A'}</span></div>
+                  <div>{t('logistics.eta')}: <span dir="ltr" className="text-white font-medium">{s.estimatedArrivalDate ? formatDisplayDate(s.estimatedArrivalDate) : 'N/A'}</span></div>
                 </div>
 
                 {/* Linked Invoices */}
@@ -205,17 +245,19 @@ export const Logistics: React.FC = () => {
               {/* Status Update Button */}
               <div className="mt-5 pt-3 border-t border-slate-800 flex justify-between items-center">
                 <span className="text-[11px] text-slate-500" dir="ltr">
-                  {s.statusHistory && s.statusHistory.length > 0 ? `Updated: ${new Date(s.statusHistory[0].changedAt).toLocaleDateString()}` : ''}
+                  {s.statusHistory && s.statusHistory.length > 0 ? `Updated: ${formatDisplayDate(s.statusHistory[0].changedAt)}` : ''}
                 </span>
-                <button
-                  onClick={() => {
-                    setStatusModalShipment(s);
-                    setNewStatus(s.status);
-                  }}
-                  className="px-3 py-1.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition"
-                >
-                  Update Status & Timeline
-                </button>
+                {canMutateLogistics && (
+                  <button
+                    onClick={() => {
+                      setStatusModalShipment(s);
+                      setNewStatus(s.status);
+                    }}
+                    className="px-3 py-1.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition"
+                  >
+                    Update Status & Timeline
+                  </button>
+                )}
               </div>
             </div>
           ))
@@ -226,110 +268,244 @@ export const Logistics: React.FC = () => {
         )}
       </div>
 
+      {/* Pending Dispatch / Unassigned Cargo Section */}
+      {(() => {
+        const unassignedInvoices = invoices.filter(inv => {
+          if (inv.status === 'VOID') return false;
+          return !inv.shipmentInvoices || inv.shipmentInvoices.length === 0;
+        });
+
+        if (unassignedInvoices.length === 0) return null;
+
+        const totalCartons = unassignedInvoices.reduce((s, i) => s + (Number(i.lines?.[0]?.cartonCount) || 0), 0);
+        const totalNetKg = unassignedInvoices.reduce((s, i) => s + (Number(i.lines?.[0]?.quantity) || 0), 0);
+        const totalUnassignedAmount = unassignedInvoices.reduce((s, i) => s + Number(i.totalAmount || 0), 0);
+
+        return (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-2">
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-amber-400" />
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-white">
+                    Pending Container Assignment ({unassignedInvoices.length} Invoices)
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Proforma commercial invoices issued and staged for freight booking & container loading.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 font-mono text-xs">
+                <span className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded text-amber-300">
+                  {totalCartons.toLocaleString()} CTNS • {totalNetKg.toLocaleString()} KG
+                </span>
+                <span className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded text-emerald-400 font-bold tabular-nums" dir="ltr">
+                  ${totalUnassignedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {unassignedInvoices.map(inv => {
+                const line = inv.lines && inv.lines[0];
+                return (
+                  <div key={inv.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3 flex flex-col justify-between hover:border-amber-500/50 transition">
+                    <div>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="font-bold text-white font-mono text-xs" dir="ltr">{inv.invoiceNumber}</span>
+                          {inv.sourceInvoiceRef && (
+                            <span className="text-[10px] text-amber-400 font-mono block mt-0.5" dir="ltr">
+                              Ref: {inv.sourceInvoiceRef}
+                            </span>
+                          )}
+                        </div>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-950/80 text-amber-300 border border-amber-800">
+                          Pending Dispatch
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-200 font-sans font-medium block mt-2">
+                        {inv.customer?.companyName || 'Unknown Customer'}
+                      </span>
+                      {line && (
+                        <div className="mt-2 text-[11px] text-slate-400 font-mono space-y-0.5 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/80" dir="ltr">
+                          <div className="text-slate-300 font-sans truncate">{line.description}</div>
+                          <div className="text-emerald-400">
+                            {line.cartonCount ? `${Number(line.cartonCount).toLocaleString()} CTNS • ` : ''}
+                            {Number(line.quantity).toLocaleString()} KG @ ${Number(line.unitPrice).toFixed(4)}/KG
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                      <span className="font-extrabold text-white font-mono text-xs tabular-nums" dir="ltr">
+                        ${Number(inv.totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                      {canMutateLogistics && (
+                        <button
+                          onClick={() => {
+                            setSelectedInvoiceIds([inv.id]);
+                            setShipmentRef(`SHP-${Math.floor(9000 + Math.random() * 1000)}`);
+                            setShowCreateModal(true);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] bg-slate-800 hover:bg-emerald-600 hover:text-white text-emerald-400 font-semibold rounded-lg transition border border-slate-700 hover:border-emerald-500 shadow-sm"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>Assign Container & B/L</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* CREATE SHIPMENT MODAL */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-lg p-6 shadow-2xl">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-800">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Ship className="w-5 h-5 text-cyan-400" /> {t('logistics.newShipment')}
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="flex justify-between items-center px-5 py-4 border-b border-slate-200 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900 z-10">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Ship className="w-5 h-5 text-cyan-600 dark:text-cyan-400" /> {t('logistics.newShipment')}
               </h2>
-              <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-white p-2 min-h-[44px]">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateShipment} className="mt-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={handleCreateShipment} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3.5 text-xs">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('logistics.shipmentRef')}</label>
+                    <input
+                      type="text"
+                      value={shipmentRef}
+                      onChange={e => setShipmentRef(e.target.value)}
+                      required
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('logistics.carrier')}</label>
+                    <input
+                      type="text"
+                      value={carrier}
+                      onChange={e => setCarrier(e.target.value)}
+                      required
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('logistics.containerNo')}</label>
+                    <input
+                      type="text"
+                      value={containerNumber}
+                      onChange={e => setContainerNumber(e.target.value)}
+                      placeholder="MSKU9023418"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-cyan-500"
+                      dir="ltr"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('logistics.billOfLading')}</label>
+                    <input
+                      type="text"
+                      value={billOfLading}
+                      onChange={e => setBillOfLading(e.target.value)}
+                      placeholder="BL-1928374"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-cyan-500"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('logistics.origin')}</label>
+                    <input
+                      type="text"
+                      value={origin}
+                      onChange={e => setOrigin(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('logistics.destination')}</label>
+                    <input
+                      type="text"
+                      value={destination}
+                      onChange={e => setDestination(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-[11px] text-slate-300 mb-1">{t('logistics.shipmentRef')}</label>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('logistics.eta')}</label>
                   <input
-                    type="text"
-                    value={shipmentRef}
-                    onChange={e => setShipmentRef(e.target.value)}
-                    required
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white"
+                    type="date"
+                    value={estimatedArrivalDate}
+                    onChange={e => setEstimatedArrivalDate(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
                   />
                 </div>
+
+                {/* Linked Invoices Selection */}
                 <div>
-                  <label className="block text-[11px] text-slate-300 mb-1">{t('logistics.carrier')}</label>
-                  <input
-                    type="text"
-                    value={carrier}
-                    onChange={e => setCarrier(e.target.value)}
-                    required
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white"
-                  />
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Select Invoices to Link with this Shipment</label>
+                  <div className="max-h-36 overflow-y-auto bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2 space-y-1.5">
+                    {invoices.filter(i => i.status !== 'VOID').map(inv => {
+                      const isChecked = selectedInvoiceIds.includes(inv.id);
+                      return (
+                        <label key={inv.id} className="flex items-center justify-between text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 p-1.5 rounded-lg cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedInvoiceIds(prev => [...prev, inv.id]);
+                                } else {
+                                  setSelectedInvoiceIds(prev => prev.filter(id => id !== inv.id));
+                                }
+                              }}
+                              className="rounded border-slate-300 dark:border-slate-700 text-cyan-600 focus:ring-0"
+                            />
+                            <span className="font-mono text-slate-900 dark:text-white font-medium" dir="ltr">{inv.invoiceNumber}</span>
+                            <span className="text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{inv.customer?.companyName}</span>
+                          </div>
+                          <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold tabular-nums" dir="ltr">
+                            ${Number(inv.totalAmount).toLocaleString()}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] text-slate-300 mb-1">{t('logistics.containerNo')}</label>
-                  <input
-                    type="text"
-                    value={containerNumber}
-                    onChange={e => setContainerNumber(e.target.value)}
-                    placeholder="MSKU9023418"
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white font-mono"
-                    dir="ltr"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-300 mb-1">{t('logistics.billOfLading')}</label>
-                  <input
-                    type="text"
-                    value={billOfLading}
-                    onChange={e => setBillOfLading(e.target.value)}
-                    placeholder="BL-1928374"
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white font-mono"
-                    dir="ltr"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] text-slate-300 mb-1">{t('logistics.origin')}</label>
-                  <input
-                    type="text"
-                    value={origin}
-                    onChange={e => setOrigin(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-300 mb-1">{t('logistics.destination')}</label>
-                  <input
-                    type="text"
-                    value={destination}
-                    onChange={e => setDestination(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] text-slate-300 mb-1">{t('logistics.eta')}</label>
-                <input
-                  type="date"
-                  value={estimatedArrivalDate}
-                  onChange={e => setEstimatedArrivalDate(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
+              <div className="flex justify-end gap-2 px-5 py-3.5 border-t border-slate-200 dark:border-slate-800 shrink-0 bg-slate-50 dark:bg-slate-900/95 z-10">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-3 py-1.5 min-h-[44px] bg-slate-800 text-slate-300 rounded text-xs"
+                  className="px-4 py-2 min-h-[44px] bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-300 rounded-lg text-xs font-semibold transition"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold"
+                  className="px-5 py-2 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-md keep-white-text"
                 >
                   {t('common.save')}
                 </button>
@@ -389,7 +565,7 @@ export const Logistics: React.FC = () => {
                       <div key={h.id} className="p-2 bg-slate-950 border border-slate-800 rounded text-[11px]">
                         <div className="flex justify-between text-slate-300 font-medium">
                           <span>{h.newStatus}</span>
-                          <span dir="ltr" className="text-slate-500">{new Date(h.changedAt).toLocaleDateString()}</span>
+                          <span dir="ltr" className="text-slate-500">{formatDisplayDate(h.changedAt)}</span>
                         </div>
                         <p className="text-slate-400 text-[10px] mt-0.5">{h.reason}</p>
                       </div>

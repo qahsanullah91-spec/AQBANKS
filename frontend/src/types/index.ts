@@ -24,10 +24,29 @@ export interface InvoiceLine {
   id?: string;
   lineNumber: number;
   description: string;
+  cartonCount?: number | null;
+  packagingKgPerCarton?: number | string | null;
   quantity: number | string;
   unitOfMeasure: string;
   unitPrice: number | string;
   lineTotal: number | string;
+}
+
+export interface Receipt {
+  id: string;
+  receiptNumber: string;
+  paymentId: string;
+  amount: number | string;
+  grossAmount?: number | string | null;
+  swiftFeeAmount?: number | string | null;
+  currency: string;
+  status: 'VALID' | 'VOIDED';
+  receivingAccountMasked?: string;
+  receivingAccountName?: string;
+  createdAt: string;
+  voidedAt?: string | null;
+  voidReason?: string | null;
+  payment?: Payment;
 }
 
 export interface Invoice {
@@ -46,9 +65,11 @@ export interface Invoice {
   paymentStatus: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE';
   paymentTerms: string;
   bankAccountId?: string;
+  remainingBalance?: number | string;
   lines?: InvoiceLine[];
   snapshots?: any[];
   paymentAllocations?: any[];
+  shipmentInvoices?: any[];
 }
 
 export interface Shipment {
@@ -81,6 +102,7 @@ export interface LedgerTransaction {
   currency: string;
   reconciliationStatus: 'UNRECONCILED' | 'RECONCILED' | 'DISCREPANCY';
   isReversal?: boolean;
+  notes?: string | null;
 }
 
 export interface RemittanceProfile {
@@ -155,7 +177,10 @@ export interface DashboardOverview {
     totalCredits: string;
     totalDebits: string;
     totalInvoiced: string;
+    totalWeightKg?: string;
+    totalSwiftFees?: string;
     pendingReceivables: string;
+    unpaidInvoicesCount?: number;
     activeShipmentsCount: number;
     totalInvoicesCount: number;
     unreconciledTxCount: number;
@@ -164,6 +189,8 @@ export interface DashboardOverview {
     totalIncoming: string;
     totalOutgoing: string;
     netOperatingCashFlow: string;
+    pendingReceivables?: string;
+    totalSwiftFees?: string;
   };
   latestTransactions: any[];
   recentShipments: any[];

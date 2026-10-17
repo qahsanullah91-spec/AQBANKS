@@ -72,20 +72,21 @@ export function numberToWords(amount: number | string, currency: string = 'USD')
 
 export async function generateNextReceiptNumber(tx: any): Promise<string> {
   const year = new Date().getFullYear();
-  // Count existing receipts for the current year
-  const count = await tx.receipt.count();
-  const sequence = String(count + 1).padStart(4, '0');
-  let candidate = `RCP-${year}-${sequence}`;
-
-  // Collision safety check
-  let exists = await tx.receipt.findUnique({ where: { receiptNumber: candidate } });
-  let offset = 1;
-  while (exists) {
-    const altSequence = String(count + 1 + offset).padStart(4, '0');
-    candidate = `RCP-${year}-${altSequence}`;
-    exists = await tx.receipt.findUnique({ where: { receiptNumber: candidate } });
-    offset++;
+  const prefix = `RCP-${year}-`;
+  const existingReceipts = await tx.receipt.findMany({
+    where: { receiptNumber: { startsWith: prefix } },
+    select: { receiptNumber: true }
+  });
+  let maxSeq = 0;
+  for (const r of existingReceipts) {
+    const parts = r.receiptNumber.split('-');
+    if (parts.length === 3) {
+      const num = parseInt(parts[2], 10);
+      if (!isNaN(num) && num > maxSeq) {
+        maxSeq = num;
+      }
+    }
   }
-
-  return candidate;
+  const nextSeq = String(maxSeq + 1).padStart(4, '0');
+  return `${prefix}${nextSeq}`;
 }

@@ -276,16 +276,18 @@ model Invoice {
 }
 
 model InvoiceLine {
-  id            String  @id @default(uuid())
-  invoiceId     String
-  invoice       Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  lineNumber    Int
-  description   String
-  quantity      Decimal // Net weight in KG
-  unitOfMeasure String  @default("KG")
-  unitPrice     Decimal // C&F Unit price in USD
-  lineTotal     Decimal // quantity * unitPrice
-  createdAt     DateTime @default(now())
+  id                   String   @id @default(uuid())
+  invoiceId            String
+  invoice              Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  lineNumber           Int
+  description          String
+  cartonCount          Int?
+  packagingKgPerCarton Decimal?
+  quantity             Decimal  // Net weight in KG
+  unitOfMeasure        String   @default("KG")
+  unitPrice            Decimal  // C&F Unit price in USD
+  lineTotal            Decimal  // quantity * unitPrice
+  createdAt            DateTime @default(now())
 
   @@map("invoice_lines")
 }
@@ -372,14 +374,15 @@ model Payment {
 }
 
 model PaymentAllocation {
-  id          String   @id @default(uuid())
-  paymentId   String
-  invoiceId   String
-  amount      Decimal
-  notes       String?
-  allocatedAt DateTime @default(now())
-  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  id           String   @id @default(uuid())
+  paymentId    String
+  invoiceId    String
+  amount       Decimal
+  swiftBankFee Decimal  @default(0)
+  notes        String?
+  allocatedAt  DateTime @default(now())
+  payment      Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@map("payment_allocations")
 }
@@ -445,6 +448,8 @@ model Receipt {
   receivingAccountName   String
   receivingAccountMasked String
   amount                 Decimal
+  grossAmount            Decimal?
+  swiftFeeAmount         Decimal            @default(0)
   amountInWords          String?
   currency               String             @default("USD")
   paymentMethod          String             @default("WIRE_TRANSFER")

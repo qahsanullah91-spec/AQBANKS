@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { getAuthToken } from '../services/api';
+import { getAuthToken, getUserRole, api } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { formatDisplayDate, formatFullDate } from '../utils/date';
 import {
   Search,
   Printer,
@@ -11,9 +12,12 @@ import {
   ShieldCheck,
   RefreshCw
 } from 'lucide-react';
+import { triggerPrint } from '../utils/print';
 
 export const Receipts: React.FC = () => {
   const { t, isRtl } = useLanguage();
+  const userRole = getUserRole();
+  const canVoidReceipt = userRole === 'ADMIN' || userRole === 'FINANCE_MGR';
   const [receipts, setReceipts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -28,14 +32,8 @@ export const Receipts: React.FC = () => {
   const fetchReceipts = async () => {
     setLoading(true);
     try {
-      const token = getAuthToken();
-      const res = await fetch('/api/receipts', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setReceipts(data);
-      }
+      const data = await api.getReceipts();
+      setReceipts(data);
     } catch (err: any) {
       console.error('Failed to load receipts', err);
     } finally {
@@ -52,29 +50,20 @@ export const Receipts: React.FC = () => {
   };
 
   const handleVoid = async () => {
+    if (!canVoidReceipt) {
+      setMessage({ text: 'Access Denied: Only Administrator or Finance Manager can void treasury receipts.', type: 'error' });
+      return;
+    }
     if (!selectedReceipt || !voidReason.trim()) return;
     setVoiding(true);
     setMessage(null);
     try {
-      const token = getAuthToken();
-      const res = await fetch(`/api/receipts/${selectedReceipt.id}/void`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ reason: voidReason })
-      });
-      if (res.ok) {
-        setMessage({ text: 'Receipt successfully voided and logged to security audit trail.', type: 'success' });
-        setShowVoidModal(false);
-        setVoidReason('');
-        setSelectedReceipt({ ...selectedReceipt, status: 'VOIDED', voidReason });
-        await fetchReceipts();
-      } else {
-        const err = await res.json();
-        setMessage({ text: err.message || 'Failed to void receipt', type: 'error' });
-      }
+      await api.voidReceipt(selectedReceipt.id, voidReason);
+      setMessage({ text: 'Receipt successfully voided and logged to security audit trail.', type: 'success' });
+      setShowVoidModal(false);
+      setVoidReason('');
+      setSelectedReceipt({ ...selectedReceipt, status: 'VOIDED', voidReason });
+      await fetchReceipts();
     } catch (err: any) {
       setMessage({ text: err.message || 'Void request failed', type: 'error' });
     } finally {
@@ -83,12 +72,12 @@ export const Receipts: React.FC = () => {
   };
 
   const handlePrint = () => {
-    window.print();
+    triggerPrint(selectedReceipt ? `Receipt-${selectedReceipt.receiptNumber}` : 'Official-Treasury-Receipt');
   };
 
   const handleCopyDetails = () => {
     if (!selectedReceipt) return;
-    const text = `AQ COMPANIES OFFICIAL RECEIPT\nReceipt No: ${selectedReceipt.receiptNumber}\nDate: ${new Date(selectedReceipt.issueDate).toLocaleDateString()}\nPayer: ${selectedReceipt.payerName}\nAmount: $${Number(selectedReceipt.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} USD\nAmount in Words: ${selectedReceipt.amountInWords}\nAccount: ${selectedReceipt.receivingAccountMasked}\nPurpose: ${selectedReceipt.purpose}`;
+    const text = `AQ COMPANIES OFFICIAL RECEIPT\nReceipt No: ${selectedReceipt.receiptNumber}\nDate: ${formatDisplayDate(selectedReceipt.issueDate)}\nPayer: ${selectedReceipt.payerName}\nAmount: $${Number(selectedReceipt.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} USD\nAmount in Words: ${selectedReceipt.amountInWords}\nAccount: ${selectedReceipt.receivingAccountMasked}\nPurpose: ${selectedReceipt.purpose}`;
     navigator.clipboard?.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -218,54 +207,75 @@ export const Receipts: React.FC = () => {
           <table className="w-full text-xs text-slate-300">
             <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
-                <th className={`py-3 px-4 ${isRtl ? 'text-right' : 'text-left'}`}>{t('receipts.receiptNo')}</th>
-                <th className={`py-3 px-4 ${isRtl ? 'text-right' : 'text-left'}`}>{t('common.date')}</th>
-                <th className={`py-3 px-4 ${isRtl ? 'text-right' : 'text-left'}`}>{t('receipts.payer')}</th>
-                <th className={`py-3 px-4 ${isRtl ? 'text-left' : 'text-right'}`}>{t('receipts.amount')}</th>
-                <th className={`py-3 px-4 ${isRtl ? 'text-right' : 'text-left'}`}>{t('receipts.purpose')}</th>
-                <th className={`py-3 px-4 ${isRtl ? 'text-right' : 'text-left'}`}>{t('common.status')}</th>
-                <th className="py-3 px-4 text-center">{t('common.actions')}</th>
+                <th className={`py-3 px-3.5 ${isRtl ? 'text-right' : 'text-left'}`}>{t('receipts.receiptNo')}</th>
+                <th className={`py-3 px-2.5 ${isRtl ? 'text-right' : 'text-left'}`}>{t('common.date')}</th>
+                <th className={`py-3 px-3.5 ${isRtl ? 'text-right' : 'text-left'}`}>{t('receipts.payer')}</th>
+                <th className={`py-3 px-3 ${isRtl ? 'text-left' : 'text-right'}`}>Gross Invoiced</th>
+                <th className={`py-3 px-3 ${isRtl ? 'text-left' : 'text-right'}`}>SWIFT Fee</th>
+                <th className={`py-3 px-3.5 ${isRtl ? 'text-left' : 'text-right'}`}>Net Credited</th>
+                <th className={`py-3 px-3.5 ${isRtl ? 'text-right' : 'text-left'}`}>{t('receipts.purpose')}</th>
+                <th className={`py-3 px-2.5 ${isRtl ? 'text-right' : 'text-left'}`}>{t('common.status')}</th>
+                <th className="py-3 px-3 text-center">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-slate-400 font-sans">
+                  <td colSpan={9} className="text-center py-8 text-slate-400 font-sans">
                     <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                     {t('common.loading')}
                   </td>
                 </tr>
               ) : filteredReceipts.length > 0 ? (
                 filteredReceipts.map(r => (
-                  <tr key={r.id} className="hover:bg-slate-800/40 transition">
-                    <td className={`py-3 px-4 font-bold text-emerald-400 ${isRtl ? 'text-right' : 'text-left'}`} dir="ltr">
+                  <tr
+                    key={r.id}
+                    className="hover:bg-slate-800/80 hover:border-l-4 hover:border-l-emerald-500 transition-all border-l-4 border-l-transparent"
+                  >
+                    <td className={`py-3 px-3.5 font-bold text-emerald-700 dark:text-emerald-400 ${isRtl ? 'text-right' : 'text-left'}`} dir="ltr">
                       {r.receiptNumber}
                     </td>
-                    <td className={`py-3 px-4 text-slate-400 ${isRtl ? 'text-right' : 'text-left'}`} dir="ltr">
-                      {new Date(r.issueDate).toLocaleDateString()}
+                    <td className={`py-3 px-2.5 text-slate-600 dark:text-slate-400 ${isRtl ? 'text-right' : 'text-left'}`} dir="ltr">
+                      {formatDisplayDate(r.issueDate)}
                     </td>
-                    <td className={`py-3 px-4 font-sans text-slate-200 ${isRtl ? 'text-right' : 'text-left'}`}>
+                    <td className={`py-3 px-3.5 font-sans font-medium text-slate-900 dark:text-slate-200 ${isRtl ? 'text-right' : 'text-left'}`}>
                       {r.payerName}
                     </td>
-                    <td className={`py-3 px-4 font-bold text-white ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
-                      ${Number(r.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <td className={`py-3 px-3 text-slate-800 dark:text-slate-300 tabular-nums ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
+                      ${Number(r.grossAmount || (Number(r.swiftFeeAmount || 0) > 0 ? Number(r.amount) + Number(r.swiftFeeAmount) : r.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                    <td className={`py-3 px-4 font-sans text-slate-300 ${isRtl ? 'text-right' : 'text-left'}`}>
+                    <td className={`py-3 px-3 tabular-nums ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
+                      {r.swiftFeeAmount && Number(r.swiftFeeAmount) > 0 ? (
+                        <span className="text-amber-700 dark:text-amber-400 font-semibold">
+                          -${Number(r.swiftFeeAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 dark:text-slate-500">$0.00</span>
+                      )}
+                    </td>
+                    <td className={`py-3 px-3.5 font-bold text-emerald-700 dark:text-emerald-400 tabular-nums ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
+                      ${Number(
+                        r.swiftFeeAmount && Number(r.swiftFeeAmount) > 0 && r.grossAmount && Number(r.grossAmount) === Number(r.amount)
+                          ? Number(r.grossAmount) - Number(r.swiftFeeAmount)
+                          : r.amount
+                      ).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className={`py-3 px-3.5 font-sans text-slate-700 dark:text-slate-300 ${isRtl ? 'text-right' : 'text-left'}`}>
                       {r.purpose}
                     </td>
-                    <td className="py-3 px-4 font-sans">
+                    <td className="py-3 px-2.5 font-sans">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                         r.status === 'ISSUED'
-                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                          : 'bg-rose-950 text-rose-300 border border-rose-800'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800'
+                          : 'bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800'
                       }`}>
                         {r.status}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-center font-sans">
+                    <td className="py-3 px-3 text-center font-sans">
                       <button
                         onClick={() => openReceiptModal(r)}
-                        className="px-2.5 py-1 min-h-[36px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded transition"
+                        className="px-2.5 py-1 min-h-[32px] bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-medium rounded transition dark:border-slate-700"
                       >
                         {t('common.view')}
                       </button>
@@ -274,7 +284,7 @@ export const Receipts: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-slate-500 font-sans">
+                  <td colSpan={9} className="text-center py-8 text-slate-500 font-sans">
                     {t('receipts.emptyState')}
                   </td>
                 </tr>
@@ -285,132 +295,261 @@ export const Receipts: React.FC = () => {
       </div>
 
       {/* PRINTABLE RECEIPT MODAL */}
-      {selectedReceipt && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
-          <div className="printable-document bg-white text-slate-900 rounded-xl w-full max-w-2xl my-auto p-4 sm:p-8 shadow-2xl font-sans max-h-[95vh] overflow-y-auto">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-200 print:hidden">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Official Treasury Receipt Preview
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleCopyDetails}
-                  className="px-3 py-1.5 min-h-[36px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium flex items-center gap-1.5 transition"
-                >
-                  <Share2 className="w-3.5 h-3.5" /> {copied ? 'Copied!' : t('receipts.copyText')}
-                </button>
-                <button
-                  onClick={handlePrint}
-                  className="px-3 py-1.5 min-h-[36px] bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
-                >
-                  <Printer className="w-3.5 h-3.5" /> {t('receipts.printReceipt')}
-                </button>
-                {selectedReceipt.status === 'ISSUED' && (
+      {selectedReceipt && (() => {
+        const issuerName =
+          (selectedReceipt.issuedBy?.firstName && `${selectedReceipt.issuedBy.firstName} ${selectedReceipt.issuedBy.lastName || ''}`.trim()) ||
+          (selectedReceipt.createdBy?.firstName && `${selectedReceipt.createdBy.firstName} ${selectedReceipt.createdBy.lastName || ''}`.trim()) ||
+          'Ahsanullah Qureshi';
+
+        const grossAmt = Number(
+          selectedReceipt.grossAmount ||
+          (Number(selectedReceipt.swiftFeeAmount || 0) > 0
+            ? Number(selectedReceipt.amount) + Number(selectedReceipt.swiftFeeAmount)
+            : selectedReceipt.amount)
+        );
+
+        const feeAmt = Number(selectedReceipt.swiftFeeAmount || 0);
+
+        const netAmt = Number(
+          feeAmt > 0 && selectedReceipt.grossAmount && Number(selectedReceipt.grossAmount) === Number(selectedReceipt.amount)
+            ? Number(selectedReceipt.grossAmount) - feeAmt
+            : selectedReceipt.amount
+        );
+
+        return (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+            <div className="printable-document bg-white text-slate-900 rounded-2xl w-full max-w-3xl my-auto p-5 sm:p-9 shadow-2xl font-sans max-h-[95vh] overflow-y-auto print:m-0 print:p-0 print:border-none print:shadow-none print:max-w-full print:rounded-none print:max-h-none print:overflow-visible">
+              {/* Modal Actions Bar (Hidden on Print) */}
+              <div className="flex justify-between items-center pb-4 border-b border-slate-200 print:hidden">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Official Treasury Receipt Preview
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setShowVoidModal(true)}
-                    className="px-3 py-1.5 min-h-[36px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-medium flex items-center gap-1.5 transition"
+                    onClick={handleCopyDetails}
+                    className="px-3 py-1.5 min-h-[36px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium flex items-center gap-1.5 transition"
                   >
-                    <Ban className="w-3.5 h-3.5" /> {t('invoices.void')}
+                    <Share2 className="w-3.5 h-3.5" /> {copied ? 'Copied!' : t('receipts.copyText')}
                   </button>
-                )}
-                <button
-                  onClick={() => setSelectedReceipt(null)}
-                  className="p-1.5 min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-400 hover:text-slate-700 rounded-lg transition"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* PRINTABLE RECEIPT CONTENT */}
-            <div className="space-y-6 mt-4">
-              {/* Receipt Header with Sky Ariana Ltd. Official Logo */}
-              <div className="flex justify-between items-start border-b-2 border-slate-900 pb-5">
-                <div className="flex items-center gap-4">
-                  <div className="h-16 w-36 sm:w-44 flex items-center justify-start shrink-0">
-                    <img
-                      src="/sky-ariana-logo.png"
-                      alt="Sky Ariana Ltd. Official Logo"
-                      className="max-h-full max-w-full object-contain"
-                    />
-                  </div>
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">SKY ARIANA LTD.</h2>
-                    <p className="text-xs text-slate-600 font-bold uppercase tracking-wider">Corporate Treasury & Commercial Settlement</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">info@skyariana.com • www.skyariana.com</p>
-                  </div>
-                </div>
-
-                <div className="text-right rtl:text-left">
-                  <span className="text-lg font-black tracking-wider uppercase text-emerald-800 block">OFFICIAL RECEIPT</span>
-                  <span dir="ltr" className="text-sm font-mono font-extrabold text-slate-900 block mt-1">
-                    {selectedReceipt.receiptNumber}
-                  </span>
-                  <span dir="ltr" className="text-[11px] text-slate-500 block mt-0.5">
-                    Date: {new Date(selectedReceipt.issueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-                  </span>
-                  <span className={`inline-block mt-1 px-2.5 py-0.5 rounded text-[10px] font-extrabold ${
-                    selectedReceipt.status === 'ISSUED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
-                  }`}>
-                    STATUS: {selectedReceipt.status}
-                  </span>
+                  <button
+                    onClick={handlePrint}
+                    className="px-3.5 py-1.5 min-h-[36px] bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
+                  >
+                    <Printer className="w-3.5 h-3.5" /> {t('receipts.printReceipt')}
+                  </button>
+                  {selectedReceipt.status === 'ISSUED' && canVoidReceipt && (
+                    <button
+                      onClick={() => setShowVoidModal(true)}
+                      className="px-3 py-1.5 min-h-[36px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-medium flex items-center gap-1.5 transition"
+                    >
+                      <Ban className="w-3.5 h-3.5" /> {t('invoices.void')}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSelectedReceipt(null)}
+                    className="p-1.5 min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-400 hover:text-slate-700 rounded-lg transition"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 
-              {/* Main Receipt Body */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <div className="flex justify-between items-baseline border-b border-slate-200 pb-2">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t('receipts.payer')}:</span>
-                  <span className="text-sm font-bold text-slate-900">{selectedReceipt.payerName}</span>
-                </div>
-
-                <div className="flex justify-between items-baseline border-b border-slate-200 pb-2">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t('receipts.amount')}:</span>
-                  <span dir="ltr" className="text-xl font-extrabold text-emerald-700 font-mono">
-                    ${Number(selectedReceipt.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
-                  </span>
-                </div>
-
-                <div className="border-b border-slate-200 pb-2">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-0.5">{t('receipts.amountInWords')}:</span>
-                  <span className="text-xs font-semibold text-slate-800 italic">
-                    "{selectedReceipt.amountInWords || 'Amount in words'}"
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-1">
-                  <div>
-                    <span className="text-[11px] text-slate-500 uppercase font-semibold block">{t('receipts.receivingAccount')}:</span>
-                    <span className="text-xs font-bold text-slate-900">{selectedReceipt.receivingAccountName}</span>
-                    <span dir="ltr" className="text-xs font-mono text-slate-600 block">Number: {selectedReceipt.receivingAccountMasked}</span>
+              {/* PRINTABLE RECEIPT CONTENT */}
+              <div className="space-y-6 mt-4">
+                {/* 1. RECEIPT HEADER WITH ENLARGED SKY ARIANA LOGO & CORPORATE CREST */}
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-4">
+                  <div className="flex items-center gap-4 sm:gap-5">
+                    {/* Enlarged Sky Ariana Official Logo Container */}
+                    <div className="h-20 w-44 sm:h-24 sm:w-56 flex items-center justify-start shrink-0">
+                      <img
+                        src="/sky-ariana-logo.png"
+                        alt="Sky Ariana Ltd. Official Corporate Logo"
+                        className="max-h-full max-w-full object-contain filter drop-shadow-sm"
+                      />
+                    </div>
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-950 font-sans">
+                        SKY ARIANA LTD.
+                      </h2>
+                      <p className="text-xs font-bold uppercase tracking-wider text-emerald-800 mt-0.5">
+                        Corporate Treasury & Commercial Settlement
+                      </p>
+                      <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                        info@skyariana.com • www.skyariana.com
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[11px] text-slate-500 uppercase font-semibold block">Payment Method & Ref:</span>
-                    <span className="text-xs font-bold text-slate-900">{selectedReceipt.paymentMethod?.replace(/_/g, ' ')}</span>
-                    <span dir="ltr" className="text-xs font-mono text-slate-600 block">Ref: {selectedReceipt.referenceNumber || 'N/A'}</span>
+
+                  <div className="text-left sm:text-right rtl:sm:text-left shrink-0 sm:ml-auto">
+                    <span className="text-lg font-black tracking-wider uppercase text-emerald-800 block">
+                      OFFICIAL RECEIPT
+                    </span>
+                    <span dir="ltr" className="text-base font-mono font-black text-slate-950 block mt-0.5">
+                      {selectedReceipt.receiptNumber}
+                    </span>
+                    <span dir="ltr" className="text-xs text-slate-600 block mt-0.5">
+                      Date: <strong className="text-slate-900">{formatFullDate(selectedReceipt.issueDate)}</strong>
+                    </span>
+                    <span className={`inline-block mt-1 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                      selectedReceipt.status === 'ISSUED'
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                        : 'bg-rose-100 text-rose-800 border-rose-300'
+                    }`}>
+                      STATUS: {selectedReceipt.status}
+                    </span>
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-200">
-                  <span className="text-[11px] text-slate-500 uppercase font-semibold block">{t('receipts.purpose')}:</span>
-                  <span className="text-xs text-slate-800">{selectedReceipt.purpose}</span>
-                </div>
-              </div>
+                {/* Elegant Corporate Double Divider */}
+                <div className="h-1 bg-gradient-to-r from-emerald-800 via-teal-700 to-emerald-900 rounded-full" />
 
-              {/* Verified Stamp */}
-              <div className="flex justify-between items-center pt-2">
-                <div className="text-xs text-slate-500">
-                  <span>{t('receipts.issuedBy')}: </span>
-                  <span className="font-semibold text-slate-800">{selectedReceipt.issuedBy?.firstName} {selectedReceipt.issuedBy?.lastName}</span>
+                {/* 2. MAIN RECEIPT BODY (PAYER & FINANCIAL SETTLEMENT BREAKDOWN) */}
+                <div className="bg-slate-50/90 p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-3.5">
+                  {/* Payer Info */}
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1 border-b border-slate-200 pb-2.5">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                      {t('receipts.payer', 'RECEIVED WITH THANKS FROM (PAYER / BUYER)')}:
+                    </span>
+                    <span className="text-sm sm:text-base font-black text-slate-950 uppercase tracking-tight">
+                      {selectedReceipt.payerName}
+                    </span>
+                  </div>
+
+                  {/* Financial Breakdown Table: Gross, SWIFT Deduction, Net Credited */}
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-slate-600 uppercase tracking-wider text-[11px]">
+                        Gross Commercial Invoiced:
+                      </span>
+                      <span dir="ltr" className="font-mono font-bold text-slate-900 text-sm tabular-nums">
+                        ${grossAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                      </span>
+                    </div>
+
+                    {feeAmt > 0 && (
+                      <div className="flex justify-between items-center text-xs text-amber-900 bg-amber-50/90 px-3 py-2 rounded-lg border border-amber-200">
+                        <span className="font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                          <span>⚠️</span> SWIFT Intermediary Banking Deduction:
+                        </span>
+                        <span dir="ltr" className="font-mono font-bold tabular-nums text-sm">
+                          -${feeAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center pt-2.5 border-t-2 border-emerald-500/20 bg-emerald-50/60 p-3 rounded-lg border border-emerald-200">
+                      <div>
+                        <span className="text-xs sm:text-sm font-black uppercase text-emerald-950 tracking-wider block">
+                          NET WIRE CREDITED TO OPERATING ACCOUNT:
+                        </span>
+                        <span className="text-[10px] text-emerald-700 font-medium">
+                          Confirmed international telegraphic wire remittance
+                        </span>
+                      </div>
+                      <span dir="ltr" className="text-xl sm:text-2xl font-black text-emerald-700 font-mono tabular-nums">
+                        ${netAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Amount in Words */}
+                  <div className="border-b border-slate-200 pb-2.5">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">
+                      {t('receipts.amountInWords', 'AMOUNT IN WORDS (CONFIRMED NET WIRE)')}:
+                    </span>
+                    <div className="text-xs sm:text-sm font-semibold text-slate-900 italic font-serif bg-slate-100/70 p-2.5 rounded-lg border border-slate-200">
+                      "{selectedReceipt.amountInWords || 'Amount in words'}"
+                    </div>
+                  </div>
+
+                  {/* Banking & Method Information Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                      <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-0.5">
+                        {t('receipts.receivingAccount', 'RECEIVING OPERATING BANK ACCOUNT')}:
+                      </span>
+                      <span className="text-xs font-black text-slate-900 block">{selectedReceipt.receivingAccountName}</span>
+                      <span dir="ltr" className="text-xs font-mono font-bold text-slate-700 block mt-0.5">
+                        Account No: {selectedReceipt.receivingAccountMasked}
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
+                        SWIFT / BIC: AFGUAFKAXXX (Field 57A)
+                      </span>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                      <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-0.5">
+                        PAYMENT METHOD & WIRE REFERENCE:
+                      </span>
+                      <span className="text-xs font-black text-slate-900 block">
+                        {selectedReceipt.paymentMethod?.replace(/_/g, ' ') || 'WIRE TRANSFER'}
+                      </span>
+                      <span dir="ltr" className="text-xs font-mono font-bold text-emerald-800 block mt-0.5">
+                        Ref: {selectedReceipt.referenceNumber || 'N/A'}
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
+                        Settlement Currency: USD ($)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Purpose */}
+                  <div className="pt-2 border-t border-slate-200">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-0.5">
+                      {t('receipts.purpose', 'PAYMENT PURPOSE & COMMERCIAL SETTLEMENT')}:
+                    </span>
+                    <span className="text-xs font-semibold text-slate-800 block">{selectedReceipt.purpose}</span>
+                    {selectedReceipt.notes && (
+                      <span className="text-[10px] text-slate-500 italic block mt-0.5">
+                        Note: {selectedReceipt.notes}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="border-2 border-emerald-600 rounded-lg px-3 py-1 text-emerald-700 font-extrabold text-xs uppercase tracking-wider flex items-center gap-1">
-                  <ShieldCheck className="w-4 h-4" /> {t('receipts.verifiedStamp')}
+
+                {/* 3. SIGNATURE & VERIFICATION SECTION (DEFAULTS TO AHSANULLAH QURESHI) */}
+                <div className="pt-4 border-t-2 border-slate-900/90 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 print:pt-3">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">
+                      {t('receipts.issuedBy', 'ISSUED & CERTIFIED BY')}:
+                    </span>
+                    <div className="text-sm font-black text-slate-950 uppercase tracking-tight">
+                      {issuerName}
+                    </div>
+                    <div className="text-[11px] font-bold text-emerald-800">
+                      Managing Director & Head of Corporate Treasury
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium">
+                      Sky Ariana Ltd. • Commercial Settlement Division
+                    </div>
+                    <div className="mt-1.5 text-[10px] font-mono text-slate-400">
+                      Certified On: {formatFullDate(selectedReceipt.issueDate)}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-start sm:items-end gap-1.5 shrink-0">
+                    <div className="border-2 border-emerald-700 bg-emerald-50/80 rounded-xl px-4 py-2 text-emerald-800 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-sm">
+                      <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                      <span>{t('receipts.verifiedStamp', 'OFFICIALLY VERIFIED & AUDITED')}</span>
+                    </div>
+                    <span className="text-[9px] font-mono text-slate-400">
+                      AFGHAN UNITED BANK (AUB) • WIRE DEPOSIT RECORDED
+                    </span>
+                  </div>
+                </div>
+
+                {/* Document Legal Footer */}
+                <div className="mt-4 pt-2 border-t border-slate-200 text-[9px] text-slate-400 flex flex-col sm:flex-row justify-between items-center gap-1 text-center sm:text-left print:mt-2">
+                  <span>This is an official computer-generated treasury deposit receipt valid for banking reconciliation, customs, and audit.</span>
+                  <span className="font-mono text-slate-500">Sky Ariana Ltd. • Page 1 of 1</span>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* VOID MODAL */}
       {showVoidModal && (

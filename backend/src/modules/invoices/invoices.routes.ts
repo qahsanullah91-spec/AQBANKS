@@ -1,15 +1,18 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../prisma.js';
-import { calculateInvoiceTotals, toDecimal } from '../../utils/decimal.js';
+import { calculateInvoiceTotals, toDecimal, calculateLedgerRunningBalances } from '../../utils/decimal.js';
 import { authenticate, AuthenticatedRequest } from '../../middleware/auth.js';
-import { requirePermission } from '../../middleware/rbac.js';
+import { requirePermission, requireRole } from '../../middleware/rbac.js';
 import { recordAuditEvent } from '../../middleware/audit.js';
+import { receiptsService } from '../receipts/receipts.service.js';
 
 const router = Router();
 
 const lineItemSchema = z.object({
   description: z.string().min(1),
+  cartonCount: z.number().or(z.string()).optional().nullable(),
+  packagingKgPerCarton: z.number().or(z.string()).optional().nullable(),
   quantity: z.number().or(z.string()).refine(v => Number(v) > 0, 'Quantity must be positive'),
   unitOfMeasure: z.string().default('KG'),
   unitPrice: z.number().or(z.string()).refine(v => Number(v) > 0, 'Unit price must be positive')
@@ -23,23 +26,30 @@ const createInvoiceSchema = z.object({
   bankAccountId: z.string().uuid().optional().nullable(),
   remittanceProfileId: z.string().uuid().optional().nullable(),
   sourceInvoiceRef: z.string().optional().nullable(),
+  paymentStatus: z.enum(['UNPAID', 'PARTIALLY_PAID', 'PAID']).optional(),
   lines: z.array(lineItemSchema).min(1, 'At least one line item required')
 });
 
-// Helper to generate next unique invoice number: e.g. PI-2026-0001
+// Helper to generate next unique invoice number: e.g. PI-2026-0009
 async function generateNextInvoiceNumber(): Promise<string> {
   const currentYear = new Date().getFullYear();
   const prefix = `PI-${currentYear}-`;
-  const count = await prisma.invoice.count();
-  const nextNum = (count + 1).toString().padStart(4, '0');
-  const candidate = `${prefix}${nextNum}`;
-
-  // Check uniqueness
-  const exists = await prisma.invoice.findUnique({ where: { invoiceNumber: candidate } });
-  if (exists) {
-    return `${prefix}${Date.now().toString().slice(-4)}`;
+  const allInvoices = await prisma.invoice.findMany({
+    where: { invoiceNumber: { startsWith: prefix } },
+    select: { invoiceNumber: true }
+  });
+  let maxSeq = 0;
+  for (const inv of allInvoices) {
+    const parts = inv.invoiceNumber.split('-');
+    if (parts.length === 3) {
+      const num = parseInt(parts[2], 10);
+      if (!isNaN(num) && num > maxSeq) {
+        maxSeq = num;
+      }
+    }
   }
-  return candidate;
+  const nextNum = (maxSeq + 1).toString().padStart(4, '0');
+  return `${prefix}${nextNum}`;
 }
 
 // GET /api/invoices
@@ -208,6 +218,8 @@ router.post('/', authenticate, requirePermission('invoice:create_draft'), async 
             create: calc.lines.map(l => ({
               lineNumber: l.lineNumber,
               description: l.description,
+              cartonCount: l.cartonCount,
+              packagingKgPerCarton: l.packagingKgPerCarton ? l.packagingKgPerCarton.toNumber() : null,
               quantity: l.quantity.toNumber(),
               unitOfMeasure: l.unitOfMeasure,
               unitPrice: l.unitPrice.toNumber(),
@@ -236,12 +248,12 @@ router.post('/', authenticate, requirePermission('invoice:create_draft'), async 
   }
 });
 
-// PUT /api/invoices/:id (Draft invoices only)
+// PUT /api/invoices/:id (Draft & Issued invoice edits by Admin / Finance Manager)
 router.put('/:id', authenticate, requirePermission('invoice:create_draft'), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const existing = await prisma.invoice.findUnique({
       where: { id: req.params.id },
-      include: { lines: true }
+      include: { lines: true, customer: true, bankAccount: true, remittanceProfile: true }
     });
 
     if (!existing) {
@@ -249,10 +261,21 @@ router.put('/:id', authenticate, requirePermission('invoice:create_draft'), asyn
       return;
     }
 
-    if (existing.status !== 'DRAFT') {
+    if (existing.status === 'VOID') {
       res.status(400).json({
+        error: 'VOID_INVOICE',
+        message: 'Cannot edit an invoice in VOID status.'
+      });
+      return;
+    }
+
+    const userRoles = req.user?.roles || [];
+    const isAuthorizedManager = userRoles.some(r => ['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR'].includes(r.toUpperCase()));
+
+    if (existing.status !== 'DRAFT' && !isAuthorizedManager) {
+      res.status(403).json({
         error: 'IMMUTABLE_INVOICE',
-        message: `Cannot edit invoice in ${existing.status} status. Issued invoices are immutable.`
+        message: `Only System Administrators and Finance Managers may edit invoices in ${existing.status} status.`
       });
       return;
     }
@@ -264,13 +287,14 @@ router.put('/:id', authenticate, requirePermission('invoice:create_draft'), asyn
       // Delete old lines
       await tx.invoiceLine.deleteMany({ where: { invoiceId: existing.id } });
 
-      return tx.invoice.update({
+      const inv = await tx.invoice.update({
         where: { id: existing.id },
         data: {
           customerId: data.customerId,
           issueDate: new Date(data.issueDate),
           dueDate: data.dueDate ? new Date(data.dueDate) : null,
           paymentTerms: data.paymentTerms,
+          paymentStatus: data.paymentStatus || existing.paymentStatus,
           bankAccountId: data.bankAccountId || existing.bankAccountId,
           remittanceProfileId: data.remittanceProfileId !== undefined ? data.remittanceProfileId : existing.remittanceProfileId,
           sourceInvoiceRef: data.sourceInvoiceRef || existing.sourceInvoiceRef,
@@ -281,6 +305,8 @@ router.put('/:id', authenticate, requirePermission('invoice:create_draft'), asyn
             create: calc.lines.map(l => ({
               lineNumber: l.lineNumber,
               description: l.description,
+              cartonCount: l.cartonCount,
+              packagingKgPerCarton: l.packagingKgPerCarton ? l.packagingKgPerCarton.toNumber() : null,
               quantity: l.quantity.toNumber(),
               unitOfMeasure: l.unitOfMeasure,
               unitPrice: l.unitPrice.toNumber(),
@@ -290,18 +316,259 @@ router.put('/:id', authenticate, requirePermission('invoice:create_draft'), asyn
         },
         include: { lines: true, customer: true, bankAccount: true, remittanceProfile: true }
       });
+
+      return inv;
     });
 
     await recordAuditEvent({
       actorId: req.user!.userId,
-      action: 'INVOICE_DRAFT_UPDATED',
+      action: existing.status === 'DRAFT' ? 'INVOICE_DRAFT_UPDATED' : 'INVOICE_UPDATED',
       entityType: 'INVOICE',
       entityId: updated.id,
-      newValues: { invoiceNumber: updated.invoiceNumber, totalAmount: calc.grandTotal.toFixed(2) },
+      newValues: { invoiceNumber: updated.invoiceNumber, totalAmount: calc.grandTotal.toFixed(2), status: existing.status },
       ipAddress: req.ip
     });
 
     res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/invoices/:id/record-payment (Record payment, generate optional receipt & ledger entry)
+const recordPaymentSchema = z.object({
+  amount: z.number().positive('Payment amount must be greater than zero'),
+  swiftFeeDeducted: z.number().min(0).default(0),
+  paymentDate: z.string().optional(),
+  bankReference: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  createReceiptAndLedger: z.boolean().default(true)
+});
+
+router.post('/:id/record-payment', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const data = recordPaymentSchema.parse(req.body);
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: req.params.id },
+      include: { customer: true, paymentAllocations: true, lines: true }
+    });
+
+    if (!invoice) {
+      res.status(404).json({ error: 'NOT_FOUND', message: 'Invoice not found' });
+      return;
+    }
+
+    const payDate = data.paymentDate ? new Date(data.paymentDate) : new Date();
+    const payAmount = toDecimal(data.amount);
+    const swiftFee = toDecimal(data.swiftFeeDeducted);
+
+    if (swiftFee.gte(payAmount)) {
+      res.status(400).json({ error: 'INVALID_FEE', message: 'SWIFT fee cannot be greater than or equal to the payment amount' });
+      return;
+    }
+
+    const netCredited = swiftFee.gt(0) ? payAmount.minus(swiftFee) : payAmount;
+
+    // Sum existing allocations
+    const currentAllocated = invoice.paymentAllocations.reduce((sum, a) => sum.plus(toDecimal(a.amount)), toDecimal(0));
+    const newTotalAllocated = currentAllocated.plus(payAmount);
+    const invoiceTotal = toDecimal(invoice.totalAmount);
+
+    const newPaymentStatus = newTotalAllocated.gte(invoiceTotal) ? 'PAID' : 'PARTIALLY_PAID';
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Update invoice paymentStatus and status if draft
+      const updatedInvoice = await tx.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          paymentStatus: newPaymentStatus,
+          status: invoice.status === 'DRAFT' ? 'ISSUED' : invoice.status
+        },
+        include: { lines: true, customer: true, bankAccount: true, remittanceProfile: true, paymentAllocations: true }
+      });
+
+      let createdPayment = null;
+      let createdReceipt = null;
+      let createdLedger = null;
+
+      if (data.createReceiptAndLedger) {
+        // Find USD financial account
+        const finAccount = await tx.financialAccount.findFirst({ where: { currency: 'USD' } });
+        const finAccountId = finAccount ? finAccount.id : (await tx.financialAccount.findFirst())?.id;
+
+        if (finAccountId) {
+          // Create Payment record
+          createdPayment = await tx.payment.create({
+            data: {
+              customerId: invoice.customerId,
+              financialAccountId: finAccountId,
+              paymentDate: payDate,
+              reference: data.bankReference || `PMT-${invoice.invoiceNumber}`,
+              paymentMethod: 'WIRE_TRANSFER',
+              totalAmount: payAmount.toNumber(),
+              allocatedAmount: payAmount.toNumber(),
+              unallocatedAmount: 0,
+              currency: 'USD',
+              notes: data.notes || `Payment for invoice ${invoice.invoiceNumber}`,
+              allocations: {
+                create: {
+                  invoiceId: invoice.id,
+                  amount: netCredited.toNumber(),
+                  swiftBankFee: swiftFee.toNumber(),
+                  notes: data.notes || null
+                }
+              }
+            }
+          });
+
+          // Create Ledger Credit Transaction (Credited with Net Wire Amount)
+          createdLedger = await tx.ledgerTransaction.create({
+            data: {
+              financialAccountId: finAccountId,
+              effectiveDate: payDate,
+              reference: data.bankReference || `AUB-${invoice.invoiceNumber}`,
+              description: `Payment received for ${invoice.invoiceNumber} - ${invoice.customer.companyName}`,
+              category: 'CREDIT',
+              creditAmount: netCredited.toNumber(),
+              debitAmount: 0,
+              currency: 'USD',
+              notes: swiftFee.gt(0) ? `Gross payment: $${payAmount.toFixed(2)} less SWIFT fee: $${swiftFee.toFixed(2)}` : null
+            }
+          });
+
+          // Create Official Deposit Receipt
+          createdReceipt = await receiptsService.createReceipt({
+            paymentId: createdPayment.id,
+            ledgerTransactionId: createdLedger.id,
+            payerName: invoice.customer.companyName,
+            receivingAccountName: 'Afghan United Bank Operating Account',
+            receivingAccountMasked: '101502******0472',
+            amount: netCredited.toNumber(),
+            grossAmount: payAmount.toNumber(),
+            swiftFeeAmount: swiftFee.toNumber(),
+            currency: 'USD',
+            paymentMethod: 'WIRE_TRANSFER',
+            referenceNumber: data.bankReference || undefined,
+            purpose: `Settlement for Proforma Invoice ${invoice.invoiceNumber}`,
+            invoiceId: invoice.id,
+            issueDate: payDate,
+            notes: data.notes || undefined,
+            createdById: req.user?.userId
+          }, tx);
+
+          // Recalculate deterministic running balances across all transactions
+          const openingBalance = finAccount ? finAccount.openingBalance : 0;
+          const allTxs = await tx.ledgerTransaction.findMany({
+            orderBy: [{ effectiveDate: 'asc' }, { postedAt: 'asc' }, { id: 'asc' }]
+          });
+          const calculated = calculateLedgerRunningBalances(openingBalance, allTxs);
+
+          for (const c of calculated) {
+            await tx.ledgerTransaction.update({
+              where: { id: c.id },
+              data: { runningBalance: c.runningBalance.toNumber() }
+            });
+            if (c.id === createdLedger.id) {
+              (createdLedger as any).runningBalance = c.runningBalance.toNumber();
+            }
+          }
+        }
+      }
+
+      return { updatedInvoice, createdPayment, createdReceipt, createdLedger };
+    });
+
+    await recordAuditEvent({
+      actorId: req.user!.userId,
+      action: 'INVOICE_PAYMENT_RECORDED',
+      entityType: 'INVOICE',
+      entityId: invoice.id,
+      newValues: {
+        amount: data.amount,
+        netCredited: netCredited.toNumber(),
+        swiftFeeDeducted: data.swiftFeeDeducted,
+        newStatus: newPaymentStatus,
+        receiptNumber: result.createdReceipt?.receiptNumber
+      },
+      ipAddress: req.ip
+    });
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/invoices/:id/toggle-payment (Quick toggle or update payment status)
+router.patch('/:id/toggle-payment', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const existing = await prisma.invoice.findUnique({ where: { id: req.params.id } });
+    if (!existing) {
+      res.status(404).json({ error: 'NOT_FOUND', message: 'Invoice not found' });
+      return;
+    }
+
+    const requestedStatus = req.body.paymentStatus;
+    let newStatus = 'PAID';
+    if (requestedStatus) {
+      newStatus = requestedStatus;
+    } else {
+      newStatus = existing.paymentStatus === 'PAID' ? 'UNPAID' : 'PAID';
+    }
+
+    const updated = await prisma.invoice.update({
+      where: { id: existing.id },
+      data: { paymentStatus: newStatus }
+    });
+
+    await recordAuditEvent({
+      actorId: req.user!.userId,
+      action: 'INVOICE_PAYMENT_STATUS_TOGGLED',
+      entityType: 'INVOICE',
+      entityId: updated.id,
+      newValues: { oldStatus: existing.paymentStatus, newStatus },
+      ipAddress: req.ip
+    });
+
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/invoices/:id (Delete invoice & cleanup child allocations)
+router.delete('/:id', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const existing = await prisma.invoice.findUnique({
+      where: { id: req.params.id },
+      include: { lines: true, paymentAllocations: true }
+    });
+
+    if (!existing) {
+      res.status(404).json({ error: 'NOT_FOUND', message: 'Invoice not found' });
+      return;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.receipt.updateMany({ where: { invoiceId: existing.id }, data: { invoiceId: null } });
+      await tx.shipmentInvoice.deleteMany({ where: { invoiceId: existing.id } });
+      await tx.paymentAllocation.deleteMany({ where: { invoiceId: existing.id } });
+      await tx.invoiceBankSnapshot.deleteMany({ where: { invoiceId: existing.id } });
+      await tx.invoiceSnapshot.deleteMany({ where: { invoiceId: existing.id } });
+      await tx.invoiceLine.deleteMany({ where: { invoiceId: existing.id } });
+      await tx.invoice.delete({ where: { id: existing.id } });
+    });
+
+    await recordAuditEvent({
+      actorId: req.user!.userId,
+      action: 'INVOICE_DELETED',
+      entityType: 'INVOICE',
+      entityId: existing.id,
+      newValues: { invoiceNumber: existing.invoiceNumber },
+      ipAddress: req.ip
+    });
+
+    res.json({ success: true, message: `Invoice ${existing.invoiceNumber} deleted successfully` });
   } catch (err) {
     next(err);
   }
@@ -425,6 +692,8 @@ router.post('/:id/issue', authenticate, requirePermission('invoice:issue'), asyn
       lines: existing.lines.map(l => ({
         lineNumber: l.lineNumber,
         description: l.description,
+        cartonCount: l.cartonCount,
+        packagingKgPerCarton: l.packagingKgPerCarton,
         quantity: l.quantity,
         unitOfMeasure: l.unitOfMeasure,
         unitPrice: l.unitPrice,
@@ -501,8 +770,8 @@ router.post('/:id/issue', authenticate, requirePermission('invoice:issue'), asyn
   }
 });
 
-// POST /api/invoices/:id/void
-router.post('/:id/void', authenticate, requirePermission('invoice:void'), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+// POST /api/invoices/:id/void (Mandatory reason + Administrator/Finance Manager authorization)
+router.post('/:id/void', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { reason } = z.object({ reason: z.string().min(5, 'Mandatory void reason required') }).parse(req.body);
 
@@ -578,7 +847,9 @@ router.get('/:id/pdf-data', authenticate, requirePermission('invoice:view'), asy
       orgName: 'AQ Companies',
       legalName: 'SKY ARIANA LTD',
       email: 'info@skyariana.com',
-      website: 'www.skyariana.com'
+      website: 'www.skyariana.com',
+      address: 'Zarghona Maidan, Shahr-e-Now, Kabul, Afghanistan',
+      phone: '+93 20 220 1234'
     };
 
     // Parse snapshot if invoice was issued, otherwise use attached or default profile
@@ -648,7 +919,9 @@ router.get('/:id/pdf-data', authenticate, requirePermission('invoice:view'), asy
         orgName: profile.orgName,
         legalName: profile.legalName,
         email: profile.email,
-        website: profile.website
+        website: profile.website,
+        address: (profile as any).address || 'Zarghona Maidan, Shahr-e-Now, Kabul, Afghanistan',
+        phone: (profile as any).phone || '+93 20 220 1234'
       },
       customer: {
         companyName: invoice.customer.companyName,
@@ -659,8 +932,11 @@ router.get('/:id/pdf-data', authenticate, requirePermission('invoice:view'), asy
       lines: invoice.lines.map(l => ({
         lineNumber: l.lineNumber,
         description: l.description,
+        cartonCount: l.cartonCount,
+        packagingKgPerCarton: l.packagingKgPerCarton ? Number(l.packagingKgPerCarton).toFixed(2) : null,
+        cartonDisplay: l.cartonCount ? `${Number(l.cartonCount).toLocaleString()} CTNS` : null,
         quantity: Number(l.quantity).toLocaleString() + ' ' + l.unitOfMeasure,
-        unitPrice: '$' + Number(l.unitPrice).toFixed(2),
+        unitPrice: '$' + Number(l.unitPrice).toFixed(4),
         lineTotal: '$' + Number(l.lineTotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       })),
       subtotal: '$' + Number(invoice.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),

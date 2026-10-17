@@ -84,7 +84,7 @@ export const LanguageSelector: React.FC<{ className?: string }> = ({ className =
         onClick={() => setLanguage('en')}
         className={`px-2 py-1 min-h-[36px] text-xs font-semibold rounded transition ${
           language === 'en'
-            ? 'bg-emerald-600 text-white shadow'
+            ? 'bg-emerald-600 text-white shadow keep-white-text'
             : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
         }`}
         title="English (Default)"
@@ -97,7 +97,7 @@ export const LanguageSelector: React.FC<{ className?: string }> = ({ className =
         onClick={() => setLanguage('ps')}
         className={`px-2 py-1 min-h-[36px] text-xs font-semibold rounded transition font-sans ${
           language === 'ps'
-            ? 'bg-emerald-600 text-white shadow'
+            ? 'bg-emerald-600 text-white shadow keep-white-text'
             : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
         }`}
         title="پښتو (Pashto)"

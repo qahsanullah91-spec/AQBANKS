@@ -9,10 +9,13 @@ export interface CreateReceiptInput {
   receivingAccountName?: string;
   receivingAccountMasked?: string;
   amount: number | string;
+  grossAmount?: number | string | null;
+  swiftFeeAmount?: number | string;
   currency?: string;
   paymentMethod?: string;
   referenceNumber?: string | null;
   purpose: string;
+  issueDate?: Date | string;
   invoiceId?: string | null;
   shipmentId?: string | null;
   notes?: string | null;
@@ -26,24 +29,59 @@ export const receiptsService = {
   async createReceipt(input: CreateReceiptInput, txClient?: any) {
     const db = txClient || prisma;
     const currency = input.currency || 'USD';
-    const numAmount = typeof input.amount === 'string' ? parseFloat(input.amount) : input.amount;
-    const words = numberToWords(numAmount, currency);
+    const numSwiftFee = input.swiftFeeAmount !== undefined && input.swiftFeeAmount !== null
+      ? (typeof input.swiftFeeAmount === 'string' ? parseFloat(input.swiftFeeAmount) : input.swiftFeeAmount)
+      : 0;
+    let numGross = input.grossAmount !== undefined && input.grossAmount !== null
+      ? (typeof input.grossAmount === 'string' ? parseFloat(input.grossAmount) : input.grossAmount)
+      : null;
+    let numNet = typeof input.amount === 'string' ? parseFloat(input.amount) : input.amount;
+
+    if (numSwiftFee > 0) {
+      if (numGross === null || numGross === undefined) {
+        // If gross was not explicitly provided, input.amount was the gross commercial amount
+        numGross = numNet;
+        numNet = Number((numGross - numSwiftFee).toFixed(2));
+      } else if (Math.abs(numGross - numNet) < 0.001) {
+        // Both were passed as gross amount, calculate net
+        numNet = Number((numGross - numSwiftFee).toFixed(2));
+      } else if (numGross < numNet) {
+        numGross = Number((numNet + numSwiftFee).toFixed(2));
+      }
+    }
+
+    const words = numberToWords(numNet, currency);
     const receiptNumber = await generateNextReceiptNumber(db);
 
     // Default masked bank details if not provided
     const accountName = input.receivingAccountName || 'Afghan United Bank Operating Account';
     const accountMasked = input.receivingAccountMasked || '101502******0472';
 
+    let creatorId = input.createdById || null;
+    if (!creatorId) {
+      const defaultUser = await db.user.findFirst({
+        where: {
+          OR: [
+            { email: 'ahsanullah@aqcompanies.com' },
+            { role: 'ADMIN' }
+          ]
+        }
+      });
+      if (defaultUser) creatorId = defaultUser.id;
+    }
+
     const receipt = await db.receipt.create({
       data: {
         receiptNumber,
         paymentId: input.paymentId || null,
         ledgerTransactionId: input.ledgerTransactionId || null,
-        issueDate: new Date(),
+        issueDate: input.issueDate ? new Date(input.issueDate) : new Date(),
         payerName: input.payerName,
         receivingAccountName: accountName,
         receivingAccountMasked: accountMasked,
-        amount: numAmount,
+        amount: numNet,
+        grossAmount: numGross,
+        swiftFeeAmount: numSwiftFee,
         amountInWords: words,
         currency,
         paymentMethod: input.paymentMethod || 'WIRE_TRANSFER',
@@ -53,7 +91,7 @@ export const receiptsService = {
         shipmentId: input.shipmentId || null,
         notes: input.notes || null,
         status: 'ISSUED',
-        createdById: input.createdById || null
+        createdById: creatorId
       },
       include: {
         invoice: true,
@@ -195,6 +233,10 @@ export const receiptsService = {
         status: receipt.status,
         amount: Number(receipt.amount),
         amountFormatted: '$' + Number(receipt.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        grossAmount: receipt.grossAmount ? Number(receipt.grossAmount) : null,
+        grossAmountFormatted: receipt.grossAmount ? '$' + Number(receipt.grossAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null,
+        swiftFeeAmount: Number(receipt.swiftFeeAmount || 0),
+        swiftFeeAmountFormatted: Number(receipt.swiftFeeAmount || 0) > 0 ? '$' + Number(receipt.swiftFeeAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null,
         amountInWords: receipt.amountInWords,
         currency: receipt.currency,
         payerName: receipt.payerName,

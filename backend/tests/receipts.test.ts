@@ -158,4 +158,25 @@ describe('Mandatory Automatic Receipt Generation & Workflow Tests', () => {
     expect(auditEvent).not.toBeNull();
     expect(auditEvent?.action).toBe('RECEIPT_VOIDED');
   });
+
+  afterAll(async () => {
+    const testReceipts = await prisma.receipt.findMany({
+      where: {
+        OR: [
+          { receiptNumber: { startsWith: 'RCP-VOID-TEST-' } },
+          { referenceNumber: { startsWith: 'WIRE-RCP-TEST-' } }
+        ]
+      }
+    });
+    const receiptIds = testReceipts.map(r => r.id);
+    const payIds = testReceipts.map(r => r.paymentId).filter(Boolean) as string[];
+
+    if (receiptIds.length > 0) {
+      await prisma.receipt.deleteMany({ where: { id: { in: receiptIds } } });
+    }
+    if (payIds.length > 0) {
+      await prisma.paymentAllocation.deleteMany({ where: { paymentId: { in: payIds } } });
+      await prisma.payment.deleteMany({ where: { id: { in: payIds } } });
+    }
+  });
 });

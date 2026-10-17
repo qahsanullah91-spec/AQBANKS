@@ -1,6 +1,13 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from './auth.js';
 
+export function normalizeRole(role: string): string {
+  const upper = role.toUpperCase();
+  if (upper === 'FINANCE_MGR' || upper === 'FINANCE_MANAGER') return 'FINANCE_MANAGER';
+  if (upper === 'LOGISTICS_COORD' || upper === 'LOGISTICS_COORDINATOR') return 'LOGISTICS_COORDINATOR';
+  return upper;
+}
+
 export function requireRole(allowedRoles: string[]) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
@@ -8,7 +15,9 @@ export function requireRole(allowedRoles: string[]) {
       return;
     }
 
-    const hasRole = req.user.roles.some(r => allowedRoles.includes(r) || r === 'ADMIN');
+    const normalizedUserRoles = req.user.roles.map(normalizeRole);
+    const normalizedAllowed = allowedRoles.map(normalizeRole);
+    const hasRole = normalizedUserRoles.some(r => normalizedAllowed.includes(r) || r === 'ADMIN');
     if (!hasRole) {
       res.status(403).json({
         error: 'FORBIDDEN',

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { BankAccount, RemittanceProfile } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
+import { formatHumanDate } from '../utils/date';
 import {
   ShieldCheck,
   Eye,
@@ -20,14 +22,17 @@ import {
   Search,
   Filter
 } from 'lucide-react';
+import { triggerPrint } from '../utils/print';
 
 export const BankRouting: React.FC = () => {
   const { t, isRtl } = useLanguage();
+  const { toast } = useToast();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [profiles, setProfiles] = useState<RemittanceProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'LOCAL' | 'INTERNATIONAL'>('ALL');
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Reveal Modal
   const [revealModalAccountId, setRevealModalAccountId] = useState<string | null>(null);
@@ -40,6 +45,18 @@ export const BankRouting: React.FC = () => {
   const [accountHistory, setAccountHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // Close modals on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (revealModalAccountId) setRevealModalAccountId(null);
+        else if (historyModalAccountId) setHistoryModalAccountId(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [revealModalAccountId, historyModalAccountId]);
+
   // Printable Document Modal
   const [printableProfile, setPrintableProfile] = useState<RemittanceProfile | null>(null);
 
@@ -49,12 +66,14 @@ export const BankRouting: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [accRes, profRes] = await Promise.all([
+      const [accRes, profRes, meRes] = await Promise.all([
         api.getBankAccounts(),
-        api.getRemittanceProfiles()
+        api.getRemittanceProfiles(),
+        api.getMe().catch(() => null)
       ]);
       setAccounts(accRes);
       setProfiles(profRes);
+      if (meRes) setCurrentUser(meRes);
     } catch (err) {
       console.error('Failed to load bank data:', err);
     } finally {
@@ -73,8 +92,9 @@ export const BankRouting: React.FC = () => {
       setRevealing(true);
       const res = await api.revealBankAccount(revealModalAccountId, revealReason);
       setRevealedData(res);
+      toast.success('Bank credentials unmasked securely');
     } catch (err: any) {
-      alert(err.message || 'Access denied or reveal failed');
+      toast.error(err.message || 'Access denied or reveal failed');
     } finally {
       setRevealing(false);
     }
@@ -87,7 +107,7 @@ export const BankRouting: React.FC = () => {
       const res = await api.getBankAccountHistory(accId);
       setAccountHistory(res);
     } catch (err: any) {
-      alert(err.message || 'Failed to fetch history');
+      toast.error(err.message || 'Failed to fetch history');
     } finally {
       setLoadingHistory(false);
     }
@@ -96,18 +116,20 @@ export const BankRouting: React.FC = () => {
   const handleSetDefault = async (profileId: string) => {
     try {
       await api.setRemittanceDefault(profileId);
+      toast.success('Default remittance profile updated');
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to set default profile');
+      toast.error(err.message || 'Failed to set default profile');
     }
   };
 
   const handleToggleActive = async (profileId: string) => {
     try {
       await api.toggleRemittanceActive(profileId);
+      toast.success('Remittance profile status toggled');
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to toggle active status');
+      toast.error(err.message || 'Failed to toggle active status');
     }
   };
 
@@ -174,7 +196,17 @@ export const BankRouting: React.FC = () => {
             {t('banking.subtitle')}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => {
+              const defaultProf = profiles.find(p => p.isDefault) || profiles[0];
+              if (defaultProf) setPrintableProfile(defaultProf);
+            }}
+            className="flex items-center gap-2 px-3.5 py-2 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Download Official Stamped Bank Comfort Letter / Wire Sheet (PDF)</span>
+          </button>
           <button
             onClick={loadData}
             className="px-3 py-1.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition"
@@ -241,6 +273,14 @@ export const BankRouting: React.FC = () => {
                 </button>
                 <button
                   onClick={() => {
+                    const isAuthorized = currentUser?.roles?.some((r: string) => {
+                      const u = r.toUpperCase();
+                      return u === 'ADMIN' || u === 'FINANCE_MANAGER' || u === 'FINANCE_MGR';
+                    });
+                    if (!isAuthorized) {
+                      toast.error('Access Restricted: Revealing official unmasked banking numbers requires Administrator or Finance Manager cryptographic clearance.');
+                      return;
+                    }
                     setRevealModalAccountId(acc.id);
                     setRevealedData(null);
                     setRevealReason('');
@@ -282,7 +322,7 @@ export const BankRouting: React.FC = () => {
               <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-lg">
                 <span className="text-[10px] uppercase font-bold text-slate-500 block">{t('banking.openingDate')}</span>
                 <div className="text-sm font-semibold text-white mt-1">
-                  {acc.openingDate || '13 September 2026'}
+                  {formatHumanDate(acc.openingDate || '2026-09-13T00:00:00.000Z')}
                 </div>
                 <span className="text-[10px] text-slate-500 mt-0.5 block">Status: AWDCCA Active</span>
               </div>
@@ -578,23 +618,32 @@ export const BankRouting: React.FC = () => {
                   <span>Authorized access granted and logged in compliance register.</span>
                 </div>
 
-                <div className="p-4 bg-slate-950 border border-slate-800 rounded-lg space-y-3">
-                  <div>
-                    <span className="text-[10px] text-slate-500 uppercase font-semibold block">{t('banking.accountNumber')}:</span>
-                    <div className="font-mono text-xl font-extrabold text-emerald-400 mt-1 tracking-wider selection:bg-emerald-600" dir="ltr">
+                <div className="relative p-5 bg-slate-950 border border-amber-500/40 rounded-xl space-y-3 overflow-hidden shadow-2xl">
+                  {/* Security Watermark Pattern & Text */}
+                  <div className="watermark-pattern absolute inset-0 pointer-events-none" />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.08] select-none rotate-[-22deg]">
+                    <span className="text-xl sm:text-2xl font-mono font-black text-red-500 uppercase tracking-widest text-center leading-relaxed">
+                      RESTRICTED • AFGHAN UNITED BANK • 101502USD2940472 • DISCLOSED TO {currentUser?.email || 'AUTHORIZED OFFICER'} • AUDITED
+                    </span>
+                  </div>
+
+                  <div className="relative z-10">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">{t('banking.accountNumber')}:</span>
+                    <div className="font-mono text-xl sm:text-2xl font-black text-emerald-400 mt-1 tracking-wider selection:bg-emerald-600" dir="ltr">
                       {revealedData.accountNumberUnmasked}
                     </div>
                   </div>
 
-                  <div>
-                    <span className="text-[10px] text-slate-500 uppercase font-semibold block">{t('banking.cifNumber')}:</span>
+                  <div className="relative z-10">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">{t('banking.cifNumber')}:</span>
                     <div className="font-mono text-base font-bold text-white mt-1 tracking-wider" dir="ltr">
                       {revealedData.cifNumberUnmasked}
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-900 text-[11px] text-slate-400">
-                    Logged by User ID: <span className="font-mono text-slate-300">{revealedData.revealedByUserId}</span>
+                  <div className="relative z-10 pt-2.5 border-t border-slate-800 text-[11px] text-slate-400 flex justify-between items-center flex-wrap gap-1 font-mono">
+                    <span>Officer: <strong className="text-slate-200">{currentUser?.email || revealedData.revealedByUserId}</strong></span>
+                    <span className="text-[10px] text-amber-400 font-bold tracking-wider">🔒 WATERMARKED AUDIT LOGGED</span>
                   </div>
                 </div>
 
@@ -677,7 +726,7 @@ export const BankRouting: React.FC = () => {
       {/* OFFICIAL PRINTABLE INSTRUCTION DOCUMENT MODAL */}
       {printableProfile && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
-          <div className="printable-document bg-white text-slate-900 rounded-xl w-full max-w-3xl my-auto p-4 sm:p-8 shadow-2xl font-sans max-h-[95vh] overflow-y-auto">
+          <div className="printable-document bg-white text-slate-900 rounded-xl w-full max-w-3xl my-auto p-4 sm:p-8 shadow-2xl font-sans max-h-[95vh] overflow-y-auto print:m-0 print:p-0 print:border-none print:shadow-none print:max-w-full print:rounded-none print:max-h-none print:overflow-visible">
             {/* Document Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-4 sm:pb-6 border-b border-slate-300">
               <div className="flex items-center gap-4">
@@ -792,15 +841,24 @@ export const BankRouting: React.FC = () => {
                 </div>
               </div>
 
-              {/* Authorized Signatures */}
-              <div className="grid grid-cols-2 gap-6 pt-6 border-t border-slate-200">
+              {/* Authorized Signatures & Official Corporate Stamp */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-slate-200 items-end">
                 <div>
-                  <div className="border-b border-slate-400 w-48 mb-1"></div>
+                  <div className="border-b border-slate-400 w-40 mb-1"></div>
                   <span className="text-[11px] font-bold text-slate-700 uppercase block">Chief Financial Officer</span>
                   <span className="text-[10px] text-slate-500 block">Sky Ariana LTD - Corporate Treasury</span>
                 </div>
-                <div className="text-right rtl:text-left">
-                  <div className="border-b border-slate-400 w-48 ml-auto rtl:mr-auto rtl:ml-0 mb-1"></div>
+                {/* Official Corporate Seal */}
+                <div className="flex justify-center my-2 sm:my-0">
+                  <div className="w-24 h-24 rounded-full border-2 border-dashed border-emerald-700/80 p-1 flex flex-col items-center justify-center text-center rotate-[-6deg] shadow-sm bg-emerald-50/50">
+                    <span className="text-[8px] font-black uppercase text-emerald-800 tracking-wider">SKY ARIANA LTD</span>
+                    <span className="text-[7px] text-emerald-700 font-bold uppercase">OFFICIAL SEAL</span>
+                    <span className="text-[6px] text-emerald-600 font-mono mt-0.5">TREASURY VERIFIED</span>
+                    <span className="text-[6px] text-slate-500 font-mono">13-SEP-2026</span>
+                  </div>
+                </div>
+                <div className="sm:text-right rtl:sm:text-left">
+                  <div className="border-b border-slate-400 w-40 sm:ml-auto rtl:sm:mr-auto rtl:sm:ml-0 mb-1"></div>
                   <span className="text-[11px] font-bold text-slate-700 uppercase block">Compliance & Banking Auditor</span>
                   <span className="text-[10px] text-slate-500 block">AQ Companies Group</span>
                 </div>
@@ -810,10 +868,11 @@ export const BankRouting: React.FC = () => {
             {/* Modal Actions */}
             <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-200 print:hidden">
               <button
-                onClick={() => window.print()}
-                className="px-4 py-2.5 min-h-[44px] bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs rounded-lg shadow"
+                onClick={() => triggerPrint(`Bank-Wire-Instructions-${printableProfile.profileType}`)}
+                className="flex items-center gap-2 px-5 py-2.5 min-h-[44px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg shadow-lg shadow-emerald-950/20"
               >
-                {t('common.print', 'Print / Save PDF')}
+                <Printer className="w-4 h-4" />
+                <span>Download Official Stamped Bank Comfort Letter / Wire Sheet (PDF)</span>
               </button>
               <button
                 onClick={() => setPrintableProfile(null)}

@@ -1,4 +1,4 @@
-const API_BASE = '/api';
+const API_BASE = (import.meta.env.VITE_API_URL as string) || '/api';
 
 export function getAuthToken(): string | null {
   return localStorage.getItem('aq_token');
@@ -8,8 +8,35 @@ export function setAuthToken(token: string) {
   localStorage.setItem('aq_token', token);
 }
 
+export function getStoredUser(): any | null {
+  try {
+    const raw = localStorage.getItem('aq_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredUser(user: any | null) {
+  if (user) {
+    localStorage.setItem('aq_user', JSON.stringify(user));
+  } else {
+    localStorage.removeItem('aq_user');
+  }
+}
+
+export function getUserRole(): string {
+  const user = getStoredUser();
+  const roleFromRoles = Array.isArray(user?.roles) && user.roles.length > 0 ? user.roles[0] : '';
+  const rawRole = (user?.role || roleFromRoles || '').toUpperCase();
+  if (rawRole === 'FINANCE_MANAGER') return 'FINANCE_MGR';
+  if (rawRole === 'LOGISTICS_COORDINATOR') return 'LOGISTICS_COORD';
+  return rawRole || 'ADMIN';
+}
+
 export function removeAuthToken() {
   localStorage.removeItem('aq_token');
+  localStorage.removeItem('aq_user');
 }
 
 export async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -57,8 +84,12 @@ export function buildQueryString(params: Record<string, any> = {}): string {
 
 export const api = {
   // Auth
-  login: (credentials: { email: string; password: string }) =>
+  login: (credentials: { email: string; password: string; devMode?: boolean }) =>
     apiRequest('/auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
+  verify2FA: (data: { twoFactorToken: string; otpCode: string }) =>
+    apiRequest('/auth/verify-2fa', { method: 'POST', body: JSON.stringify(data) }),
+  resend2FA: (twoFactorToken: string) =>
+    apiRequest('/auth/resend-2fa', { method: 'POST', body: JSON.stringify({ twoFactorToken }) }),
   getMe: () => apiRequest('/auth/me'),
   getUsers: () => apiRequest('/auth/users'),
 
@@ -79,6 +110,9 @@ export const api = {
   updateInvoice: (id: string, data: any) => apiRequest(`/invoices/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   issueInvoice: (id: string) => apiRequest(`/invoices/${id}/issue`, { method: 'POST' }),
   voidInvoice: (id: string, reason: string) => apiRequest(`/invoices/${id}/void`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  deleteInvoice: (id: string) => apiRequest(`/invoices/${id}`, { method: 'DELETE' }),
+  recordInvoicePayment: (id: string, data: any) => apiRequest(`/invoices/${id}/record-payment`, { method: 'POST', body: JSON.stringify(data) }),
+  toggleInvoicePayment: (id: string, paymentStatus?: string) => apiRequest(`/invoices/${id}/toggle-payment`, { method: 'PATCH', body: JSON.stringify({ paymentStatus }) }),
   getInvoicePdfData: (id: string) => apiRequest(`/invoices/${id}/pdf-data`),
 
   // Shipments
@@ -95,6 +129,10 @@ export const api = {
     return apiRequest(`/ledger${buildQueryString(params)}`);
   },
   postLedgerEntry: (data: any) => apiRequest('/ledger', { method: 'POST', body: JSON.stringify(data) }),
+  updateLedgerEntry: (id: string, data: any) => apiRequest(`/ledger/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteLedgerEntry: (id: string) => apiRequest(`/ledger/${id}`, { method: 'DELETE' }),
+  postCashIn: (data: any) => apiRequest('/ledger/cash-in', { method: 'POST', body: JSON.stringify(data) }),
+  postCashOut: (data: any) => apiRequest('/ledger/cash-out', { method: 'POST', body: JSON.stringify(data) }),
   reverseLedgerEntry: (id: string, reason: string) =>
     apiRequest(`/ledger/${id}/reverse`, { method: 'POST', body: JSON.stringify({ reason }) }),
 
@@ -142,8 +180,17 @@ export const api = {
   getReceivablesAging: () => apiRequest('/reports/receivables-aging'),
   getCustomerStatement: (customerId: string) => apiRequest(`/reports/customer-statement/${customerId}`),
 
-  // Audit
+  // Receipts
+  getReceipts: (params: any = {}) => apiRequest(`/receipts${buildQueryString(params)}`),
+  getReceiptById: (id: string) => apiRequest(`/receipts/${id}`),
+  voidReceipt: (id: string, reason: string) => apiRequest(`/receipts/${id}/void`, { method: 'POST', body: JSON.stringify({ voidReason: reason }) }),
+
+  // Audit & Admin
   getAuditEvents: (params: any = {}) => {
     return apiRequest(`/audit${buildQueryString(params)}`);
-  }
+  },
+  resetBaseline: () => apiRequest('/admin/reset-baseline', { method: 'POST' }),
+  exportBackup: () => apiRequest('/admin/backup/export'),
+  validateBackup: (data: any) => apiRequest('/admin/backup/validate', { method: 'POST', body: JSON.stringify(data) }),
+  restoreBackup: (data: any) => apiRequest('/admin/backup/restore', { method: 'POST', body: JSON.stringify(data) })
 };

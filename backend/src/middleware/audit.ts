@@ -16,9 +16,20 @@ export async function recordAuditEvent(params: AuditLogParams) {
     const sanitizedOld = params.oldValues ? JSON.stringify(redactSensitiveObject(params.oldValues)) : null;
     const sanitizedNew = params.newValues ? JSON.stringify(redactSensitiveObject(params.newValues)) : null;
 
+    let validActorId: string | null = null;
+    if (params.actorId) {
+      const userExists = await prisma.user.findUnique({
+        where: { id: params.actorId },
+        select: { id: true }
+      });
+      if (userExists) {
+        validActorId = userExists.id;
+      }
+    }
+
     await prisma.auditEvent.create({
       data: {
-        actorId: params.actorId || null,
+        actorId: validActorId,
         action: params.action,
         entityType: params.entityType,
         entityId: params.entityId || null,

@@ -3,8 +3,9 @@ import { z } from 'zod';
 import { prisma } from '../../prisma.js';
 import { calculateLedgerRunningBalances, toDecimal } from '../../utils/decimal.js';
 import { authenticate, AuthenticatedRequest } from '../../middleware/auth.js';
-import { requirePermission } from '../../middleware/rbac.js';
+import { requirePermission, requireRole } from '../../middleware/rbac.js';
 import { recordAuditEvent } from '../../middleware/audit.js';
+import { receiptsService } from '../receipts/receipts.service.js';
 
 const router = Router();
 
@@ -226,6 +227,346 @@ router.post('/:id/reverse', authenticate, requirePermission('ledger:reverse_entr
     });
 
     res.status(201).json(reversalTx);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/ledger/:id (Edit ledger entry & recalculate deterministic running balances)
+const updateLedgerEntrySchema = z.object({
+  effectiveDate: z.string().optional(),
+  reference: z.string().optional().nullable(),
+  description: z.string().min(2).optional(),
+  category: z.enum(['BALANCE', 'CREDIT', 'DEBIT']).optional(),
+  debitAmount: z.number().or(z.string()).optional(),
+  creditAmount: z.number().or(z.string()).optional(),
+  notes: z.string().optional().nullable()
+});
+
+router.put('/:id', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const data = updateLedgerEntrySchema.parse(req.body);
+    const existing = await prisma.ledgerTransaction.findUnique({ where: { id: req.params.id } });
+
+    if (!existing) {
+      res.status(404).json({ error: 'NOT_FOUND', message: 'Transaction not found' });
+      return;
+    }
+
+    const updateData: any = {};
+    if (data.effectiveDate) updateData.effectiveDate = new Date(data.effectiveDate);
+    if (data.reference !== undefined) updateData.reference = data.reference;
+    if (data.description) updateData.description = data.description;
+    if (data.category) updateData.category = data.category;
+    if (data.debitAmount !== undefined) updateData.debitAmount = toDecimal(data.debitAmount).toNumber();
+    if (data.creditAmount !== undefined) updateData.creditAmount = toDecimal(data.creditAmount).toNumber();
+    if (data.notes !== undefined) updateData.notes = data.notes;
+
+    const updated = await prisma.ledgerTransaction.update({
+      where: { id: existing.id },
+      data: updateData
+    });
+
+    // Recalculate deterministic running balances across all transactions
+    const financialAccount = await prisma.financialAccount.findFirst({ where: { currency: 'USD' } });
+    const openingBalance = financialAccount ? financialAccount.openingBalance : 0;
+    const allTxs = await prisma.ledgerTransaction.findMany({
+      orderBy: [{ effectiveDate: 'asc' }, { postedAt: 'asc' }, { id: 'asc' }]
+    });
+    const calculated = calculateLedgerRunningBalances(openingBalance, allTxs);
+
+    await prisma.$transaction(
+      calculated.map(c => prisma.ledgerTransaction.update({
+        where: { id: c.id },
+        data: { runningBalance: c.runningBalance.toNumber() }
+      }))
+    );
+
+    await recordAuditEvent({
+      actorId: req.user!.userId,
+      action: 'LEDGER_ENTRY_UPDATED',
+      entityType: 'LEDGER_TRANSACTION',
+      entityId: updated.id,
+      newValues: updateData,
+      ipAddress: req.ip
+    });
+
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/ledger/:id (Delete transaction & recalculate deterministic running balances)
+router.delete('/:id', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const existing = await prisma.ledgerTransaction.findUnique({
+      where: { id: req.params.id },
+      include: { receipt: true }
+    });
+
+    if (!existing) {
+      res.status(404).json({ error: 'NOT_FOUND', message: 'Transaction not found' });
+      return;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      if (existing.receipt) {
+        await tx.receipt.update({
+          where: { id: existing.receipt.id },
+          data: { ledgerTransactionId: null }
+        });
+      }
+      await tx.ledgerTransaction.delete({ where: { id: existing.id } });
+    });
+
+    // Recalculate deterministic running balances
+    const financialAccount = await prisma.financialAccount.findFirst({ where: { currency: 'USD' } });
+    const openingBalance = financialAccount ? financialAccount.openingBalance : 0;
+    const allTxs = await prisma.ledgerTransaction.findMany({
+      orderBy: [{ effectiveDate: 'asc' }, { postedAt: 'asc' }, { id: 'asc' }]
+    });
+    const calculated = calculateLedgerRunningBalances(openingBalance, allTxs);
+
+    if (calculated.length > 0) {
+      await prisma.$transaction(
+        calculated.map(c => prisma.ledgerTransaction.update({
+          where: { id: c.id },
+          data: { runningBalance: c.runningBalance.toNumber() }
+        }))
+      );
+    }
+
+    await recordAuditEvent({
+      actorId: req.user!.userId,
+      action: 'LEDGER_ENTRY_DELETED',
+      entityType: 'LEDGER_TRANSACTION',
+      entityId: existing.id,
+      newValues: { description: existing.description },
+      ipAddress: req.ip
+    });
+
+    res.json({ success: true, message: 'Transaction deleted and running balances updated' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/ledger/cash-in (Receive Money / Credit with optional invoice linking and receipt creation)
+const cashInSchema = z.object({
+  effectiveDate: z.string(),
+  reference: z.string().optional().nullable(),
+  description: z.string().min(2),
+  payerName: z.string().optional().nullable(),
+  amount: z.number().positive('Amount must be positive'),
+  swiftFee: z.number().min(0).default(0),
+  invoiceId: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  createReceipt: z.boolean().default(true)
+});
+
+router.post('/cash-in', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const data = cashInSchema.parse(req.body);
+    const amountDec = toDecimal(data.amount);
+    const swiftDec = toDecimal(data.swiftFee);
+
+    if (swiftDec.gte(amountDec)) {
+      res.status(400).json({ error: 'INVALID_FEE', message: 'SWIFT fee cannot be greater than or equal to the total amount' });
+      return;
+    }
+
+    const netCredited = swiftDec.gt(0) ? amountDec.minus(swiftDec) : amountDec;
+
+    const finAccount = await prisma.financialAccount.findFirst({ where: { currency: 'USD' } });
+    const accountId = finAccount ? finAccount.id : (await prisma.financialAccount.findFirst())?.id;
+    if (!accountId) {
+      res.status(400).json({ error: 'ACCOUNT_NOT_FOUND', message: 'No financial account found for USD' });
+      return;
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Create Ledger Credit (Net wire proceeds credited to bank account)
+      const ledgerTx = await tx.ledgerTransaction.create({
+        data: {
+          financialAccountId: accountId,
+          effectiveDate: new Date(data.effectiveDate),
+          reference: data.reference || null,
+          description: data.description,
+          category: 'CREDIT',
+          creditAmount: netCredited.toNumber(),
+          debitAmount: 0,
+          currency: 'USD',
+          notes: data.notes || (swiftDec.gt(0) ? `Gross payment: $${amountDec.toFixed(2)} less SWIFT fee: $${swiftDec.toFixed(2)}` : null)
+        }
+      });
+
+      let updatedInvoice = null;
+      let createdPayment = null;
+      let createdReceipt = null;
+
+      // If linked to an invoice
+      if (data.invoiceId) {
+        const inv = await tx.invoice.findUnique({
+          where: { id: data.invoiceId },
+          include: { paymentAllocations: true, customer: true }
+        });
+        if (inv) {
+          const currentAllocated = inv.paymentAllocations.reduce((sum, a) => sum.plus(toDecimal(a.amount)).plus(toDecimal(a.swiftBankFee || 0)), toDecimal(0));
+          const newTotalAllocated = currentAllocated.plus(amountDec);
+          const newStatus = newTotalAllocated.gte(toDecimal(inv.totalAmount)) ? 'PAID' : 'PARTIALLY_PAID';
+
+          updatedInvoice = await tx.invoice.update({
+            where: { id: inv.id },
+            data: { paymentStatus: newStatus }
+          });
+
+          createdPayment = await tx.payment.create({
+            data: {
+              customerId: inv.customerId,
+              financialAccountId: accountId,
+              paymentDate: new Date(data.effectiveDate),
+              reference: data.reference || `PMT-${inv.invoiceNumber}`,
+              paymentMethod: 'WIRE_TRANSFER',
+              totalAmount: amountDec.toNumber(),
+              allocatedAmount: amountDec.toNumber(),
+              unallocatedAmount: 0,
+              currency: 'USD',
+              allocations: {
+                create: {
+                  invoiceId: inv.id,
+                  amount: netCredited.toNumber(),
+                  swiftBankFee: swiftDec.toNumber(),
+                  notes: data.notes || null
+                }
+              }
+            }
+          });
+        }
+      }
+
+      // If receipt creation requested
+      if (data.createReceipt) {
+        let payer = data.payerName;
+        if (!payer && data.invoiceId) {
+          const invObj = await tx.invoice.findUnique({ where: { id: data.invoiceId }, include: { customer: true } });
+          payer = invObj?.customer?.companyName;
+        }
+        if (!payer) payer = 'Customer Direct Payment';
+
+        createdReceipt = await receiptsService.createReceipt({
+          paymentId: createdPayment?.id,
+          ledgerTransactionId: ledgerTx.id,
+          payerName: payer,
+          receivingAccountName: 'Afghan United Bank Operating Account',
+          receivingAccountMasked: '101502******0472',
+          amount: netCredited.toNumber(),
+          grossAmount: amountDec.toNumber(),
+          swiftFeeAmount: swiftDec.toNumber(),
+          currency: 'USD',
+          paymentMethod: 'WIRE_TRANSFER',
+          referenceNumber: data.reference || undefined,
+          purpose: data.description,
+          invoiceId: data.invoiceId || undefined,
+          notes: data.notes || undefined,
+          createdById: req.user?.userId
+        }, tx);
+      }
+
+      return { ledgerTx, updatedInvoice, createdPayment, createdReceipt };
+    });
+
+    // Recalculate deterministic running balances
+    const financialAccount = await prisma.financialAccount.findFirst({ where: { currency: 'USD' } });
+    const openingBalance = financialAccount ? financialAccount.openingBalance : 0;
+    const allTxs = await prisma.ledgerTransaction.findMany({
+      orderBy: [{ effectiveDate: 'asc' }, { postedAt: 'asc' }, { id: 'asc' }]
+    });
+    const calculated = calculateLedgerRunningBalances(openingBalance, allTxs);
+    await prisma.$transaction(
+      calculated.map(c => prisma.ledgerTransaction.update({
+        where: { id: c.id },
+        data: { runningBalance: c.runningBalance.toNumber() }
+      }))
+    );
+
+    await recordAuditEvent({
+      actorId: req.user!.userId,
+      action: 'CASH_IN_RECORDED',
+      entityType: 'LEDGER_TRANSACTION',
+      entityId: result.ledgerTx.id,
+      newValues: { amount: data.amount, reference: data.reference },
+      ipAddress: req.ip
+    });
+
+    res.status(201).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/ledger/cash-out (Pay Expense / Outflow debit entry)
+const cashOutSchema = z.object({
+  effectiveDate: z.string(),
+  reference: z.string().optional().nullable(),
+  description: z.string().min(2),
+  payeeName: z.string().optional().nullable(),
+  category: z.string().default('OPERATING_EXPENSE'),
+  amount: z.number().positive('Amount must be positive'),
+  notes: z.string().optional().nullable()
+});
+
+router.post('/cash-out', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const data = cashOutSchema.parse(req.body);
+    const amountDec = toDecimal(data.amount);
+
+    const finAccount = await prisma.financialAccount.findFirst({ where: { currency: 'USD' } });
+    const accountId = finAccount ? finAccount.id : (await prisma.financialAccount.findFirst())?.id;
+    if (!accountId) {
+      res.status(400).json({ error: 'ACCOUNT_NOT_FOUND', message: 'No financial account found for USD' });
+      return;
+    }
+
+    const desc = data.payeeName ? `Payment to ${data.payeeName} - ${data.description}` : data.description;
+
+    const ledgerTx = await prisma.ledgerTransaction.create({
+      data: {
+        financialAccountId: accountId,
+        effectiveDate: new Date(data.effectiveDate),
+        reference: data.reference || null,
+        description: desc,
+        category: 'DEBIT',
+        debitAmount: amountDec.toNumber(),
+        creditAmount: 0,
+        currency: 'USD',
+        notes: data.notes || null
+      }
+    });
+
+    // Recalculate running balances
+    const openingBalance = finAccount ? finAccount.openingBalance : 0;
+    const allTxs = await prisma.ledgerTransaction.findMany({
+      orderBy: [{ effectiveDate: 'asc' }, { postedAt: 'asc' }, { id: 'asc' }]
+    });
+    const calculated = calculateLedgerRunningBalances(openingBalance, allTxs);
+    await prisma.$transaction(
+      calculated.map(c => prisma.ledgerTransaction.update({
+        where: { id: c.id },
+        data: { runningBalance: c.runningBalance.toNumber() }
+      }))
+    );
+
+    await recordAuditEvent({
+      actorId: req.user!.userId,
+      action: 'CASH_OUT_RECORDED',
+      entityType: 'LEDGER_TRANSACTION',
+      entityId: ledgerTx.id,
+      newValues: { amount: data.amount, payee: data.payeeName },
+      ipAddress: req.ip
+    });
+
+    res.status(201).json(ledgerTx);
   } catch (err) {
     next(err);
   }

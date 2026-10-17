@@ -7,10 +7,31 @@ import { prisma } from '../../prisma.js';
 import { toDecimal, calculateInvoiceTotals } from '../../utils/decimal.js';
 import { maskAccountNumber } from '../../utils/masking.js';
 import { authenticate, AuthenticatedRequest } from '../../middleware/auth.js';
-import { requirePermission } from '../../middleware/rbac.js';
+import { requirePermission, requireRole } from '../../middleware/rbac.js';
 import { recordAuditEvent } from '../../middleware/audit.js';
 
 const router = Router();
+
+// Sanitize cell strings against CSV/Formula Injection and broken Excel artifacts (#VALUE!, #REF!, #N/A)
+export function sanitizeCellString(val: any): string {
+  if (val === null || val === undefined) return '';
+  const str = String(val).trim();
+  if (str === '#VALUE!' || str === '#REF!' || str === '#N/A' || str.includes('#VALUE!')) {
+    return '';
+  }
+  if (['=', '+', '-', '@', '\t', '\r'].some(prefix => str.startsWith(prefix))) {
+    // If it's a standard signed number (e.g. -50 or +10), keep numeric format
+    if (str.startsWith('-') && /^-\d+(\.\d+)?$/.test(str)) {
+      return str;
+    }
+    if (str.startsWith('+') && /^\+\d+(\.\d+)?$/.test(str)) {
+      return str;
+    }
+    // Disarm formula injection by prepending single quote
+    return `'${str}`;
+  }
+  return str;
+}
 
 interface SheetParseResult {
   sheetName: string;
@@ -25,6 +46,11 @@ export function parseWorkbook(filePath: string) {
     throw new Error(`Workbook file not found at ${filePath}`);
   }
 
+  // Security Check: Validate file format (.xlsx only)
+  if (!filePath.toLowerCase().endsWith('.xlsx')) {
+    throw new Error('Security Error: Invalid file format. Only verified .xlsx spreadsheet workbooks are permitted.');
+  }
+
   // Calculate file hash
   const fileBuffer = fs.readFileSync(filePath);
   const fileHash = crypto.createHash('sha256').update(fileBuffer).digest('hex').toUpperCase();
@@ -34,12 +60,12 @@ export function parseWorkbook(filePath: string) {
   // 1. Account & Routing Details
   const wsRouting = wb.Sheets['Account & Routing Details'];
   const bankDetails = {
-    bankName: wsRouting['C7'] ? String(wsRouting['C7'].v).trim() : 'AFGHAN UNITED BANK',
-    beneficiaryName: wsRouting['C8'] ? String(wsRouting['C8'].v).trim() : 'SKY ARIANA LTD',
-    accountNumber: wsRouting['C9'] ? String(wsRouting['C9'].v).trim() : '101502USD2940472',
-    swiftCode: wsRouting['C10'] ? String(wsRouting['C10'].v).trim() : 'AFGUAFKAXXX',
-    correspondentBank: wsRouting['C15'] ? String(wsRouting['C15'].v).trim() : 'DA AFGHANISTAN BANK',
-    correspondentSwift: wsRouting['C16'] ? String(wsRouting['C16'].v).trim() : 'AFGBAFKA'
+    bankName: wsRouting['C7'] ? sanitizeCellString(wsRouting['C7'].v) : 'AFGHAN UNITED BANK',
+    beneficiaryName: wsRouting['C8'] ? sanitizeCellString(wsRouting['C8'].v) : 'SKY ARIANA LTD',
+    accountNumber: wsRouting['C9'] ? sanitizeCellString(wsRouting['C9'].v) : '101502USD2940472',
+    swiftCode: wsRouting['C10'] ? sanitizeCellString(wsRouting['C10'].v) : 'AFGUAFKAXXX',
+    correspondentBank: wsRouting['C15'] ? sanitizeCellString(wsRouting['C15'].v) : 'DA AFGHANISTAN BANK',
+    correspondentSwift: wsRouting['C16'] ? sanitizeCellString(wsRouting['C16'].v) : 'AFGBAFKA'
   };
 
   // 2. Account Statement
@@ -68,10 +94,10 @@ export function parseWorkbook(filePath: string) {
 
       ledgerRows.push({
         sourceRow: r,
-        date: dateCell ? String(dateCell.v) : '01-Sep-2026',
-        reference: refCell && refCell.v !== 'N/A' ? String(refCell.v).trim() : null,
-        description: String(descCell.v).trim(),
-        category: catCell ? String(catCell.v).trim() : 'Credit',
+        date: dateCell ? sanitizeCellString(dateCell.v) : '01-Sep-2026',
+        reference: refCell && refCell.v !== 'N/A' ? sanitizeCellString(refCell.v) : null,
+        description: sanitizeCellString(descCell.v),
+        category: catCell ? sanitizeCellString(catCell.v) : 'Credit',
         debit: debitVal,
         credit: creditVal
       });
@@ -103,14 +129,14 @@ export function parseWorkbook(filePath: string) {
 
       invoiceRows.push({
         sourceRow: r,
-        date: dateCell ? String(dateCell.v) : '',
+        date: dateCell ? sanitizeCellString(dateCell.v) : '',
         proformaNo: pRef,
-        buyer: String(buyerCell.v).trim(),
-        itemDescription: descCell ? String(descCell.v).trim() : '',
+        buyer: sanitizeCellString(buyerCell.v),
+        itemDescription: descCell ? sanitizeCellString(descCell.v) : '',
         netWeightKg: weight,
         expectedAmountUsd: totalAmt,
         calculatedUnitPrice: unitPrice,
-        paymentStatus: statusCell ? String(statusCell.v).trim() : 'Pending'
+        paymentStatus: statusCell ? sanitizeCellString(statusCell.v) : 'Pending'
       });
     }
   }
@@ -141,30 +167,30 @@ export function parseWorkbook(filePath: string) {
     const statusCell = wsLogistics[`J${r}`];
 
     if (shpRefCell && shpRefCell.v) {
-      const pRef = pRefCell ? String(pRefCell.v).trim() : null;
+      const pRef = pRefCell ? sanitizeCellString(pRefCell.v) : null;
       if (pRef && proformaRefCounts[pRef] > 1) {
         shipmentWarnings.push(
           `Shipment Row ${r} (${shpRefCell.v}) references proforma "${pRef}", which is ambiguous (${proformaRefCounts[pRef]} candidates found). Junction association requires user confirmation.`
         );
       }
 
-      const routeStr = routeCell ? String(routeCell.v) : '';
+      const routeStr = routeCell ? sanitizeCellString(routeCell.v) : '';
       const [origin, destination] = routeStr.includes('->')
         ? routeStr.split('->').map(s => s.trim())
         : [routeStr, ''];
 
       shipmentRows.push({
         sourceRow: r,
-        date: dateCell ? String(dateCell.v) : '',
-        shipmentRef: String(shpRefCell.v).trim(),
+        date: dateCell ? sanitizeCellString(dateCell.v) : '',
+        shipmentRef: sanitizeCellString(shpRefCell.v),
         proformaRef: pRef,
-        containerNumber: cntCell ? String(cntCell.v).trim() : null,
-        billOfLading: blCell ? String(blCell.v).trim() : null,
+        containerNumber: cntCell ? sanitizeCellString(cntCell.v) : null,
+        billOfLading: blCell ? sanitizeCellString(blCell.v) : null,
         origin,
         destination,
-        carrier: carrierCell ? String(carrierCell.v).trim() : null,
-        eta: etaCell ? String(etaCell.v) : null,
-        status: statusCell ? String(statusCell.v).trim() : 'In Transit'
+        carrier: carrierCell ? sanitizeCellString(carrierCell.v) : null,
+        eta: etaCell ? sanitizeCellString(etaCell.v) : null,
+        status: statusCell ? sanitizeCellString(statusCell.v) : 'In Transit'
       });
     }
   }
@@ -214,6 +240,64 @@ router.post('/dry-run', authenticate, requirePermission('import:execute'), async
       ...parsed.shipments.warnings
     ];
 
+    // Compute diff against current live database
+    const existingInvoices = await prisma.invoice.findMany({ include: { customer: true } });
+    const existingTxs = await prisma.ledgerTransaction.findMany();
+
+    const matchedInvoices: any[] = [];
+    const newInvoices: any[] = [];
+    for (const r of parsed.invoices.rows) {
+      const match = existingInvoices.find(
+        inv => (inv.customer?.companyName.toLowerCase() === r.buyer.toLowerCase() || inv.sourceInvoiceRef === r.proformaNo) &&
+               Math.abs(Number(inv.totalAmount) - Number(r.expectedAmountUsd)) < 0.01
+      );
+      if (match) {
+        matchedInvoices.push({
+          sourceRow: r.sourceRow,
+          proformaNo: r.proformaNo,
+          buyer: r.buyer,
+          matchedSystemInvoice: match.invoiceNumber,
+          amount: r.expectedAmountUsd,
+          action: 'MATCHED_EXISTING_UPSERT'
+        });
+      } else {
+        newInvoices.push({
+          sourceRow: r.sourceRow,
+          proformaNo: r.proformaNo,
+          buyer: r.buyer,
+          amount: r.expectedAmountUsd,
+          action: 'NEW_RECORD_INSERT'
+        });
+      }
+    }
+
+    const matchedLedger: any[] = [];
+    const newLedger: any[] = [];
+    for (const r of parsed.ledger.rows) {
+      const match = existingTxs.find(
+        tx => tx.description.toLowerCase().trim() === r.description.toLowerCase().trim() &&
+              Math.abs(Number(tx.creditAmount) - Number(r.credit)) < 0.01 &&
+              Math.abs(Number(tx.debitAmount) - Number(r.debit)) < 0.01
+      );
+      if (match) {
+        matchedLedger.push({
+          sourceRow: r.sourceRow,
+          description: r.description,
+          credit: r.credit,
+          debit: r.debit,
+          action: 'MATCHED_EXISTING'
+        });
+      } else {
+        newLedger.push({
+          sourceRow: r.sourceRow,
+          description: r.description,
+          credit: r.credit,
+          debit: r.debit,
+          action: 'NEW_ENTRY'
+        });
+      }
+    }
+
     res.json({
       status: 'DRY_RUN_COMPLETED',
       fileHash: parsed.fileHash,
@@ -227,6 +311,17 @@ router.post('/dry-run', authenticate, requirePermission('import:execute'), async
       checkpointTotals: parsed.checkpointTotals,
       warningsCount: allWarnings.length,
       warnings: allWarnings,
+      diffPreview: {
+        matchedInvoicesCount: matchedInvoices.length,
+        newInvoicesCount: newInvoices.length,
+        matchedInvoices,
+        newInvoices,
+        matchedLedgerCount: matchedLedger.length,
+        newLedgerCount: newLedger.length,
+        matchedLedger,
+        newLedger,
+        validationWarnings: allWarnings
+      },
       preview: {
         bankDetails: parsed.bankDetails,
         ledgerRows: parsed.ledger.rows,
@@ -239,8 +334,8 @@ router.post('/dry-run', authenticate, requirePermission('import:execute'), async
   }
 });
 
-// POST /api/import/commit
-router.post('/commit', authenticate, requirePermission('import:execute'), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+// POST /api/import/commit (Administrator only)
+router.post('/commit', authenticate, requireRole(['ADMIN']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const workbookPath = path.resolve(process.cwd(), '../AQ_Companies_System_v10_Logistics.xlsx');
     const parsed = parseWorkbook(workbookPath);
@@ -366,38 +461,67 @@ router.post('/commit', authenticate, requirePermission('import:execute'), async 
           });
         }
 
-        // Generate distinct system invoice number
-        const distinctSystemNo = `PI-2026-${row.sourceRow.toString().padStart(4, '0')}`;
+        // Match existing invoice by buyer + sourceRef + expectedAmount
+        let existingInv = await tx.invoice.findFirst({
+          where: {
+            customerId: customer.id,
+            sourceInvoiceRef: row.proformaNo,
+            totalAmount: row.expectedAmountUsd
+          }
+        });
+
+        const ctnMatch = row.itemDescription.match(/(\d[\d,]*)\s*CTNS/i);
+        const cartonCount = ctnMatch ? parseInt(ctnMatch[1].replace(/,/g, ''), 10) : null;
+        const packagingKg = cartonCount && row.netWeightKg ? row.netWeightKg / cartonCount : null;
+
         const issueDate = parseWorkbookDate(row.date);
         const pStatus = row.paymentStatus.includes('PAID') ? 'PAID' : 'UNPAID';
 
-        const inv = await tx.invoice.create({
-          data: {
-            customerId: customer.id,
-            invoiceNumber: distinctSystemNo,
-            sourceInvoiceRef: row.proformaNo,
-            issueDate,
-            paymentTerms: '100% Advance Payment',
-            bankAccountId: bankAccount.id,
-            subtotal: row.expectedAmountUsd,
-            taxAmount: 0,
-            totalAmount: row.expectedAmountUsd,
-            status: 'ISSUED',
-            paymentStatus: pStatus,
-            lines: {
-              create: [
-                {
-                  lineNumber: 1,
-                  description: row.itemDescription,
-                  quantity: row.netWeightKg,
-                  unitOfMeasure: 'KG',
-                  unitPrice: row.calculatedUnitPrice,
-                  lineTotal: row.expectedAmountUsd
-                }
-              ]
+        let inv;
+        if (existingInv) {
+          inv = await tx.invoice.update({
+            where: { id: existingInv.id },
+            data: {
+              subtotal: row.expectedAmountUsd,
+              totalAmount: row.expectedAmountUsd,
+              paymentStatus: pStatus
             }
-          }
-        });
+          });
+        } else {
+          // Generate sequential numbering PI-2026-0001 through 0008 for official rows 7..14
+          const seqNum = row.sourceRow >= 7 && row.sourceRow <= 14 ? row.sourceRow - 6 : row.sourceRow;
+          const distinctSystemNo = `PI-2026-${seqNum.toString().padStart(4, '0')}`;
+
+          inv = await tx.invoice.create({
+            data: {
+              customerId: customer.id,
+              invoiceNumber: distinctSystemNo,
+              sourceInvoiceRef: row.proformaNo,
+              issueDate,
+              paymentTerms: '100% Advance Payment',
+              bankAccountId: bankAccount.id,
+              subtotal: row.expectedAmountUsd,
+              taxAmount: 0,
+              totalAmount: row.expectedAmountUsd,
+              status: 'ISSUED',
+              paymentStatus: pStatus,
+              lines: {
+                create: [
+                  {
+                    lineNumber: 1,
+                    description: row.itemDescription,
+                    cartonCount,
+                    packagingKgPerCarton: packagingKg,
+                    quantity: row.netWeightKg,
+                    unitOfMeasure: 'KG',
+                    unitPrice: row.calculatedUnitPrice,
+                    lineTotal: row.expectedAmountUsd
+                  }
+                ]
+              }
+            }
+          });
+        }
 
         invoiceMapByRow.set(row.sourceRow, inv);
 
@@ -410,7 +534,7 @@ router.post('/commit', authenticate, requirePermission('import:execute'), async 
             entityId: inv.id,
             rawDataJson: JSON.stringify(row),
             status: 'SUCCESS',
-            message: `Imported proforma invoice ${distinctSystemNo} (Source Ref: ${row.proformaNo})`
+            message: `Imported/Upserted proforma invoice ${inv.invoiceNumber} (Source Ref: ${row.proformaNo})`
           }
         });
       }

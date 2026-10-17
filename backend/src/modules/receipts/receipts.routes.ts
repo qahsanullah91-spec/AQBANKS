@@ -1,12 +1,12 @@
 import { Router, Response, NextFunction } from 'express';
 import { receiptsService } from './receipts.service.js';
 import { authenticate, AuthenticatedRequest } from '../../middleware/auth.js';
-import { requirePermission } from '../../middleware/rbac.js';
+import { requirePermission, requireRole } from '../../middleware/rbac.js';
 
 const router = Router();
 
-// GET /api/receipts
-router.get('/', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+// GET /api/receipts (Finance, Auditor, Admin)
+router.get('/', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR', 'AUDITOR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { search, status, startDate, endDate } = req.query;
     const receipts = await receiptsService.getReceipts({
@@ -21,8 +21,8 @@ router.get('/', authenticate, async (req: AuthenticatedRequest, res: Response, n
   }
 });
 
-// GET /api/receipts/:id
-router.get('/:id', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+// GET /api/receipts/:id (Finance, Auditor, Admin)
+router.get('/:id', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR', 'AUDITOR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const receipt = await receiptsService.getReceiptById(req.params.id);
     res.json(receipt);
@@ -31,8 +31,8 @@ router.get('/:id', authenticate, async (req: AuthenticatedRequest, res: Response
   }
 });
 
-// GET /api/receipts/:id/pdf-data
-router.get('/:id/pdf-data', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+// GET /api/receipts/:id/pdf-data (Finance, Auditor, Admin)
+router.get('/:id/pdf-data', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR', 'AUDITOR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const pdfData = await receiptsService.getReceiptPdfData(req.params.id);
     res.json(pdfData);
@@ -41,8 +41,8 @@ router.get('/:id/pdf-data', authenticate, async (req: AuthenticatedRequest, res:
   }
 });
 
-// POST /api/receipts/:id/void
-router.post('/:id/void', authenticate, requirePermission('payment:create'), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+// POST /api/receipts/:id/void (Administrator & Finance Manager with mandatory reason)
+router.post('/:id/void', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { reason } = req.body;
     const voided = await receiptsService.voidReceipt(req.params.id, reason, req.user!.userId, req.ip);

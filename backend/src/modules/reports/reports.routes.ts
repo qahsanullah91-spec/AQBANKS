@@ -2,17 +2,17 @@ import { Router, Response, NextFunction } from 'express';
 import { prisma } from '../../prisma.js';
 import { toDecimal } from '../../utils/decimal.js';
 import { authenticate, AuthenticatedRequest } from '../../middleware/auth.js';
-import { requirePermission } from '../../middleware/rbac.js';
+import { requirePermission, requireRole } from '../../middleware/rbac.js';
 
 const router = Router();
 
-// GET /api/reports/receivables-aging
-router.get('/receivables-aging', authenticate, requirePermission('invoice:view'), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+// GET /api/reports/receivables-aging (Restricted to Finance Manager, Auditor & Admin)
+router.get('/receivables-aging', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR', 'AUDITOR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const invoices = await prisma.invoice.findMany({
       where: {
         paymentStatus: { in: ['UNPAID', 'PARTIALLY_PAID'] },
-        status: { not: 'VOID' }
+        status: 'ISSUED'
       },
       include: { customer: true, paymentAllocations: true }
     });
@@ -30,8 +30,13 @@ router.get('/receivables-aging', authenticate, requirePermission('invoice:view')
 
     for (const inv of invoices) {
       const invTotal = toDecimal(inv.totalAmount);
-      const paid = inv.paymentAllocations.reduce((sum, a) => sum.plus(toDecimal(a.amount)), toDecimal(0));
+      const paid = inv.paymentAllocations.reduce(
+        (sum, a) => sum.plus(toDecimal(a.amount)).plus(toDecimal(a.swiftBankFee || 0)),
+        toDecimal(0)
+      );
       const outstanding = invTotal.minus(paid);
+
+      if (outstanding.lessThanOrEqualTo(0)) continue;
 
       const days = Math.floor((now.getTime() - new Date(inv.issueDate).getTime()) / (1000 * 60 * 60 * 24));
 
@@ -71,13 +76,14 @@ router.get('/receivables-aging', authenticate, requirePermission('invoice:view')
   }
 });
 
-// GET /api/reports/customer-statement/:customerId
-router.get('/customer-statement/:customerId', authenticate, requirePermission('invoice:view'), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+// GET /api/reports/customer-statement/:customerId (Restricted to Finance Manager, Auditor & Admin)
+router.get('/customer-statement/:customerId', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR', 'AUDITOR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const customer = await prisma.customer.findUnique({
       where: { id: req.params.customerId },
       include: {
         invoices: {
+          where: { status: 'ISSUED' },
           include: { paymentAllocations: true },
           orderBy: { issueDate: 'asc' }
         },

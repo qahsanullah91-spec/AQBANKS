@@ -41,6 +41,9 @@ export interface LedgerTxCalculationInput {
   category: string;
   debitAmount: unknown;
   creditAmount: unknown;
+  description?: string;
+  reference?: string | null;
+  [key: string]: any;
 }
 
 export interface LedgerTxCalculationOutput extends LedgerTxCalculationInput {
@@ -78,7 +81,11 @@ export function calculateLedgerRunningBalances(
     const debit = toDecimal(tx.debitAmount);
     const credit = toDecimal(tx.creditAmount);
 
-    currentBalance = currentBalance.plus(credit).minus(debit);
+    if (tx.category === 'BALANCE') {
+      currentBalance = credit.gt(0) ? credit : debit.neg();
+    } else {
+      currentBalance = currentBalance.plus(credit).minus(debit);
+    }
 
     return {
       ...tx,
@@ -95,6 +102,8 @@ export function calculateLedgerRunningBalances(
  */
 export interface InvoiceLineInput {
   description: string;
+  cartonCount?: unknown;
+  packagingKgPerCarton?: unknown;
   quantity: unknown; // Net weight KG
   unitPrice: unknown; // C&F Price USD
   unitOfMeasure?: string;
@@ -109,9 +118,18 @@ export function calculateInvoiceTotals(lines: InvoiceLineInput[]) {
     const total = qty.times(price).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
     subtotal = subtotal.plus(total);
 
+    const cartonCount = line.cartonCount !== undefined && line.cartonCount !== null && line.cartonCount !== ''
+      ? parseInt(String(line.cartonCount), 10)
+      : null;
+    const packagingKg = line.packagingKgPerCarton !== undefined && line.packagingKgPerCarton !== null && line.packagingKgPerCarton !== ''
+      ? toDecimal(line.packagingKgPerCarton)
+      : null;
+
     return {
       lineNumber: idx + 1,
       description: line.description,
+      cartonCount: isNaN(cartonCount as any) ? null : cartonCount,
+      packagingKgPerCarton: packagingKg,
       quantity: qty,
       quantityFormatted: qty.toFixed(2),
       unitOfMeasure: line.unitOfMeasure || 'KG',

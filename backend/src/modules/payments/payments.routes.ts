@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../../prisma.js';
 import { toDecimal } from '../../utils/decimal.js';
 import { authenticate, AuthenticatedRequest } from '../../middleware/auth.js';
-import { requirePermission } from '../../middleware/rbac.js';
+import { requirePermission, requireRole } from '../../middleware/rbac.js';
 import { recordAuditEvent } from '../../middleware/audit.js';
 import { receiptsService } from '../receipts/receipts.service.js';
 
@@ -11,7 +11,8 @@ const router = Router();
 
 const allocationSchema = z.object({
   invoiceId: z.string().uuid(),
-  amount: z.number().or(z.string()).refine(v => Number(v) > 0, 'Allocation amount must be positive')
+  amount: z.number().or(z.string()).refine(v => Number(v) > 0, 'Allocation amount must be positive'),
+  swiftBankFee: z.number().or(z.string()).optional().default(0)
 });
 
 const createPaymentSchema = z.object({
@@ -26,7 +27,7 @@ const createPaymentSchema = z.object({
   allocations: z.array(allocationSchema).optional().default([])
 });
 
-// Helper to update invoice payment status based on total allocations
+// Helper to update invoice payment status based on total allocations (including SWIFT fees)
 async function updateInvoicePaymentStatus(invoiceId: string, tx: any) {
   const inv = await tx.invoice.findUnique({
     where: { id: invoiceId },
@@ -35,7 +36,7 @@ async function updateInvoicePaymentStatus(invoiceId: string, tx: any) {
   if (!inv) return;
 
   const totalAllocated = inv.paymentAllocations.reduce(
-    (sum: any, a: any) => sum.plus(toDecimal(a.amount)),
+    (sum: any, a: any) => sum.plus(toDecimal(a.amount)).plus(toDecimal(a.swiftBankFee || 0)),
     toDecimal(0)
   );
 
@@ -54,8 +55,8 @@ async function updateInvoicePaymentStatus(invoiceId: string, tx: any) {
   });
 }
 
-// GET /api/payments
-router.get('/', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+// GET /api/payments (Restricted to Finance Manager, Auditor & Admin)
+router.get('/', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR', 'AUDITOR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { customerId, reference } = req.query;
     const where: any = {};
@@ -171,7 +172,8 @@ router.post('/', authenticate, requirePermission('payment:create'), async (req: 
           data: {
             paymentId: payment.id,
             invoiceId: alloc.invoiceId,
-            amount: toDecimal(alloc.amount).toNumber()
+            amount: toDecimal(alloc.amount).toNumber(),
+            swiftBankFee: toDecimal(alloc.swiftBankFee || 0).toNumber()
           }
         });
         await updateInvoicePaymentStatus(alloc.invoiceId, tx);
@@ -188,12 +190,17 @@ router.post('/', authenticate, requirePermission('payment:create'), async (req: 
       const receivingAccountName = bankAccount?.bankName || finAcc?.name || 'Afghan United Bank (AUB)';
       const receivingAccountMasked = bankAccount?.accountNumberMasked || '101502******0472';
 
+      const totalSwiftFees = data.allocations.reduce((sum, a) => sum.plus(toDecimal(a.swiftBankFee || 0)), toDecimal(0));
+      const netCredited = totalSwiftFees.gt(0) ? totalAmount.minus(totalSwiftFees) : totalAmount;
+
       const receipt = await receiptsService.createReceipt({
         paymentId: payment.id,
         payerName: customer?.companyName || 'General Account',
         receivingAccountName,
         receivingAccountMasked,
-        amount: totalAmount.toNumber(),
+        amount: netCredited.toNumber(),
+        grossAmount: totalAmount.toNumber(),
+        swiftFeeAmount: totalSwiftFees.toNumber(),
         currency: data.currency,
         paymentMethod: data.paymentMethod,
         referenceNumber: data.reference || null,

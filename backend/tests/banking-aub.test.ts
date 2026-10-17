@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma } from '../src/prisma.js';
@@ -14,6 +14,8 @@ describe('Afghan United Bank & Remittance Routing Test Suite (14 Acceptance Crit
   let localProfileId: string;
   let intlProfileId: string;
   let testCustomerId: string;
+  const createdInvoiceIds: string[] = [];
+  const createdPaymentIds: string[] = [];
 
   beforeAll(async () => {
     // 1. Authenticate as Finance Manager (full permissions)
@@ -32,8 +34,8 @@ describe('Afghan United Bank & Remittance Routing Test Suite (14 Acceptance Crit
     expect(loginOps.status).toBe(200);
     operatorToken = loginOps.body.accessToken;
 
-    // 3. Ensure test customer exists
-    let cust = await prisma.customer.findFirst();
+    // 3. Ensure dedicated test customer exists
+    let cust = await prisma.customer.findFirst({ where: { companyName: 'Sky Ariana General Trading LLC' } });
     if (!cust) {
       cust = await prisma.customer.create({
         data: {
@@ -226,6 +228,7 @@ describe('Afghan United Bank & Remittance Routing Test Suite (14 Acceptance Crit
 
     expect(createRes.status).toBe(201);
     const invoiceId = createRes.body.id;
+    createdInvoiceIds.push(invoiceId);
 
     const getRes = await request(app)
       .get(`/api/invoices/${invoiceId}`)
@@ -255,6 +258,7 @@ describe('Afghan United Bank & Remittance Routing Test Suite (14 Acceptance Crit
 
     expect(draftRes.status).toBe(201);
     const invoiceId = draftRes.body.id;
+    createdInvoiceIds.push(invoiceId);
 
     // Issue invoice
     const issueRes = await request(app)
@@ -338,6 +342,7 @@ describe('Afghan United Bank & Remittance Routing Test Suite (14 Acceptance Crit
       });
 
     expect(payRes.status).toBe(201);
+    if (payRes.body.id) createdPaymentIds.push(payRes.body.id);
     expect(payRes.body.receipt).toBeDefined();
 
     const receipt = payRes.body.receipt;
@@ -365,6 +370,7 @@ describe('Afghan United Bank & Remittance Routing Test Suite (14 Acceptance Crit
       });
 
     expect(res1.status).toBe(201);
+    if (res1.body.id) createdPaymentIds.push(res1.body.id);
     const receipt1Id = res1.body.receipt.id;
 
     // Retry submission with exact same reference
@@ -432,5 +438,20 @@ describe('Afghan United Bank & Remittance Routing Test Suite (14 Acceptance Crit
   // CRITERION 14: All automated tests pass.
   it('Criterion 14: All verification checks pass cleanly without unhandled rejections', () => {
     expect(true).toBe(true);
+  });
+
+  afterAll(async () => {
+    if (createdPaymentIds.length > 0) {
+      await prisma.receipt.deleteMany({ where: { paymentId: { in: createdPaymentIds } } });
+      await prisma.paymentAllocation.deleteMany({ where: { paymentId: { in: createdPaymentIds } } });
+      await prisma.payment.deleteMany({ where: { id: { in: createdPaymentIds } } });
+    }
+
+    if (createdInvoiceIds.length > 0) {
+      await prisma.invoiceBankSnapshot.deleteMany({ where: { invoiceId: { in: createdInvoiceIds } } });
+      await prisma.invoiceSnapshot.deleteMany({ where: { invoiceId: { in: createdInvoiceIds } } });
+      await prisma.invoiceLine.deleteMany({ where: { invoiceId: { in: createdInvoiceIds } } });
+      await prisma.invoice.deleteMany({ where: { id: { in: createdInvoiceIds } } });
+    }
   });
 });

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api, getUserRole } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
 import {
   FileSpreadsheet,
   CheckCircle,
@@ -16,6 +17,9 @@ import {
 
 export const ImportCenter: React.FC = () => {
   const { t, isRTL } = useLanguage();
+  const { toast } = useToast();
+  const userRole = getUserRole();
+  const canCommit = userRole === 'ADMIN';
   const [dryRunData, setDryRunData] = useState<any | null>(null);
   const [loadingDryRun, setLoadingDryRun] = useState(false);
   const [committing, setCommitting] = useState(false);
@@ -41,22 +45,28 @@ export const ImportCenter: React.FC = () => {
       setCommitResult(null);
       const res = await api.dryRunImport();
       setDryRunData(res);
+      toast.success('Workbook dry-run analysis completed');
     } catch (err: any) {
-      alert(err.message || 'Dry run failed');
+      toast.error(err.message || 'Dry run failed');
     } finally {
       setLoadingDryRun(false);
     }
   };
 
   const handleCommit = async () => {
+    if (!canCommit) {
+      toast.error('Access Denied: Only Administrator can execute transactional workbook commits.');
+      return;
+    }
     if (!confirm(t('import.confirmCommit'))) return;
     try {
       setCommitting(true);
       const res = await api.commitImport();
       setCommitResult(res);
+      toast.success('Workbook transaction committed successfully');
       loadHistory();
     } catch (err: any) {
-      alert(err.message || 'Commit failed');
+      toast.error(err.message || 'Commit failed');
     } finally {
       setCommitting(false);
     }
@@ -103,7 +113,7 @@ export const ImportCenter: React.FC = () => {
               </p>
             </div>
           </div>
-          {dryRunData && (
+          {dryRunData && canCommit && (
             <button
               onClick={handleCommit}
               disabled={committing || history.length > 0}
@@ -112,6 +122,12 @@ export const ImportCenter: React.FC = () => {
               <Database className="w-4 h-4" />
               {committing ? t('import.committing') : history.length > 0 ? t('import.alreadyCommitted') : t('import.executeTransactionalCommit')}
             </button>
+          )}
+          {dryRunData && !canCommit && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-amber-400 font-mono">
+              <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>Admin Commit Privilege Required</span>
+            </div>
           )}
         </div>
       </div>
@@ -155,6 +171,92 @@ export const ImportCenter: React.FC = () => {
               <span className="font-bold text-amber-400 text-sm" dir="ltr">${dryRunData.checkpointTotals.totalPending}</span>
             </div>
           </div>
+
+          {/* Interactive Diff Preview Table */}
+          {dryRunData.diffPreview && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-2">
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                    <Database className="w-4 h-4 text-emerald-400" />
+                    Interactive Idempotent Diff Preview
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Live database reconciliation diff prior to executing transactional commit.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 font-mono text-xs">
+                  <span className="px-2.5 py-1 rounded bg-blue-950 text-blue-300 border border-blue-800">
+                    {dryRunData.diffPreview.matchedInvoicesCount} Invoices Matched (Skip/Update)
+                  </span>
+                  <span className="px-2.5 py-1 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                    {dryRunData.diffPreview.newInvoicesCount} New Records to Add
+                  </span>
+                </div>
+              </div>
+
+              {/* Matched Records Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+                    <tr>
+                      <th className="py-2.5 px-3 text-left">Action</th>
+                      <th className="py-2.5 px-3 text-left">Source Ref / Row</th>
+                      <th className="py-2.5 px-3 text-left">Buyer / Description</th>
+                      <th className="py-2.5 px-3 text-right">Amount (USD)</th>
+                      <th className="py-2.5 px-3 text-center">Status In Database</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                    {dryRunData.diffPreview.matchedInvoices.map((inv: any, idx: number) => (
+                      <tr key={`matched-${idx}`} className="hover:bg-slate-800/30">
+                        <td className="py-2.5 px-3">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-950 text-blue-300 border border-blue-800">
+                            MATCHED (UPDATE)
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-white font-bold" dir="ltr">
+                          Row {inv.sourceRow} · Ref: {inv.proformaNo}
+                        </td>
+                        <td className="py-2.5 px-3 font-sans text-slate-200">
+                          {inv.buyer}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-emerald-400 font-bold" dir="ltr">
+                          ${Number(inv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-sans">
+                          <span className="text-slate-400 text-[11px]">
+                            Existing Match: <strong className="text-white font-mono">{inv.matchedSystemInvoice}</strong>
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {dryRunData.diffPreview.newInvoices.map((inv: any, idx: number) => (
+                      <tr key={`new-${idx}`} className="hover:bg-slate-800/30">
+                        <td className="py-2.5 px-3">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">
+                            INSERT NEW
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-emerald-300 font-bold" dir="ltr">
+                          Row {inv.sourceRow} · Ref: {inv.proformaNo}
+                        </td>
+                        <td className="py-2.5 px-3 font-sans text-slate-200">
+                          {inv.buyer}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-emerald-400 font-bold" dir="ltr">
+                          ${Number(inv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-sans">
+                          <span className="text-emerald-400 text-[11px] font-semibold">New Record to Add</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Warnings Inspector */}
           {dryRunData.warnings && dryRunData.warnings.length > 0 && (

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { Customer } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { formatDisplayDate } from '../utils/date';
 import {
   BarChart3,
   Calendar,
@@ -59,6 +60,18 @@ export const Reports: React.FC = () => {
     fetchStatement(cId);
   };
 
+  const formatCurrency = (val: number | string | undefined | null) => {
+    if (val === undefined || val === null || val === '') return '$0.00';
+    const num = typeof val === 'string' ? parseFloat(val) : val;
+    if (isNaN(num)) return '$0.00';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(num);
+  };
+
   return (
     <div className="space-y-6">
       {/* Title */}
@@ -77,8 +90,8 @@ export const Reports: React.FC = () => {
           </h2>
           <span className="text-xs text-slate-400 font-mono">
             {t('reports.totalOutstandingLabel')}{' '}
-            <strong className="text-amber-400 font-bold" dir="ltr">
-              ${agingData?.summary?.totalOutstanding || '0.00'}
+            <strong className="text-amber-400 font-bold tabular-nums" dir="ltr">
+              {formatCurrency(agingData?.summary?.totalOutstanding)}
             </strong>
           </span>
         </div>
@@ -87,27 +100,31 @@ export const Reports: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
             <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('reports.current')}</span>
-            <div className="text-base font-extrabold font-mono text-emerald-400 mt-1" dir="ltr">
-              ${agingData?.summary?.current_0_30 || '0.00'}
+            <div className="text-base font-extrabold font-mono tabular-nums text-emerald-400 mt-1" dir="ltr">
+              {formatCurrency(agingData?.summary?.current_0_30)}
             </div>
+            <span className="text-[10px] text-slate-500 font-sans block mt-0.5">0–30 Days</span>
           </div>
           <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
             <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('reports.thirtyDays')}</span>
-            <div className="text-base font-extrabold font-mono text-blue-400 mt-1" dir="ltr">
-              ${agingData?.summary?.aging_31_60 || '0.00'}
+            <div className="text-base font-extrabold font-mono tabular-nums text-blue-400 mt-1" dir="ltr">
+              {formatCurrency(agingData?.summary?.aging_31_60)}
             </div>
+            <span className="text-[10px] text-slate-500 font-sans block mt-0.5">31–60 Days</span>
           </div>
           <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
             <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('reports.sixtyDays')}</span>
-            <div className="text-base font-extrabold font-mono text-amber-400 mt-1" dir="ltr">
-              ${agingData?.summary?.aging_61_90 || '0.00'}
+            <div className="text-base font-extrabold font-mono tabular-nums text-amber-400 mt-1" dir="ltr">
+              {formatCurrency(agingData?.summary?.aging_61_90)}
             </div>
+            <span className="text-[10px] text-slate-500 font-sans block mt-0.5">61–90 Days</span>
           </div>
           <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
             <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('reports.ninetyPlus')}</span>
-            <div className="text-base font-extrabold font-mono text-rose-400 mt-1" dir="ltr">
-              ${agingData?.summary?.aging_over_90 || '0.00'}
+            <div className="text-base font-extrabold font-mono tabular-nums text-rose-400 mt-1" dir="ltr">
+              {formatCurrency(agingData?.summary?.aging_over_90)}
             </div>
+            <span className="text-[10px] text-slate-500 font-sans block mt-0.5">&gt; 90 Days</span>
           </div>
         </div>
 
@@ -127,17 +144,21 @@ export const Reports: React.FC = () => {
             <tbody className="divide-y divide-slate-800/60">
               {agingData?.details && agingData.details.length > 0 ? (
                 agingData.details.map((d: any) => (
-                  <tr key={d.invoiceId} className="hover:bg-slate-800/40">
+                  <tr key={d.invoiceId} className="hover:bg-emerald-50/50 dark:hover:bg-slate-800/60 hover:border-l-4 hover:border-l-emerald-600 dark:hover:border-l-emerald-500 border-l-4 border-l-transparent transition">
                     <td className="py-2.5 px-3 font-semibold text-white" dir="ltr">{d.invoiceNumber}</td>
                     <td className="py-2.5 px-3 font-sans text-slate-200">{d.customerName}</td>
-                    <td className="py-2.5 px-3 text-slate-400" dir="ltr">{new Date(d.issueDate).toLocaleDateString()}</td>
+                    <td className="py-2.5 px-3 text-slate-400" dir="ltr">{formatDisplayDate(d.issueDate)}</td>
                     <td className="py-2.5 px-3 font-sans">
                       <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">
                         {d.daysOld} {t('reports.daysOld')}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3 text-right text-slate-300" dir="ltr">${d.totalAmount}</td>
-                    <td className="py-2.5 px-3 text-right font-bold text-amber-400" dir="ltr">${d.outstandingAmount}</td>
+                    <td className="py-2.5 px-3 text-right text-slate-300 tabular-nums" dir="ltr">
+                      {formatCurrency(d.totalAmount)}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-bold text-amber-400 tabular-nums" dir="ltr">
+                      {formatCurrency(d.outstandingAmount)}
+                    </td>
                   </tr>
                 ))
               ) : (
@@ -177,15 +198,21 @@ export const Reports: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono">
               <div>
                 <span className="text-slate-400 font-sans block text-[10px] uppercase">{t('reports.allTimeInvoiced')}</span>
-                <span className="text-base font-bold text-white" dir="ltr">${statementData.summary.totalInvoiced}</span>
+                <span className="text-base font-bold text-white tabular-nums" dir="ltr">
+                  {formatCurrency(statementData.summary.totalInvoiced)}
+                </span>
               </div>
               <div>
                 <span className="text-slate-400 font-sans block text-[10px] uppercase">{t('reports.paymentsReceived')}</span>
-                <span className="text-base font-bold text-emerald-400" dir="ltr">${statementData.summary.totalPaymentsReceived}</span>
+                <span className="text-base font-bold text-emerald-400 tabular-nums" dir="ltr">
+                  {formatCurrency(statementData.summary.totalPaymentsReceived)}
+                </span>
               </div>
               <div>
                 <span className="text-slate-400 font-sans block text-[10px] uppercase">{t('reports.netOutstanding')}</span>
-                <span className="text-base font-extrabold text-amber-400" dir="ltr">${statementData.summary.outstandingBalance}</span>
+                <span className="text-base font-extrabold text-amber-400 tabular-nums" dir="ltr">
+                  {formatCurrency(statementData.summary.outstandingBalance)}
+                </span>
               </div>
             </div>
 
@@ -194,13 +221,13 @@ export const Reports: React.FC = () => {
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">{t('reports.issuedInvoices')}</span>
               <div className="space-y-2">
                 {statementData.invoices.map((inv: any) => (
-                  <div key={inv.id} className="p-3 bg-slate-950 border border-slate-800 rounded-lg flex justify-between items-center text-xs">
+                  <div key={inv.id} className="p-3 bg-slate-950 border border-slate-800 rounded-lg flex justify-between items-center text-xs hover:bg-slate-900 transition">
                     <div>
                       <span className="font-semibold text-white" dir="ltr">{inv.invoiceNumber}</span>
-                      <span className="text-slate-500 mx-2 font-mono" dir="ltr">{new Date(inv.issueDate).toLocaleDateString()}</span>
+                      <span className="text-slate-500 mx-2 font-mono" dir="ltr">{formatDisplayDate(inv.issueDate)}</span>
                     </div>
                     <div className="flex items-center gap-3 font-mono">
-                      <span className="text-slate-300" dir="ltr">${Number(inv.totalAmount).toLocaleString()}</span>
+                      <span className="text-slate-300 tabular-nums" dir="ltr">{formatCurrency(inv.totalAmount)}</span>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-sans font-semibold ${
                         inv.paymentStatus === 'PAID' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-amber-950 text-amber-300 border border-amber-800'
                       }`}>

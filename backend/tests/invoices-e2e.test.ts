@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma } from '../src/prisma.js';
@@ -288,6 +288,107 @@ describe('Proforma Invoice Visibility, Persistence & Localization E2E Tests', ()
     expect(getSecond.status).toBe(200);
     expect(getFirst.body.id).toBe(firstRes.body.id);
     expect(getSecond.body.id).toBe(secondRes.body.id);
+  });
+
+  it('TC-INV-PMT-01: records invoice payment with SWIFT fee, crediting net wire to ledger and creating correct receipt', async () => {
+    // 1. Create invoice with total amount of $63,000.00
+    const createRes = await request(app)
+      .post('/api/invoices')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({
+        customerId,
+        issueDate: '2026-03-01T00:00:00.000Z',
+        sourceInvoiceRef: `TEST-PI-PMT-${Date.now()}`,
+        lines: [
+          {
+            description: 'Organic Dried Golden Raisins',
+            quantity: 14000,
+            unitOfMeasure: 'KG',
+            unitPrice: 4.50 // 14,000 * 4.50 = 63,000.00
+          }
+        ]
+      });
+
+    expect(createRes.status).toBe(201);
+    const invoiceId = createRes.body.id;
+    expect(Number(createRes.body.totalAmount)).toBe(63000);
+
+    // 2. Reject payment if SWIFT fee >= payment amount
+    const invalidFeeRes = await request(app)
+      .post(`/api/invoices/${invoiceId}/record-payment`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({
+        amount: 63000,
+        swiftFeeDeducted: 63000,
+        paymentDate: '2026-03-05'
+      });
+
+    expect(invalidFeeRes.status).toBe(400);
+    expect(invalidFeeRes.body.error).toBe('INVALID_FEE');
+
+    // 3. Record payment of $63,000.00 with $161.93 SWIFT fee
+    const paymentRes = await request(app)
+      .post(`/api/invoices/${invoiceId}/record-payment`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({
+        amount: 63000,
+        swiftFeeDeducted: 161.93,
+        paymentDate: '2026-03-05',
+        bankReference: 'AUB-TEST-WIRE-63K',
+        notes: 'Advance wire transfer settlement',
+        createReceiptAndLedger: true
+      });
+
+    expect(paymentRes.status).toBe(200);
+    const { updatedInvoice, createdPayment, createdReceipt, createdLedger } = paymentRes.body;
+
+    // Verify invoice marked as PAID
+    expect(updatedInvoice.paymentStatus).toBe('PAID');
+
+    // Verify payment record
+    expect(createdPayment).toBeDefined();
+    expect(Number(createdPayment.totalAmount)).toBe(63000);
+
+    // Verify ledger credit is NET wire deposited ($63,000.00 - $161.93 = $62,838.07)
+    expect(createdLedger).toBeDefined();
+    expect(Number(createdLedger.creditAmount)).toBe(62838.07);
+    expect(Number(createdLedger.debitAmount)).toBe(0);
+    expect(Number(createdLedger.runningBalance)).toBeGreaterThan(0);
+
+    // Verify receipt contains gross amount, swift fee, and net deposited amount
+    expect(createdReceipt).toBeDefined();
+    expect(Number(createdReceipt.amount)).toBe(62838.07);
+    expect(Number(createdReceipt.grossAmount)).toBe(63000);
+    expect(Number(createdReceipt.swiftFeeAmount)).toBe(161.93);
+    expect(createdReceipt.payerName).toBeDefined();
+  });
+
+  afterAll(async () => {
+    const testInvoices = await prisma.invoice.findMany({
+      where: {
+        OR: [
+          { sourceInvoiceRef: { startsWith: 'TEST-PI-' } },
+          { sourceInvoiceRef: { startsWith: 'PERSIST-REF-' } },
+          { sourceInvoiceRef: { startsWith: 'REPEATED-SOURCE-REF-' } }
+        ]
+      }
+    });
+    const invIds = testInvoices.map(i => i.id);
+    if (invIds.length > 0) {
+      const receipts = await prisma.receipt.findMany({ where: { invoiceId: { in: invIds } } });
+      const ledgerTxIds = receipts.map(r => r.ledgerTransactionId).filter(Boolean) as string[];
+
+      await prisma.receipt.deleteMany({ where: { invoiceId: { in: invIds } } });
+      await prisma.paymentAllocation.deleteMany({ where: { invoiceId: { in: invIds } } });
+      await prisma.payment.deleteMany({ where: { customerId } });
+      if (ledgerTxIds.length > 0) {
+        await prisma.ledgerTransaction.deleteMany({ where: { id: { in: ledgerTxIds } } });
+      }
+      await prisma.invoiceBankSnapshot.deleteMany({ where: { invoiceId: { in: invIds } } });
+      await prisma.invoiceSnapshot.deleteMany({ where: { invoiceId: { in: invIds } } });
+      await prisma.invoiceLine.deleteMany({ where: { invoiceId: { in: invIds } } });
+      await prisma.invoice.deleteMany({ where: { id: { in: invIds } } });
+    }
   });
 });
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma } from '../src/prisma.js';
@@ -144,5 +144,14 @@ describe('Proforma Invoice Full USD Bank / Payment Instructions Tests', () => {
 
     expect(pdfRes.status).toBe(200);
     expect(pdfRes.body.paymentInstructions.isSnapshot).toBe(true);
+  });
+
+  afterAll(async () => {
+    if (testInvoiceId) {
+      await prisma.invoiceBankSnapshot.deleteMany({ where: { invoiceId: testInvoiceId } });
+      await prisma.invoiceSnapshot.deleteMany({ where: { invoiceId: testInvoiceId } });
+      await prisma.invoiceLine.deleteMany({ where: { invoiceId: testInvoiceId } });
+      await prisma.invoice.deleteMany({ where: { id: testInvoiceId } });
+    }
   });
 });

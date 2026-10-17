@@ -80,6 +80,26 @@ router.get('/', authenticate, requirePermission('shipment:view'), async (req: Au
   }
 });
 
+// GET /api/shipments/unassigned-invoices (Invoices not yet linked to any shipment container)
+router.get('/unassigned-invoices', authenticate, requirePermission('shipment:view'), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const unassigned = await prisma.invoice.findMany({
+      where: {
+        status: { not: 'VOID' },
+        shipmentInvoices: { none: {} }
+      },
+      include: {
+        customer: true,
+        lines: true
+      },
+      orderBy: { issueDate: 'asc' }
+    });
+    res.json(unassigned);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/shipments/:id
 router.get('/:id', authenticate, requirePermission('shipment:view'), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {

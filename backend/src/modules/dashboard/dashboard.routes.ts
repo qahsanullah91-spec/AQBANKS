@@ -26,7 +26,9 @@ router.get('/overview', authenticate, async (req: AuthenticatedRequest, res: Res
       postedAt: t.postedAt,
       category: t.category,
       debitAmount: t.debitAmount,
-      creditAmount: t.creditAmount
+      creditAmount: t.creditAmount,
+      description: t.description,
+      reference: t.reference
     })));
 
     const currentBalance = calculatedTxs.length > 0
@@ -38,17 +40,32 @@ router.get('/overview', authenticate, async (req: AuthenticatedRequest, res: Res
 
     // 2. Invoices & Receivables
     const allInvoices = await prisma.invoice.findMany({
-      where: { status: { not: 'VOID' } },
-      include: { customer: true, paymentAllocations: true }
+      where: { status: 'ISSUED' },
+      include: { customer: true, lines: true, paymentAllocations: true }
     });
 
     const totalInvoiced = allInvoices.reduce((sum, inv) => sum.plus(toDecimal(inv.totalAmount)), toDecimal(0));
     
+    // Sum total weight in KG
+    const totalWeightKg = allInvoices.reduce((sum, inv) => {
+      const invWt = inv.lines.reduce((lSum, l) => lSum.plus(toDecimal(l.quantity)), toDecimal(0));
+      return sum.plus(invWt);
+    }, toDecimal(0));
+
+    // Sum SWIFT intermediary bank fees
+    const swiftFeeAgg = await prisma.paymentAllocation.aggregate({
+      _sum: { swiftBankFee: true }
+    });
+    const totalSwiftFees = toDecimal(swiftFeeAgg._sum.swiftBankFee || 0);
+
     // Pending receivables = invoices where paymentStatus != 'PAID'
     const pendingInvoices = allInvoices.filter(inv => inv.paymentStatus !== 'PAID');
     const totalPending = pendingInvoices.reduce((sum, inv) => {
       const invTotal = toDecimal(inv.totalAmount);
-      const paid = inv.paymentAllocations.reduce((pSum, a) => pSum.plus(toDecimal(a.amount)), toDecimal(0));
+      const paid = inv.paymentAllocations.reduce(
+        (pSum, a) => pSum.plus(toDecimal(a.amount)).plus(toDecimal(a.swiftBankFee || 0)),
+        toDecimal(0)
+      );
       return sum.plus(invTotal.minus(paid));
     }, toDecimal(0));
 
@@ -56,14 +73,16 @@ router.get('/overview', authenticate, async (req: AuthenticatedRequest, res: Res
     const allShipments = await prisma.shipment.findMany();
     const activeShipments = allShipments.filter(s => s.status === 'IN_TRANSIT' || s.status === 'AT_ORIGIN_PORT' || s.status === 'BOOKED');
 
-    // 4. Latest 5 transactions
-    const latestTransactions = calculatedTxs.slice(-5).reverse();
+    // 4. Latest 4 transactions (Top 4 recent ledger entries in descending order)
+    const latestTransactions = calculatedTxs.slice(-4).reverse();
 
     // 5. Cash Flow metrics
     const cashFlow = {
       totalIncoming: totalCredits.toFixed(2),
       totalOutgoing: totalDebits.toFixed(2),
-      netOperatingCashFlow: totalCredits.minus(totalDebits).toFixed(2)
+      netOperatingCashFlow: totalCredits.minus(totalDebits).toFixed(2),
+      pendingReceivables: totalPending.toFixed(2),
+      totalSwiftFees: totalSwiftFees.toFixed(2)
     };
 
     res.json({
@@ -72,7 +91,10 @@ router.get('/overview', authenticate, async (req: AuthenticatedRequest, res: Res
         totalCredits: totalCredits.toFixed(2),
         totalDebits: totalDebits.toFixed(2),
         totalInvoiced: totalInvoiced.toFixed(2),
+        totalWeightKg: totalWeightKg.toFixed(2),
+        totalSwiftFees: totalSwiftFees.toFixed(2),
         pendingReceivables: totalPending.toFixed(2),
+        unpaidInvoicesCount: pendingInvoices.length,
         activeShipmentsCount: activeShipments.length,
         totalInvoicesCount: allInvoices.length,
         unreconciledTxCount: allTxs.filter(t => t.reconciliationStatus === 'UNRECONCILED').length

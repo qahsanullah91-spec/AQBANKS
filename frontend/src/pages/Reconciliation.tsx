@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api, getUserRole } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
+import { formatDisplayDate } from '../utils/date';
 import {
   CheckCircle,
   RefreshCw,
@@ -10,6 +12,9 @@ import {
 
 export const Reconciliation: React.FC = () => {
   const { t, isRtl } = useLanguage();
+  const { toast } = useToast();
+  const userRole = getUserRole();
+  const canConfirmReconciliation = userRole === 'ADMIN' || userRole === 'FINANCE_MGR';
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
@@ -31,6 +36,10 @@ export const Reconciliation: React.FC = () => {
   }, []);
 
   const handleConfirmMatch = async (txId: string, invoiceId: string, amount: number) => {
+    if (!canConfirmReconciliation) {
+      toast.error('Access Denied: Only Administrator or Finance Manager can confirm reconciliation allocations.');
+      return;
+    }
     try {
       setConfirmingId(txId);
       await api.confirmReconciliation({
@@ -39,9 +48,10 @@ export const Reconciliation: React.FC = () => {
         allocationAmount: amount,
         notes: 'Confirmed via reconciliation review interface'
       });
+      toast.success('Reconciliation match confirmed and allocated successfully');
       loadSuggestions();
     } catch (err: any) {
-      alert(err.message || 'Failed to reconcile match');
+      toast.error(err.message || 'Failed to reconcile match');
     } finally {
       setConfirmingId(null);
     }
@@ -63,6 +73,105 @@ export const Reconciliation: React.FC = () => {
         >
           <RefreshCw className="w-3.5 h-3.5" /> {t('common.refresh', 'Re-scan Matches')}
         </button>
+      </div>
+
+      {/* Three-Way Reconciled Ledger Allocations Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Settled Incoming Three-Way Matches */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
+              Verified Three-Way Match Invoices ($154,082.80)
+            </h2>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
+              RECONCILED
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {/* Allocation 1 */}
+            <div className="p-3.5 bg-slate-950 border border-slate-800/80 rounded-lg text-xs space-y-1.5">
+              <div className="flex justify-between items-center font-bold text-white">
+                <span className="font-mono text-emerald-400">PI-2026-0001 · G.T JAYANTI AGROCHEM</span>
+                <span className="font-mono">$79,332.80 Invoiced</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-400 font-mono">
+                <div>Receipt: <strong className="text-slate-200">RCP-2026-0001</strong></div>
+                <div>Wire Ref: <strong className="text-slate-200">0464AIR261771143</strong></div>
+                <div>Net Wire Credited: <strong className="text-emerald-400">$78,893.36</strong></div>
+                <div>SWIFT Fee: <strong className="text-amber-400">$439.44 (0.55%)</strong></div>
+              </div>
+              <div className="pt-1 border-t border-slate-800/80 flex justify-between items-center text-[11px]">
+                <span className="text-slate-500">Effective Date: 30-Sep-2026</span>
+                <span className="text-emerald-400 font-bold font-mono">Remaining: $0.00 (PAID)</span>
+              </div>
+            </div>
+
+            {/* Allocation 2 */}
+            <div className="p-3.5 bg-slate-950 border border-slate-800/80 rounded-lg text-xs space-y-1.5">
+              <div className="flex justify-between items-center font-bold text-white">
+                <span className="font-mono text-emerald-400">PI-2026-0002 · G.T INDIA PVT LTD</span>
+                <span className="font-mono">$74,750.00 Invoiced</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-400 font-mono">
+                <div>Receipt: <strong className="text-slate-200">RCP-2026-0002</strong></div>
+                <div>Wire Ref: <strong className="text-slate-200">8483AIR261778937</strong></div>
+                <div>Net Wire Credited: <strong className="text-emerald-400">$74,376.25</strong></div>
+                <div>SWIFT Fee: <strong className="text-amber-400">$373.75 (0.50%)</strong></div>
+              </div>
+              <div className="pt-1 border-t border-slate-800/80 flex justify-between items-center text-[11px]">
+                <span className="text-slate-500">Effective Date: 08-Oct-2026</span>
+                <span className="text-emerald-400 font-bold font-mono">Remaining: $0.00 (PAID)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Outgoing Supplier Disbursements Matched to Debits */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-rose-400 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-rose-400" />
+              Outgoing Settlements Matched to Ledger Debits
+            </h2>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-950 text-rose-300 border border-rose-800">
+              $129,093.36 Debited
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-lg text-xs space-y-1">
+              <div className="flex justify-between items-center font-bold text-white">
+                <span>NAJEB AMIN LTD</span>
+                <span className="font-mono text-rose-400">-$78,893.36</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                1:1 Exact Pass-Through Settlement of G.T Jayanti Agrochem wire · Reconciled on 08-Oct-2026
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-lg text-xs space-y-1">
+              <div className="flex justify-between items-center font-bold text-white">
+                <span>Sodiqjon Aminov (Tashkent)</span>
+                <span className="font-mono text-rose-400">-$35,000.00</span>
+              </div>
+              <p className="text-[11px] text-slate-400 font-mono">
+                Commercial trade operations payment · Bank Ref: AD 5708262 · Reconciled on 08-Oct-2026
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-lg text-xs space-y-1">
+              <div className="flex justify-between items-center font-bold text-white">
+                <span>Hayatullah Noori</span>
+                <span className="font-mono text-rose-400">-$15,200.00</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Regional logistics & operational advance settlement · Reconciled on 08-Oct-2026
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Reconciliation Guidelines Box */}
@@ -88,7 +197,7 @@ export const Reconciliation: React.FC = () => {
                   {/* Left: Statement Transaction */}
                   <div className="flex-1">
                     <span className="text-[10px] text-emerald-400 font-mono uppercase font-semibold">
-                      Bank Statement Credit • {new Date(tx.effectiveDate).toLocaleDateString()}
+                      Bank Statement Credit • {formatDisplayDate(tx.effectiveDate)}
                     </span>
                     <h2 className="text-sm font-bold text-white mt-0.5">{tx.description}</h2>
                     <div className="text-xs text-slate-400 mt-1 flex items-center gap-3 font-mono">
@@ -139,14 +248,21 @@ export const Reconciliation: React.FC = () => {
                     </div>
 
                     <div className="md:col-span-4 flex justify-end rtl:justify-start">
-                      <button
-                        onClick={() => handleConfirmMatch(tx.id, match.invoice.id, Number(tx.creditAmount))}
-                        disabled={confirmingId === tx.id}
-                        className="w-full md:w-auto px-4 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-lg shadow-emerald-950 transition flex items-center justify-center gap-2"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        {confirmingId === tx.id ? t('common.loading') : t('reconciliation.confirmMatch')}
-                      </button>
+                      {canConfirmReconciliation ? (
+                        <button
+                          onClick={() => handleConfirmMatch(tx.id, match.invoice.id, Number(tx.creditAmount))}
+                          disabled={confirmingId === tx.id}
+                          className="w-full md:w-auto px-4 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-lg shadow-emerald-950 transition flex items-center justify-center gap-2"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          {confirmingId === tx.id ? t('common.loading') : t('reconciliation.confirmMatch')}
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-400 font-mono">
+                          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span>Audit View Only</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { api, getAuthToken } from '../services/api';
+import { api, getAuthToken, getUserRole } from '../services/api';
 import { Payment, Customer, Invoice } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
+import { formatDisplayDate } from '../utils/date';
 import {
   CreditCard,
   Plus,
@@ -9,11 +11,16 @@ import {
   AlertTriangle,
   CheckCircle,
   X,
-  Split
+  Split,
+  ShieldCheck
 } from 'lucide-react';
+import { triggerPrint } from '../utils/print';
 
 export const Payments: React.FC = () => {
   const { t, isRtl } = useLanguage();
+  const { toast } = useToast();
+  const userRole = getUserRole();
+  const canMutatePayments = userRole === 'ADMIN' || userRole === 'FINANCE_MGR';
   const [payments, setPayments] = useState<Payment[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -29,6 +36,18 @@ export const Payments: React.FC = () => {
   const [allocations, setAllocations] = useState<{ invoiceId: string; amount: number }[]>([]);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
   const [selectedReceiptModal, setSelectedReceiptModal] = useState<any | null>(null);
+
+  // Close modals on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showModal) setShowModal(false);
+        else if (selectedReceiptModal) setSelectedReceiptModal(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showModal, selectedReceiptModal]);
 
   const loadData = async () => {
     try {
@@ -82,6 +101,10 @@ export const Payments: React.FC = () => {
 
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canMutatePayments) {
+      setWarningMessage('Access Denied: Only Administrator or Finance Manager can record payments.');
+      return;
+    }
     setWarningMessage(null);
     const parsedTotal = Number(totalAmount) || 0;
     if (parsedTotal <= 0) {
@@ -106,9 +129,10 @@ export const Payments: React.FC = () => {
       setReference('');
       setTotalAmount('');
       setAllocations([]);
+      toast.success('Payment recorded and allocated successfully');
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to record payment');
+      toast.error(err.message || 'Failed to record payment');
     }
   };
 
@@ -122,15 +146,119 @@ export const Payments: React.FC = () => {
             {t('payments.subtitle')}
           </p>
         </div>
-        <button
-          onClick={() => {
-            setReference(`WIRE-${Math.floor(100000 + Math.random() * 900000)}`);
-            setShowModal(true);
-          }}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition w-full sm:w-auto"
-        >
-          <Plus className="w-4 h-4" /> {t('payments.recordPayment')}
-        </button>
+        {canMutatePayments ? (
+          <button
+            onClick={() => {
+              setReference(`WIRE-${Math.floor(100000 + Math.random() * 900000)}`);
+              setShowModal(true);
+            }}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition w-full sm:w-auto"
+          >
+            <Plus className="w-4 h-4" /> {t('payments.recordPayment')}
+          </button>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-400 font-mono">
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>Read-Only Audit Clearance ({userRole})</span>
+          </div>
+        )}
+      </div>
+
+      {/* Three-Way Match & Disbursed Settlements Summary */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Incoming Settled Wire Allocations */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
+              Three-Way Match: Settled Invoices ($154,082.80)
+            </h2>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
+              RECONCILED & PAID
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {/* Allocation 1 */}
+            <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-lg text-xs space-y-1">
+              <div className="flex justify-between items-center font-bold text-white">
+                <span className="font-mono text-emerald-400">PI-2026-0001 · G.T JAYANTI AGROCHEM</span>
+                <span className="font-mono">$79,332.80</span>
+              </div>
+              <div className="text-[11px] text-slate-400 flex flex-wrap gap-x-3 gap-y-0.5 font-mono">
+                <span>Receipt: <strong className="text-slate-200">RCP-2026-0001</strong></span>
+                <span>Wire Ref: <strong className="text-slate-300">0464AIR261771143</strong> (30-Sep)</span>
+                <span>Net Credited: <strong className="text-emerald-400">$78,893.36</strong></span>
+              </div>
+              <div className="pt-1 text-[10px] text-amber-400 font-mono flex justify-between">
+                <span>SWIFT Intermediary Write-Off: $439.44 (0.55%)</span>
+                <span className="text-emerald-400 font-bold">Remaining: $0.00 (PAID)</span>
+              </div>
+            </div>
+
+            {/* Allocation 2 */}
+            <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-lg text-xs space-y-1">
+              <div className="flex justify-between items-center font-bold text-white">
+                <span className="font-mono text-emerald-400">PI-2026-0002 · G.T INDIA PVT LTD</span>
+                <span className="font-mono">$74,750.00</span>
+              </div>
+              <div className="text-[11px] text-slate-400 flex flex-wrap gap-x-3 gap-y-0.5 font-mono">
+                <span>Receipt: <strong className="text-slate-200">RCP-2026-0002</strong></span>
+                <span>Wire Ref: <strong className="text-slate-300">8483AIR261778937</strong> (08-Oct)</span>
+                <span>Net Credited: <strong className="text-emerald-400">$74,376.25</strong></span>
+              </div>
+              <div className="pt-1 text-[10px] text-amber-400 font-mono flex justify-between">
+                <span>SWIFT Intermediary Write-Off: $373.75 (0.50%)</span>
+                <span className="text-emerald-400 font-bold">Remaining: $0.00 (PAID)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Outgoing Supplier & Operational Settlements */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-rose-400 flex items-center gap-2">
+              <Split className="w-4 h-4 text-rose-400" />
+              Outgoing Supplier & Operational Disbursements
+            </h2>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-950 text-rose-300 border border-rose-800">
+              $129,093.36 Total
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-lg text-xs space-y-1">
+              <div className="flex justify-between items-center font-bold text-white">
+                <span>NAJEB AMIN LTD</span>
+                <span className="font-mono text-rose-400">-$78,893.36</span>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Direct supplier payment (1:1 pass-through of G.T Jayanti wire) · 08-Oct-2026
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-lg text-xs space-y-1">
+              <div className="flex justify-between items-center font-bold text-white">
+                <span>Sodiqjon Aminov (Tashkent)</span>
+                <span className="font-mono text-rose-400">-$35,000.00</span>
+              </div>
+              <div className="text-[11px] text-slate-400 font-mono">
+                Trade operations disbursement · Ref: AD 5708262 · 08-Oct-2026
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-lg text-xs space-y-1">
+              <div className="flex justify-between items-center font-bold text-white">
+                <span>Hayatullah Noori</span>
+                <span className="font-mono text-rose-400">-$15,200.00</span>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Operational settlement · 08-Oct-2026
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Search Input */}
@@ -164,7 +292,7 @@ export const Payments: React.FC = () => {
                     <span dir="ltr" className="font-mono">{p.reference || 'N/A'}</span>
                   </div>
                   <span dir="ltr" className="text-[11px] text-slate-400 font-mono block mt-0.5">
-                    {new Date(p.paymentDate).toLocaleDateString()} • {p.paymentMethod}
+                    {formatDisplayDate(p.paymentDate)} • {p.paymentMethod}
                   </span>
                 </div>
                 <div className="text-right rtl:text-left">
@@ -203,9 +331,9 @@ export const Payments: React.FC = () => {
                     .then(r => r.json())
                     .then(data => {
                       if (data && data.length > 0) setSelectedReceiptModal(data[0]);
-                      else alert('Receipt being generated. Please check Deposit Receipts tab.');
+                      else toast.info('Receipt being generated. Please check Deposit Receipts tab.');
                     })
-                    .catch(() => alert('Failed to load receipt'));
+                    .catch(() => toast.error('Failed to load receipt'));
                   }}
                   className="w-full py-2 min-h-[40px] bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition"
                 >
@@ -250,7 +378,7 @@ export const Payments: React.FC = () => {
                 payments.map(p => (
                   <tr key={p.id} className="hover:bg-slate-800/40 transition">
                     <td className={`py-3 px-4 text-slate-400 ${isRtl ? 'text-right' : 'text-left'}`} dir="ltr">
-                      {new Date(p.paymentDate).toLocaleDateString()}
+                      {formatDisplayDate(p.paymentDate)}
                     </td>
                     <td className={`py-3 px-4 font-bold text-white flex items-center gap-1.5 ${isRtl ? 'text-right' : 'text-left'}`} dir="ltr">
                       <CreditCard className="w-3.5 h-3.5 text-blue-400 shrink-0" />
@@ -294,9 +422,9 @@ export const Payments: React.FC = () => {
                           .then(r => r.json())
                           .then(data => {
                             if (data && data.length > 0) setSelectedReceiptModal(data[0]);
-                            else alert('Receipt being generated. Please check Deposit Receipts tab.');
+                            else toast.info('Receipt being generated. Please check Deposit Receipts tab.');
                           })
-                          .catch(() => alert('Failed to load receipt'));
+                          .catch(() => toast.error('Failed to load receipt'));
                         }}
                         className="px-2.5 py-1 min-h-[30px] bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 rounded text-xs transition"
                       >
@@ -495,14 +623,14 @@ export const Payments: React.FC = () => {
       {/* OFFICIAL AUTOMATIC RECEIPT MODAL */}
       {selectedReceiptModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
-          <div className="printable-document bg-white text-slate-900 rounded-xl w-full max-w-xl p-5 sm:p-7 shadow-2xl font-sans my-auto max-h-[95vh] overflow-y-auto">
+          <div className="printable-document bg-white text-slate-900 rounded-xl w-full max-w-xl p-5 sm:p-7 shadow-2xl font-sans my-auto max-h-[95vh] overflow-y-auto print:m-0 print:p-0 print:border-none print:shadow-none print:max-w-full print:rounded-none print:max-h-none print:overflow-visible">
             <div className="flex justify-between items-center pb-3 mb-4 border-b border-slate-200 print:hidden">
               <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
                 <CheckCircle className="w-4 h-4 text-emerald-600" /> Automatic Deposit Receipt Generated
               </span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => window.print()}
+                  onClick={() => triggerPrint(selectedReceiptModal?.receiptNumber ? `Deposit-Receipt-${selectedReceiptModal.receiptNumber}` : 'Deposit-Receipt')}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold flex items-center gap-1"
                 >
                   {t('common.print', 'Print / Save PDF')}
@@ -531,7 +659,7 @@ export const Payments: React.FC = () => {
                 <div className="text-right rtl:text-left">
                   <span className="text-sm font-bold text-emerald-800 uppercase block">DEPOSIT RECEIPT</span>
                   <span dir="ltr" className="font-mono font-bold text-xs text-slate-900 block">{selectedReceiptModal.receiptNumber}</span>
-                  <span dir="ltr" className="text-[10px] text-slate-500 block">{new Date(selectedReceiptModal.issueDate || Date.now()).toLocaleDateString()}</span>
+                  <span dir="ltr" className="text-[10px] text-slate-500 block">{formatDisplayDate(selectedReceiptModal.issueDate || Date.now())}</span>
                 </div>
               </div>
 

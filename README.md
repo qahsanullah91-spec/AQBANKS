@@ -1,4 +1,4 @@
-# AQ Companies Logistics & Financial Management System
+# AQBANKS - AQ Companies Logistics & Financial Management System
 
 [![CI Pipeline](https://github.com/aq-companies/logistics-bank/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-v20%2B-brightgreen)](https://nodejs.org/)

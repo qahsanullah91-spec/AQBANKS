@@ -38,7 +38,58 @@ async function ensureTable(client) {
       version INT NOT NULL DEFAULT 1,
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS aq_state_history (
+      id SERIAL PRIMARY KEY,
+      version INT NOT NULL,
+      snapshot_data JSONB NOT NULL,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
   `);
+}
+
+function mergeEntityArray(currentArr, incomingArr, idKey = 'id') {
+  if (!Array.isArray(incomingArr)) return currentArr || [];
+  if (!Array.isArray(currentArr) || currentArr.length === 0) return incomingArr;
+
+  const map = new Map();
+  for (const item of currentArr) {
+    if (item && item[idKey]) {
+      map.set(item[idKey], item);
+    }
+  }
+
+  for (const item of incomingArr) {
+    if (item && item[idKey]) {
+      const existing = map.get(item[idKey]);
+      if (existing) {
+        map.set(item[idKey], { ...existing, ...item });
+      } else {
+        map.set(item[idKey], item);
+      }
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+function mergeStates(current, incoming) {
+  if (!current) return incoming;
+  if (!incoming) return current;
+
+  return {
+    ...current,
+    ...incoming,
+    invoices: mergeEntityArray(current.invoices, incoming.invoices, 'id'),
+    receipts: mergeEntityArray(current.receipts, incoming.receipts, 'receiptNumber'),
+    ledger: mergeEntityArray(current.ledger, incoming.ledger, 'id'),
+    customers: mergeEntityArray(current.customers, incoming.customers, 'id'),
+    shipments: mergeEntityArray(current.shipments, incoming.shipments, 'id'),
+    bankAccounts: mergeEntityArray(current.bankAccounts, incoming.bankAccounts, 'id'),
+    remittanceProfiles: mergeEntityArray(current.remittanceProfiles, incoming.remittanceProfiles, 'id'),
+    payments: mergeEntityArray(current.payments, incoming.payments, 'id'),
+    auditEvents: mergeEntityArray(current.auditEvents, incoming.auditEvents, 'id')
+  };
 }
 
 export default async function handler(req, res) {
@@ -61,6 +112,16 @@ export default async function handler(req, res) {
     client = await p.connect();
     await ensureTable(client);
 
+    const action = req.query?.action;
+
+    // Optional: Get restore points history
+    if (req.method === 'GET' && action === 'history') {
+      const hist = await client.query(
+        'SELECT id, version, created_at FROM aq_state_history ORDER BY id DESC LIMIT 20;'
+      );
+      return res.status(200).json({ success: true, history: hist.rows });
+    }
+
     if (req.method === 'GET') {
       const result = await client.query(
         'SELECT state_data, version, updated_at FROM aq_online_state WHERE id = $1',
@@ -68,13 +129,17 @@ export default async function handler(req, res) {
       );
 
       if (result.rows.length === 0) {
-        // Auto-seed with verified initial dataset
         const seed = getSeedData();
         if (seed) {
           const insertRes = await client.query(`
             INSERT INTO aq_online_state (id, state_data, version, updated_at)
             VALUES ('primary_state', $1, 1, NOW())
             RETURNING state_data, version, updated_at;
+          `, [JSON.stringify(seed)]);
+
+          await client.query(`
+            INSERT INTO aq_state_history (version, snapshot_data, created_at)
+            VALUES (1, $1, NOW());
           `, [JSON.stringify(seed)]);
 
           const row = insertRes.rows[0];
@@ -108,29 +173,62 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = req.body;
-      const state = body?.state || body;
+      const rawState = body?.state || body;
 
-      if (!state || typeof state !== 'object') {
+      if (!rawState || typeof rawState !== 'object') {
         return res.status(400).json({ error: 'Invalid state payload' });
       }
 
-      // Upsert into aq_online_state
+      // 1. Fetch current database state to perform conflict-free entity-level merge
+      const curRes = await client.query(
+        'SELECT state_data, version FROM aq_online_state WHERE id = $1',
+        ['primary_state']
+      );
+
+      let finalState = rawState;
+      let nextVersion = 1;
+
+      if (curRes.rows.length > 0) {
+        const currentState = curRes.rows[0].state_data;
+        const currentVersion = curRes.rows[0].version;
+        nextVersion = (currentVersion || 0) + 1;
+
+        // Perform smart conflict-free entity merge
+        finalState = mergeStates(currentState, rawState);
+      }
+
+      // 2. Persist merged state to primary record
       const upsertResult = await client.query(`
         INSERT INTO aq_online_state (id, state_data, version, updated_at)
-        VALUES ('primary_state', $1, 1, NOW())
+        VALUES ('primary_state', $1, $2, NOW())
         ON CONFLICT (id) DO UPDATE SET
           state_data = EXCLUDED.state_data,
-          version = aq_online_state.version + 1,
+          version = EXCLUDED.version,
           updated_at = NOW()
         RETURNING version, updated_at;
-      `, [JSON.stringify(state)]);
+      `, [JSON.stringify(finalState), nextVersion]);
+
+      // 3. Save snapshot to history table for disaster recovery & audit
+      await client.query(`
+        INSERT INTO aq_state_history (version, snapshot_data, created_at)
+        VALUES ($1, $2, NOW());
+      `, [nextVersion, JSON.stringify(finalState)]);
+
+      // 4. Prune history to keep last 50 snapshots
+      await client.query(`
+        DELETE FROM aq_state_history
+        WHERE id NOT IN (
+          SELECT id FROM aq_state_history ORDER BY id DESC LIMIT 50
+        );
+      `);
 
       const row = upsertResult.rows[0];
       return res.status(200).json({
         success: true,
         version: row.version,
         updatedAt: row.updated_at,
-        message: 'Online cloud state successfully synchronized'
+        data: finalState,
+        message: 'Online cloud state successfully synchronized with PostgreSQL'
       });
     }
 

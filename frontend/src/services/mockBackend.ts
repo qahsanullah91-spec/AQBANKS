@@ -659,6 +659,7 @@ class MockBackendEngine {
   private syncInProgress = false;
   private lastSyncedVersion = 0;
   private pendingPushTimer: any = null;
+  private broadcastChannel: BroadcastChannel | null = null;
 
   constructor() {
     this.state = this.loadState();
@@ -673,22 +674,74 @@ class MockBackendEngine {
       if (v) this.lastSyncedVersion = parseInt(v, 10) || 0;
     } catch {}
 
-    // Immediate background sync on app load
+    // 1. Cross-tab instant communication via BroadcastChannel
+    if ('BroadcastChannel' in window) {
+      try {
+        this.broadcastChannel = new BroadcastChannel('aq_portal_sync_channel');
+        this.broadcastChannel.onmessage = (event) => {
+          if (event.data?.type === 'AQ_STATE_UPDATE' && event.data.state) {
+            this.state = event.data.state;
+            if (event.data.version) {
+              this.lastSyncedVersion = event.data.version;
+            }
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+              localStorage.setItem('aq_cloud_version', String(this.lastSyncedVersion));
+            } catch {}
+            window.dispatchEvent(new CustomEvent('aq:data-mutated'));
+            window.dispatchEvent(new CustomEvent('aq:cloud-sync-status', {
+              detail: { status: 'synced', version: this.lastSyncedVersion, source: 'tab' }
+            }));
+          }
+        };
+      } catch (e) {
+        console.warn('BroadcastChannel not initialized:', e);
+      }
+    }
+
+    // 2. Immediate background sync on app load
     setTimeout(() => {
       this.syncWithCloud(true);
-    }, 100);
+    }, 50);
 
-    // Sync when tab/window gains focus
+    // 3. Sync on window / tab focus
     window.addEventListener('focus', () => {
       this.syncWithCloud();
     });
 
-    // Periodic synchronization every 15 seconds
+    // 4. Sync on tab visibility change (switching apps or tabs)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        this.syncWithCloud();
+      }
+    });
+
+    // 5. Sync when internet connectivity is restored
+    window.addEventListener('online', () => {
+      this.syncWithCloud(true);
+    });
+
+    // 6. Keepalive flush on page unload
+    window.addEventListener('beforeunload', () => {
+      if (this.pendingPushTimer) {
+        clearTimeout(this.pendingPushTimer);
+        try {
+          fetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ state: this.state }),
+            keepalive: true
+          });
+        } catch {}
+      }
+    });
+
+    // 7. Frequent background sync poll (every 8 seconds)
     setInterval(() => {
       this.syncWithCloud();
-    }, 15000);
+    }, 8000);
 
-    // Allow components to trigger cloud sync on demand
+    // 8. Manual on-demand sync request
     window.addEventListener('aq:request-cloud-sync', () => {
       this.syncWithCloud(true);
     });
@@ -739,13 +792,23 @@ class MockBackendEngine {
             localStorage.setItem('aq_cloud_version', String(cloudVersion));
           } catch {}
 
+          // Notify other open tabs
+          if (this.broadcastChannel) {
+            try {
+              this.broadcastChannel.postMessage({
+                type: 'AQ_STATE_UPDATE',
+                version: this.lastSyncedVersion,
+                state: this.state
+              });
+            } catch {}
+          }
+
           window.dispatchEvent(new CustomEvent('aq:data-mutated'));
           window.dispatchEvent(new CustomEvent('aq:cloud-sync-status', {
             detail: { status: 'synced', version: cloudVersion, source: 'cloud' }
           }));
         }
       } else {
-        // If cloud had no data, initialize it with current state
         await this.pushToCloud(this.state);
       }
     } catch (err) {
@@ -775,9 +838,26 @@ class MockBackendEngine {
         const body = await res.json();
         if (body.version) {
           this.lastSyncedVersion = Number(body.version);
+          if (body.data) {
+            this.state = body.data;
+          }
           try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
             localStorage.setItem('aq_cloud_version', String(this.lastSyncedVersion));
           } catch {}
+
+          // Broadcast to any other open tabs immediately
+          if (this.broadcastChannel) {
+            try {
+              this.broadcastChannel.postMessage({
+                type: 'AQ_STATE_UPDATE',
+                version: this.lastSyncedVersion,
+                state: this.state
+              });
+            } catch {}
+          }
+
+          window.dispatchEvent(new CustomEvent('aq:data-mutated'));
           window.dispatchEvent(new CustomEvent('aq:cloud-sync-status', {
             detail: { status: 'synced', version: this.lastSyncedVersion, source: 'local' }
           }));
@@ -821,7 +901,6 @@ class MockBackendEngine {
         if (!Array.isArray(parsed.receipts)) {
           parsed.receipts = fresh.receipts;
         } else {
-          // Ensure all official baseline receipts (including RCP-2026-0003 for 63,000) are merged
           for (const fr of fresh.receipts) {
             if (!parsed.receipts.some((r: any) => r.receiptNumber === fr.receiptNumber || r.id === fr.id)) {
               parsed.receipts.push(fr);
@@ -855,20 +934,34 @@ class MockBackendEngine {
     return fresh;
   }
 
-  private saveState(state = this.state) {
+  public saveState(state = this.state, immediate = false) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) {
       console.warn('Failed to save to localStorage:', e);
     }
 
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'AQ_STATE_UPDATE',
+          version: this.lastSyncedVersion,
+          state: this.state
+        });
+      } catch {}
+    }
+
     if (typeof window !== 'undefined') {
       if (this.pendingPushTimer) {
         clearTimeout(this.pendingPushTimer);
       }
-      this.pendingPushTimer = setTimeout(() => {
+      if (immediate) {
         this.pushToCloud(state);
-      }, 300);
+      } else {
+        this.pendingPushTimer = setTimeout(() => {
+          this.pushToCloud(state);
+        }, 150);
+      }
     }
   }
 

@@ -93,6 +93,13 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
     // seamlessly execute via standalone mock backend engine
     console.info(`[AQ Portal Gateway] Servicing '${endpoint}' via built-in high-availability engine.`);
     const data = await mockBackend.handleRequest<T>(endpoint, { ...options, headers });
+    if (typeof window !== 'undefined' && method !== 'GET') {
+      try {
+        await mockBackend.pushToCloud();
+      } catch (e) {
+        console.warn('Background push to cloud failed:', e);
+      }
+    }
     notifyMutation();
     return data;
   } catch (err: any) {
@@ -104,6 +111,9 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
     console.info(`[AQ Portal Gateway] Network unavailable, routing '${endpoint}' to local engine.`);
     const data = await mockBackend.handleRequest<T>(endpoint, { ...options, headers });
     if (typeof window !== 'undefined' && (options.method || 'GET').toUpperCase() !== 'GET') {
+      try {
+        await mockBackend.pushToCloud();
+      } catch {}
       window.dispatchEvent(new CustomEvent('aq:data-mutated'));
     }
     return data;

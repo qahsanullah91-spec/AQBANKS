@@ -10,7 +10,9 @@ import {
   CheckCircle,
   Share2,
   ShieldCheck,
-  RefreshCw
+  RefreshCw,
+  Eye,
+  Download
 } from 'lucide-react';
 import { triggerPrint } from '../utils/print';
 
@@ -23,6 +25,7 @@ export const Receipts: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null);
+  const [showRegisterPrintModal, setShowRegisterPrintModal] = useState(false);
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [voidReason, setVoidReason] = useState('');
   const [voiding, setVoiding] = useState(false);
@@ -75,6 +78,13 @@ export const Receipts: React.FC = () => {
     triggerPrint(selectedReceipt ? `Receipt-${selectedReceipt.receiptNumber}` : 'Official-Treasury-Receipt');
   };
 
+  const handlePrintReceiptDirect = (r: any) => {
+    setSelectedReceipt(r);
+    setTimeout(() => {
+      triggerPrint(`Official-Deposit-Receipt-${r.receiptNumber}`);
+    }, 120);
+  };
+
   const handleCopyDetails = () => {
     if (!selectedReceipt) return;
     const text = `AQ COMPANIES OFFICIAL RECEIPT\nReceipt No: ${selectedReceipt.receiptNumber}\nDate: ${formatDisplayDate(selectedReceipt.issueDate)}\nPayer: ${selectedReceipt.payerName}\nAmount: $${Number(selectedReceipt.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} USD\nAmount in Words: ${selectedReceipt.amountInWords}\nAccount: ${selectedReceipt.receivingAccountMasked}\nPurpose: ${selectedReceipt.purpose}`;
@@ -82,6 +92,19 @@ export const Receipts: React.FC = () => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // Close modals on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (selectedReceipt) setSelectedReceipt(null);
+        if (showRegisterPrintModal) setShowRegisterPrintModal(false);
+        if (showVoidModal) setShowVoidModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedReceipt, showRegisterPrintModal, showVoidModal]);
 
   const filteredReceipts = receipts.filter(r => {
     if (statusFilter !== 'ALL' && r.status !== statusFilter) return false;
@@ -99,6 +122,47 @@ export const Receipts: React.FC = () => {
   const totalReceipted = (receipts || [])
     .filter(r => r.status === 'ISSUED')
     .reduce((sum, r) => sum + Number(r.amount), 0);
+
+  const totalFilteredGross = filteredReceipts.reduce((sum, r) => {
+    const g = Number(r.grossAmount || (Number(r.swiftFeeAmount || 0) > 0 ? Number(r.amount) + Number(r.swiftFeeAmount) : r.amount));
+    return sum + (isNaN(g) ? 0 : g);
+  }, 0);
+  const totalFilteredFees = filteredReceipts.reduce((sum, r) => sum + (Number(r.swiftFeeAmount) || 0), 0);
+  const totalFilteredNet = filteredReceipts.reduce((sum, r) => {
+    const fee = Number(r.swiftFeeAmount || 0);
+    const net = fee > 0 && r.grossAmount && Number(r.grossAmount) === Number(r.amount)
+      ? Number(r.grossAmount) - fee
+      : Number(r.amount);
+    return sum + (isNaN(net) ? 0 : net);
+  }, 0);
+
+  const handleExportRegisterCsv = () => {
+    const headers = ['Receipt No', 'Date', 'Payer Name', 'Gross Invoiced (USD)', 'SWIFT Fee (USD)', 'Net Credited (USD)', 'Purpose', 'Reference', 'Status'];
+    const rows = filteredReceipts.map(r => {
+      const gross = Number(r.grossAmount || (Number(r.swiftFeeAmount || 0) > 0 ? Number(r.amount) + Number(r.swiftFeeAmount) : r.amount)).toFixed(2);
+      const fee = Number(r.swiftFeeAmount || 0).toFixed(2);
+      const net = Number(r.swiftFeeAmount && Number(r.swiftFeeAmount) > 0 && r.grossAmount && Number(r.grossAmount) === Number(r.amount) ? Number(r.grossAmount) - Number(r.swiftFeeAmount) : r.amount).toFixed(2);
+      return [
+        r.receiptNumber,
+        formatDisplayDate(r.issueDate),
+        `"${(r.payerName || '').replace(/"/g, '""')}"`,
+        gross,
+        fee,
+        net,
+        `"${(r.purpose || '').replace(/"/g, '""')}"`,
+        r.referenceNumber || '—',
+        r.status
+      ];
+    });
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Official-Deposit-Receipts-Register-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -125,12 +189,22 @@ export const Receipts: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={fetchReceipts}
-          className="self-start sm:self-auto flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
-        >
-          <RefreshCw className="w-3.5 h-3.5" /> {t('common.refresh', 'Refresh List')}
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => setShowRegisterPrintModal(true)}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition shadow-sm"
+            title="Print Official Deposit Receipts Summary Register"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>{t('receipts.printRegister', 'Print Summary Report')}</span>
+          </button>
+          <button
+            onClick={fetchReceipts}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> {t('common.refresh', 'Refresh List')}
+          </button>
+        </div>
       </div>
 
       {message && (
@@ -215,7 +289,7 @@ export const Receipts: React.FC = () => {
                 <th className={`py-3 px-3.5 ${isRtl ? 'text-left' : 'text-right'}`}>Net Credited</th>
                 <th className={`py-3 px-3.5 ${isRtl ? 'text-right' : 'text-left'}`}>{t('receipts.purpose')}</th>
                 <th className={`py-3 px-2.5 ${isRtl ? 'text-right' : 'text-left'}`}>{t('common.status')}</th>
-                <th className="py-3 px-3 text-center">{t('common.actions')}</th>
+                <th className="py-3 px-3 text-center min-w-[130px] whitespace-nowrap">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
@@ -272,13 +346,25 @@ export const Receipts: React.FC = () => {
                         {r.status}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-center font-sans">
-                      <button
-                        onClick={() => openReceiptModal(r)}
-                        className="px-2.5 py-1 min-h-[32px] bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-medium rounded transition dark:border-slate-700"
-                      >
-                        {t('common.view')}
-                      </button>
+                    <td className="py-3 px-3 text-center font-sans whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => openReceiptModal(r)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 min-h-[32px] bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-medium rounded transition dark:border-slate-700"
+                          title={t('receipts.viewTooltip', 'View Receipt Details')}
+                        >
+                          <Eye className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                          <span>{t('common.view', 'View')}</span>
+                        </button>
+                        <button
+                          onClick={() => handlePrintReceiptDirect(r)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 min-h-[32px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded transition shadow-sm"
+                          title={t('receipts.printTooltip', 'Print Official Deposit Receipt')}
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>{t('common.print', 'Print')}</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -550,6 +636,200 @@ export const Receipts: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* OFFICIAL DEPOSIT RECEIPTS REGISTER & AUDIT SUMMARY PRINT MODAL */}
+      {showRegisterPrintModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+          <div className="printable-document bg-white text-slate-900 rounded-2xl w-full max-w-5xl my-auto p-5 sm:p-8 shadow-2xl font-sans max-h-[95vh] overflow-y-auto print:m-0 print:p-0 print:border-none print:shadow-none print:max-w-full print:rounded-none print:max-h-none print:overflow-visible">
+            {/* Modal Actions Bar (Hidden on Print) */}
+            <div className="flex justify-between items-center pb-4 border-b border-slate-200 print:hidden">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  {t('receipts.registerTitle', 'Official Deposit Receipts Register & Summary Report')}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportRegisterCsv}
+                  className="px-3 py-1.5 min-h-[36px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium flex items-center gap-1.5 transition"
+                >
+                  <Download className="w-3.5 h-3.5" /> Export CSV
+                </button>
+                <button
+                  onClick={() => triggerPrint('Official-Deposit-Receipts-Register')}
+                  className="px-3.5 py-1.5 min-h-[36px] bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
+                >
+                  <Printer className="w-3.5 h-3.5" /> Print Summary Report
+                </button>
+                <button
+                  onClick={() => setShowRegisterPrintModal(false)}
+                  className="p-1.5 min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-400 hover:text-slate-700 rounded-lg transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* PRINTABLE REGISTER CONTENT */}
+            <div className="space-y-5 mt-4">
+              {/* Document Header */}
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-3 border-b-2 border-slate-900">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-36 sm:h-20 sm:w-48 flex items-center justify-start shrink-0">
+                    <img
+                      src="/sky-ariana-logo.png"
+                      alt="Sky Ariana Ltd."
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-black text-slate-950 font-sans tracking-tight">
+                      SKY ARIANA LTD.
+                    </h2>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
+                      Corporate Treasury & Commercial Settlement Division
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                      Operating Account: Afghan United Bank (AUB) • 101502USD2940472 • SWIFT: AFGUAFKAXXX
+                    </p>
+                  </div>
+                </div>
+                <div className="text-left sm:text-right shrink-0 sm:ml-auto">
+                  <span className="text-sm font-black tracking-wider uppercase text-emerald-800 block">
+                    OFFICIAL RECEIPTS REGISTER
+                  </span>
+                  <span className="text-xs font-mono font-bold text-slate-900 block mt-0.5" dir="ltr">
+                    Ref: AQ-RCP-REG-{new Date().toISOString().slice(0, 10).replace(/-/g, '')}
+                  </span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5" dir="ltr">
+                    Statement Date: {formatFullDate(new Date().toISOString())}
+                  </span>
+                </div>
+              </div>
+
+              {/* Executive KPI Summary Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div className="p-2.5 bg-white rounded-lg border border-slate-200/80 shadow-sm">
+                  <span className="text-[9px] uppercase font-bold text-slate-500 block">Total Receipts</span>
+                  <span className="text-base font-extrabold text-slate-900 font-mono">{filteredReceipts.length}</span>
+                </div>
+                <div className="p-2.5 bg-white rounded-lg border border-slate-200/80 shadow-sm">
+                  <span className="text-[9px] uppercase font-bold text-slate-500 block">Gross Invoiced</span>
+                  <span className="text-base font-extrabold text-slate-900 font-mono" dir="ltr">
+                    ${totalFilteredGross.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="p-2.5 bg-white rounded-lg border border-slate-200/80 shadow-sm">
+                  <span className="text-[9px] uppercase font-bold text-amber-700 block">SWIFT Deductions</span>
+                  <span className="text-base font-extrabold text-amber-700 font-mono" dir="ltr">
+                    -${totalFilteredFees.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="p-2.5 bg-emerald-50 rounded-lg border border-emerald-200 shadow-sm">
+                  <span className="text-[9px] uppercase font-bold text-emerald-800 block">Net Wire Credited</span>
+                  <span className="text-base font-extrabold text-emerald-700 font-mono" dir="ltr">
+                    ${totalFilteredNet.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Itemized Receipts Table */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                <table className="w-full text-[11px] text-slate-800">
+                  <thead className="bg-slate-950 text-white uppercase text-[9px] tracking-wider">
+                    <tr>
+                      <th className="py-2.5 px-3 text-left">Receipt No</th>
+                      <th className="py-2.5 px-2.5 text-left">Date</th>
+                      <th className="py-2.5 px-3 text-left">Payer / Remitter</th>
+                      <th className="py-2.5 px-2.5 text-right">Gross (USD)</th>
+                      <th className="py-2.5 px-2.5 text-right">SWIFT Fee</th>
+                      <th className="py-2.5 px-2.5 text-right">Net Credited</th>
+                      <th className="py-2.5 px-3 text-left">Purpose & Reference</th>
+                      <th className="py-2.5 px-2 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 font-mono text-[10px]">
+                    {filteredReceipts.map(r => {
+                      const gross = Number(r.grossAmount || (Number(r.swiftFeeAmount || 0) > 0 ? Number(r.amount) + Number(r.swiftFeeAmount) : r.amount));
+                      const fee = Number(r.swiftFeeAmount || 0);
+                      const net = Number(fee > 0 && r.grossAmount && Number(r.grossAmount) === Number(r.amount) ? Number(r.grossAmount) - fee : r.amount);
+                      return (
+                        <tr key={r.id} className="hover:bg-slate-50">
+                          <td className="py-2 px-3 font-bold text-emerald-800 text-left" dir="ltr">{r.receiptNumber}</td>
+                          <td className="py-2 px-2.5 text-slate-600 text-left" dir="ltr">{formatDisplayDate(r.issueDate)}</td>
+                          <td className="py-2 px-3 font-sans font-medium text-slate-900 text-left">{r.payerName}</td>
+                          <td className="py-2 px-2.5 text-right tabular-nums text-slate-700" dir="ltr">
+                            ${gross.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-2 px-2.5 text-right tabular-nums text-amber-700" dir="ltr">
+                            {fee > 0 ? `-$${fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'}
+                          </td>
+                          <td className="py-2 px-2.5 text-right tabular-nums font-bold text-emerald-800" dir="ltr">
+                            ${net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-2 px-3 font-sans text-slate-600 text-left truncate max-w-[190px]">{r.purpose}</td>
+                          <td className="py-2 px-2 text-center font-sans">
+                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${r.status === 'ISSUED' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                              {r.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300 text-[10px]">
+                    <tr>
+                      <td colSpan={3} className="py-2.5 px-3 text-slate-900 font-sans uppercase">
+                        Total Summary ({filteredReceipts.length} Official Receipts)
+                      </td>
+                      <td className="py-2.5 px-2.5 text-right font-mono text-slate-900" dir="ltr">
+                        ${totalFilteredGross.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-2.5 px-2.5 text-right font-mono text-amber-800" dir="ltr">
+                        -${totalFilteredFees.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-2.5 px-2.5 text-right font-mono text-emerald-800" dir="ltr">
+                        ${totalFilteredNet.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td colSpan={2} className="py-2.5 px-3 text-right font-mono text-[9px] text-slate-500">
+                        USD Currency
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Audit & Legal Sign-off Footer */}
+              <div className="pt-3 border-t-2 border-slate-900 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 text-xs">
+                <div>
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">
+                    OFFICIAL TREASURY CERTIFICATION:
+                  </span>
+                  <div className="text-xs font-black text-slate-950 uppercase">
+                    Ahsanullah Qureshi
+                  </div>
+                  <div className="text-[10px] font-bold text-emerald-800">
+                    Managing Director & Head of Corporate Treasury
+                  </div>
+                  <div className="text-[9px] text-slate-500">
+                    Sky Ariana Ltd. • Commercial Settlement Division
+                  </div>
+                </div>
+                <div className="text-left sm:text-right flex flex-col items-start sm:items-end gap-1">
+                  <div className="border border-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg text-emerald-800 font-bold text-[10px] flex items-center gap-1.5 shadow-sm">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>OFFICIALLY AUDITED & VERIFIED</span>
+                  </div>
+                  <span className="text-[9px] font-mono text-slate-400">
+                    AFGHAN UNITED BANK (AUB) • ACCOUNT 101502USD2940472
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* VOID MODAL */}
       {showVoidModal && (

@@ -97,7 +97,8 @@ router.get('/overview', authenticate, async (req: AuthenticatedRequest, res: Res
         unpaidInvoicesCount: pendingInvoices.length,
         activeShipmentsCount: activeShipments.length,
         totalInvoicesCount: allInvoices.length,
-        unreconciledTxCount: allTxs.filter(t => t.reconciliationStatus === 'UNRECONCILED').length
+        unreconciledTxCount: allTxs.filter(t => t.reconciliationStatus === 'UNRECONCILED').length,
+        totalReceiptsCount: await prisma.receipt.count({ where: { status: 'ISSUED' } })
       },
       cashFlow,
       latestTransactions,

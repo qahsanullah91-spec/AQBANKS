@@ -61,9 +61,18 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
     const contentType = res.headers.get('content-type') || '';
     const isJson = contentType.includes('application/json');
 
+    const method = (options.method || 'GET').toUpperCase();
+    const notifyMutation = () => {
+      if (typeof window !== 'undefined' && method !== 'GET') {
+        window.dispatchEvent(new CustomEvent('aq:data-mutated'));
+      }
+    };
+
     // If server returned valid JSON successfully
     if (res.ok && isJson) {
-      return await res.json();
+      const data = await res.json();
+      notifyMutation();
+      return data;
     }
 
     // Explicit client authentication or permission error from actual API
@@ -83,7 +92,9 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
     // If endpoint returned 404, 405 (static file rewrite), HTML, or 50x,
     // seamlessly execute via standalone mock backend engine
     console.info(`[AQ Portal Gateway] Servicing '${endpoint}' via built-in high-availability engine.`);
-    return await mockBackend.handleRequest<T>(endpoint, options);
+    const data = await mockBackend.handleRequest<T>(endpoint, options);
+    notifyMutation();
+    return data;
   } catch (err: any) {
     // If it's an explicit 401/403/400 thrown above or by mock, propagate it
     if (err.status === 401 || err.status === 403 || err.status === 400) {
@@ -91,7 +102,11 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
     }
     // Network errors (e.g. offline, remote backend unavailable)
     console.info(`[AQ Portal Gateway] Network unavailable, routing '${endpoint}' to local engine.`);
-    return await mockBackend.handleRequest<T>(endpoint, options);
+    const data = await mockBackend.handleRequest<T>(endpoint, options);
+    if (typeof window !== 'undefined' && (options.method || 'GET').toUpperCase() !== 'GET') {
+      window.dispatchEvent(new CustomEvent('aq:data-mutated'));
+    }
+    return data;
   }
 }
 

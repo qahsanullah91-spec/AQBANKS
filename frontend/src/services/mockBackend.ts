@@ -799,7 +799,8 @@ class MockBackendEngine {
           unpaidInvoicesCount: this.state.invoices.filter(i => i.paymentStatus !== 'PAID').length,
           activeShipmentsCount: this.state.shipments.filter(s => s.status !== 'DELIVERED').length,
           totalInvoicesCount: this.state.invoices.length,
-          unreconciledTxCount: this.state.ledger.filter(tx => tx.reconciliationStatus !== 'RECONCILED').length
+          unreconciledTxCount: this.state.ledger.filter(tx => tx.reconciliationStatus !== 'RECONCILED').length,
+          totalReceiptsCount: this.state.receipts.filter(r => r.status === 'ISSUED' || r.status === 'VALID').length
         },
         cashFlow: {
           totalIncoming: totalCredits.toFixed(2),

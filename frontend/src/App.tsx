@@ -57,6 +57,19 @@ export const App: React.FC = () => {
   const [warningCountdown, setWarningCountdown] = useState(60);
   const lastActivityRef = useRef<number>(Date.now());
 
+  // Dynamic Navigation Badges State (Synchronized in real-time)
+  const [navBadges, setNavBadges] = useState<{
+    unpaidInvoices: number;
+    activeShipments: number;
+    validReceipts: number;
+    availableBalance: string;
+  }>({
+    unpaidInvoices: 5,
+    activeShipments: 2,
+    validReceipts: 3,
+    availableBalance: '$24.3k'
+  });
+
   useEffect(() => {
     return initPrintLifecycle();
   }, []);
@@ -181,20 +194,75 @@ export const App: React.FC = () => {
     return ['dashboard', 'logistics', 'invoices'].includes(tabId);
   };
 
+  // Dynamic Navigation Badges Synchronizer
+  const refreshNavBadges = async () => {
+    try {
+      const [invList, rcpList, shpList, overview] = await Promise.all([
+        api.getInvoices().catch(() => []),
+        api.getReceipts().catch(() => []),
+        api.getShipments().catch(() => []),
+        api.getDashboardOverview().catch(() => null)
+      ]);
+
+      const unpaid = Array.isArray(invList)
+        ? invList.filter((i: any) => i.status !== 'VOID' && i.paymentStatus !== 'PAID').length
+        : 5;
+
+      const receiptsCount = Array.isArray(rcpList)
+        ? rcpList.filter((r: any) => r.status === 'ISSUED' || r.status === 'VALID').length
+        : 3;
+
+      const shipmentsCount = Array.isArray(shpList)
+        ? shpList.filter((s: any) => s.status !== 'DELIVERED' && s.status !== 'CANCELLED').length
+        : 2;
+
+      let balStr = '$24.3k';
+      if (overview?.metrics?.availableBalance) {
+        const num = parseFloat(overview.metrics.availableBalance);
+        balStr = !isNaN(num)
+          ? (num >= 1000 ? `$${(num / 1000).toFixed(1)}k` : `$${num.toFixed(2)}`)
+          : `$${overview.metrics.availableBalance}`;
+      }
+
+      setNavBadges({
+        unpaidInvoices: unpaid,
+        activeShipments: shipmentsCount,
+        validReceipts: receiptsCount,
+        availableBalance: balStr
+      });
+    } catch (err) {
+      console.error('Failed to load navigation badges:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (!currentUser) return;
+    refreshNavBadges();
+    const interval = setInterval(refreshNavBadges, 4000);
+    const handleMutated = () => refreshNavBadges();
+    window.addEventListener('aq:data-mutated', handleMutated);
+    window.addEventListener('focus', handleMutated);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('aq:data-mutated', handleMutated);
+      window.removeEventListener('focus', handleMutated);
+    };
+  }, [currentUser, activeTab]);
+
   const navSections = [
     {
       title: 'CORE OPERATIONS',
       items: [
         { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
-        { id: 'invoices', label: t('nav.invoices'), icon: FileText, badge: '6 Unpaid', badgeColor: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800/60' },
-        { id: 'logistics', label: t('nav.logistics'), icon: Ship, badge: '2 Active', badgeColor: 'bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-950/80 dark:text-cyan-300 dark:border-cyan-800/60' },
-        { id: 'receipts', label: t('nav.receipts'), icon: ReceiptIcon, badge: '2', badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800/60' }
+        { id: 'invoices', label: t('nav.invoices'), icon: FileText, badge: `${navBadges.unpaidInvoices} Unpaid`, badgeColor: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800/60' },
+        { id: 'logistics', label: t('nav.logistics'), icon: Ship, badge: `${navBadges.activeShipments} Active`, badgeColor: 'bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-950/80 dark:text-cyan-300 dark:border-cyan-800/60' },
+        { id: 'receipts', label: t('nav.receipts'), icon: ReceiptIcon, badge: String(navBadges.validReceipts), badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800/60' }
       ]
     },
     {
       title: 'TREASURY & ACCOUNTING',
       items: [
-        { id: 'ledger', label: t('nav.ledger'), icon: DollarSign, badge: '$24.3k', badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800/60' },
+        { id: 'ledger', label: t('nav.ledger'), icon: DollarSign, badge: navBadges.availableBalance, badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800/60' },
         { id: 'payments', label: t('nav.payments'), icon: CreditCard },
         { id: 'reconciliation', label: t('nav.reconciliation'), icon: CheckSquare },
         { id: 'banking', label: t('nav.banking'), icon: ShieldCheck },

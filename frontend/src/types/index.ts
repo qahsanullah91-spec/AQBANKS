@@ -194,6 +194,7 @@ export interface DashboardOverview {
     activeShipmentsCount: number;
     totalInvoicesCount: number;
     unreconciledTxCount: number;
+    totalReceiptsCount?: number;
   };
   cashFlow: {
     totalIncoming: string;

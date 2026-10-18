@@ -2,6 +2,7 @@
   "name": "aq-companies-bank",
   "version": "1.0.0",
   "description": "AQ Companies Logistics & Financial Management System",
+  "type": "module",
   "private": true,
   "scripts": {
     "backend:dev": "npm --prefix backend run dev",
@@ -28,5 +29,9 @@
     "modular-monolith"
   ],
   "author": "AQ Companies Development Team",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@types/pg": "^8.23.1",
+    "pg": "^8.23.1"
+  }
 }

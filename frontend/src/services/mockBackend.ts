@@ -27,7 +27,7 @@ interface DBState {
   auditEvents: any[];
 }
 
-function getInitialState(): DBState {
+export function getInitialState(): DBState {
   const initialCustomers: Customer[] = [
     {
       id: 'cust-001',
@@ -656,9 +656,139 @@ function getInitialState(): DBState {
 
 class MockBackendEngine {
   private state: DBState;
+  private syncInProgress = false;
+  private lastSyncedVersion = 0;
+  private pendingPushTimer: any = null;
 
   constructor() {
     this.state = this.loadState();
+    this.initCloudSync();
+  }
+
+  private initCloudSync(): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const v = localStorage.getItem('aq_cloud_version');
+      if (v) this.lastSyncedVersion = parseInt(v, 10) || 0;
+    } catch {}
+
+    // Immediate background sync on app load
+    setTimeout(() => {
+      this.syncWithCloud(true);
+    }, 100);
+
+    // Sync when tab/window gains focus
+    window.addEventListener('focus', () => {
+      this.syncWithCloud();
+    });
+
+    // Periodic synchronization every 15 seconds
+    setInterval(() => {
+      this.syncWithCloud();
+    }, 15000);
+
+    // Allow components to trigger cloud sync on demand
+    window.addEventListener('aq:request-cloud-sync', () => {
+      this.syncWithCloud(true);
+    });
+  }
+
+  public async syncWithCloud(force = false): Promise<void> {
+    if (this.syncInProgress || typeof window === 'undefined') return;
+    this.syncInProgress = true;
+    try {
+      const res = await fetch('/api/sync', {
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      if (!res.ok) return;
+      const body = await res.json();
+      if (!body.success) return;
+
+      if (body.exists && body.data) {
+        const cloudVersion = Number(body.version || 0);
+        if (cloudVersion > this.lastSyncedVersion || force) {
+          const fresh = getInitialState();
+          const parsed = body.data;
+
+          if (!Array.isArray(parsed.invoices)) parsed.invoices = fresh.invoices;
+          if (!Array.isArray(parsed.receipts)) parsed.receipts = fresh.receipts;
+          if (!Array.isArray(parsed.ledger)) parsed.ledger = fresh.ledger;
+          if (!Array.isArray(parsed.customers)) parsed.customers = fresh.customers;
+          if (!Array.isArray(parsed.shipments)) parsed.shipments = fresh.shipments;
+          if (!Array.isArray(parsed.bankAccounts)) parsed.bankAccounts = fresh.bankAccounts;
+          if (!Array.isArray(parsed.remittanceProfiles)) parsed.remittanceProfiles = fresh.remittanceProfiles;
+          if (!Array.isArray(parsed.payments)) parsed.payments = [];
+          if (!Array.isArray(parsed.auditEvents)) parsed.auditEvents = [];
+
+          // Preserve users with credentials
+          for (const u of fresh.users) {
+            const idx = parsed.users?.findIndex((x: any) => x.email.toLowerCase() === u.email.toLowerCase()) ?? -1;
+            if (idx >= 0) {
+              parsed.users[idx] = { ...parsed.users[idx], password: u.password, roles: u.roles, permissions: u.permissions, isActive: true };
+            } else if (Array.isArray(parsed.users)) {
+              parsed.users.push(u);
+            }
+          }
+
+          this.state = parsed;
+          this.lastSyncedVersion = cloudVersion;
+
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+            localStorage.setItem('aq_cloud_version', String(cloudVersion));
+          } catch {}
+
+          window.dispatchEvent(new CustomEvent('aq:data-mutated'));
+          window.dispatchEvent(new CustomEvent('aq:cloud-sync-status', {
+            detail: { status: 'synced', version: cloudVersion, source: 'cloud' }
+          }));
+        }
+      } else {
+        // If cloud had no data, initialize it with current state
+        await this.pushToCloud(this.state);
+      }
+    } catch (err) {
+      console.warn('[AQ Cloud Sync] Background sync error:', err);
+      window.dispatchEvent(new CustomEvent('aq:cloud-sync-status', {
+        detail: { status: 'offline', error: String(err) }
+      }));
+    } finally {
+      this.syncInProgress = false;
+    }
+  }
+
+  public async pushToCloud(state = this.state): Promise<void> {
+    if (typeof window === 'undefined') return;
+    try {
+      window.dispatchEvent(new CustomEvent('aq:cloud-sync-status', {
+        detail: { status: 'saving' }
+      }));
+
+      const res = await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state })
+      });
+
+      if (res.ok) {
+        const body = await res.json();
+        if (body.version) {
+          this.lastSyncedVersion = Number(body.version);
+          try {
+            localStorage.setItem('aq_cloud_version', String(this.lastSyncedVersion));
+          } catch {}
+          window.dispatchEvent(new CustomEvent('aq:cloud-sync-status', {
+            detail: { status: 'synced', version: this.lastSyncedVersion, source: 'local' }
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn('[AQ Cloud Sync] Failed to push to cloud:', err);
+      window.dispatchEvent(new CustomEvent('aq:cloud-sync-status', {
+        detail: { status: 'error', error: String(err) }
+      }));
+    }
   }
 
   private loadState(): DBState {
@@ -730,6 +860,15 @@ class MockBackendEngine {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) {
       console.warn('Failed to save to localStorage:', e);
+    }
+
+    if (typeof window !== 'undefined') {
+      if (this.pendingPushTimer) {
+        clearTimeout(this.pendingPushTimer);
+      }
+      this.pendingPushTimer = setTimeout(() => {
+        this.pushToCloud(state);
+      }, 300);
     }
   }
 

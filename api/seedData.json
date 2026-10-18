@@ -1,0 +1,799 @@
+{
+  "users": [
+    {
+      "id": "usr-001",
+      "email": "ahsanullah@aqcompanies.com",
+      "password": "Qur78Ahs@@",
+      "firstName": "Ahsanullah",
+      "lastName": "Qureshi",
+      "roles": [
+        "ADMIN"
+      ],
+      "permissions": [
+        "user:manage",
+        "settings:manage",
+        "invoice:create_draft",
+        "invoice:issue",
+        "invoice:void",
+        "invoice:view",
+        "ledger:post_entry",
+        "ledger:reverse_entry",
+        "ledger:view",
+        "payment:create",
+        "payment:allocate",
+        "shipment:manage",
+        "shipment:view",
+        "bank_details:view_masked",
+        "bank_details:reveal_unmasked",
+        "bank_details:manage",
+        "remittance:manage",
+        "remittance:set_default",
+        "bank_details:export",
+        "bank_details:view_history",
+        "import:execute",
+        "audit:view"
+      ],
+      "isActive": true
+    },
+    {
+      "id": "usr-002",
+      "email": "danish@aqcompanies.com",
+      "password": "Danish123@789",
+      "firstName": "Danish",
+      "lastName": "Qureshi",
+      "roles": [
+        "ADMIN"
+      ],
+      "permissions": [
+        "user:manage",
+        "settings:manage",
+        "invoice:create_draft",
+        "invoice:issue",
+        "invoice:void",
+        "invoice:view",
+        "ledger:post_entry",
+        "ledger:reverse_entry",
+        "ledger:view",
+        "payment:create",
+        "payment:allocate",
+        "shipment:manage",
+        "shipment:view",
+        "bank_details:view_masked",
+        "bank_details:reveal_unmasked",
+        "bank_details:manage",
+        "remittance:manage",
+        "remittance:set_default",
+        "bank_details:export",
+        "bank_details:view_history",
+        "import:execute",
+        "audit:view"
+      ],
+      "isActive": true
+    },
+    {
+      "id": "usr-003",
+      "email": "admin@aqcompanies.com",
+      "password": "AQCompanies@2026",
+      "firstName": "System",
+      "lastName": "Administrator",
+      "roles": [
+        "ADMIN"
+      ],
+      "permissions": [
+        "user:manage",
+        "settings:manage",
+        "invoice:create_draft",
+        "invoice:issue",
+        "invoice:void",
+        "invoice:view",
+        "ledger:post_entry",
+        "ledger:reverse_entry",
+        "ledger:view",
+        "payment:create",
+        "payment:allocate",
+        "shipment:manage",
+        "shipment:view",
+        "bank_details:view_masked",
+        "bank_details:reveal_unmasked",
+        "bank_details:manage",
+        "remittance:manage",
+        "remittance:set_default",
+        "bank_details:export",
+        "bank_details:view_history",
+        "import:execute",
+        "audit:view"
+      ],
+      "isActive": true
+    },
+    {
+      "id": "usr-004",
+      "email": "finance@aqcompanies.com",
+      "password": "AQCompanies@2026",
+      "firstName": "Ahmad",
+      "lastName": "Finance",
+      "roles": [
+        "FINANCE_MANAGER"
+      ],
+      "permissions": [
+        "invoice:create_draft",
+        "invoice:issue",
+        "invoice:void",
+        "invoice:view",
+        "ledger:post_entry",
+        "ledger:reverse_entry",
+        "ledger:view",
+        "payment:create",
+        "payment:allocate",
+        "shipment:manage",
+        "shipment:view",
+        "bank_details:view_masked",
+        "bank_details:reveal_unmasked",
+        "bank_details:manage",
+        "remittance:manage",
+        "remittance:set_default"
+      ],
+      "isActive": true
+    },
+    {
+      "id": "usr-005",
+      "email": "logistics@aqcompanies.com",
+      "password": "AQCompanies@2026",
+      "firstName": "Tariq",
+      "lastName": "Logistics",
+      "roles": [
+        "LOGISTICS_COORDINATOR"
+      ],
+      "permissions": [
+        "shipment:manage",
+        "shipment:view",
+        "invoice:view"
+      ],
+      "isActive": true
+    },
+    {
+      "id": "usr-006",
+      "email": "auditor@aqcompanies.com",
+      "password": "AQCompanies@2026",
+      "firstName": "Sarah",
+      "lastName": "Auditor",
+      "roles": [
+        "AUDITOR"
+      ],
+      "permissions": [
+        "invoice:view",
+        "ledger:view",
+        "shipment:view",
+        "bank_details:view_masked",
+        "bank_details:view_history",
+        "bank_details:export",
+        "audit:view"
+      ],
+      "isActive": true
+    },
+    {
+      "id": "usr-007",
+      "email": "viewer@aqcompanies.com",
+      "password": "AQCompanies@2026",
+      "firstName": "Guest",
+      "lastName": "Viewer",
+      "roles": [
+        "VIEWER"
+      ],
+      "permissions": [
+        "invoice:view",
+        "shipment:view",
+        "ledger:view",
+        "bank_details:view_masked"
+      ],
+      "isActive": true
+    }
+  ],
+  "customers": [
+    {
+      "id": "cust-001",
+      "companyName": "G.T JAYANTI AGROCHEM INDIA PVT LTD",
+      "addressLine1": "Shop No 14, APMC Market-1, Phase II, Turbhe",
+      "addressLine2": "Navi Mumbai, Maharashtra 400705",
+      "country": "India",
+      "email": "jayanti@gtagrochem.com",
+      "isCustomer": true,
+      "isVendor": false
+    },
+    {
+      "id": "cust-002",
+      "companyName": "G.T INDIA PVT LTD",
+      "addressLine1": "4012, 4th Floor, Naya Bazar, Khari Baoli",
+      "addressLine2": "Delhi 110006",
+      "country": "India",
+      "email": "imports@gtindia.com",
+      "isCustomer": true,
+      "isVendor": false
+    },
+    {
+      "id": "cust-003",
+      "companyName": "MANIK TRADERS",
+      "addressLine1": "Plot 88, Grain Merchant Enclave, Lawrence Road",
+      "addressLine2": "Delhi 110035",
+      "country": "India",
+      "email": "maniktraders@gmail.com",
+      "isCustomer": true,
+      "isVendor": false
+    },
+    {
+      "id": "cust-004",
+      "companyName": "SPDC BITES LLP",
+      "addressLine1": "Plot No. 12, Food Processing Park, Rai Industrial Area",
+      "addressLine2": "Sonipat, Haryana 131029",
+      "country": "India",
+      "email": "contact@spdcbites.com",
+      "isCustomer": true,
+      "isVendor": false
+    }
+  ],
+  "invoices": [
+    {
+      "id": "inv-001",
+      "invoiceNumber": "PI-2026-0001",
+      "sourceInvoiceRef": "001",
+      "customerId": "cust-001",
+      "customer": {
+        "id": "cust-001",
+        "companyName": "G.T JAYANTI AGROCHEM INDIA PVT LTD",
+        "addressLine1": "Shop No 14, APMC Market-1, Phase II, Turbhe",
+        "addressLine2": "Navi Mumbai, Maharashtra 400705",
+        "country": "India",
+        "email": "jayanti@gtagrochem.com",
+        "isCustomer": true,
+        "isVendor": false
+      },
+      "issueDate": "2026-09-05T00:00:00.000Z",
+      "dueDate": "2026-09-12T00:00:00.000Z",
+      "currency": "USD",
+      "paymentTerms": "100% Advance Payment",
+      "subtotal": 79332.8,
+      "taxAmount": 0,
+      "totalAmount": 79332.8,
+      "status": "ISSUED",
+      "paymentStatus": "PAID",
+      "remainingBalance": 0,
+      "lines": [
+        {
+          "id": "line-001",
+          "lineNumber": 1,
+          "description": "Black Raisins (Best) - 1,385 CTNS",
+          "cartonCount": 1385,
+          "packagingKgPerCarton": 16,
+          "quantity": 22160,
+          "unitOfMeasure": "KG",
+          "unitPrice": 3.58,
+          "lineTotal": 79332.8
+        }
+      ]
+    },
+    {
+      "id": "inv-002",
+      "invoiceNumber": "PI-2026-0002",
+      "sourceInvoiceRef": "001",
+      "customerId": "cust-002",
+      "customer": {
+        "id": "cust-002",
+        "companyName": "G.T INDIA PVT LTD",
+        "addressLine1": "4012, 4th Floor, Naya Bazar, Khari Baoli",
+        "addressLine2": "Delhi 110006",
+        "country": "India",
+        "email": "imports@gtindia.com",
+        "isCustomer": true,
+        "isVendor": false
+      },
+      "issueDate": "2026-09-23T00:00:00.000Z",
+      "dueDate": "2026-09-30T00:00:00.000Z",
+      "currency": "USD",
+      "paymentTerms": "100% Advance Payment",
+      "subtotal": 74750,
+      "taxAmount": 0,
+      "totalAmount": 74750,
+      "status": "ISSUED",
+      "paymentStatus": "PAID",
+      "remainingBalance": 0,
+      "lines": [
+        {
+          "id": "line-002",
+          "lineNumber": 1,
+          "description": "Black Raisins - 2,300 CTNS",
+          "cartonCount": 2300,
+          "packagingKgPerCarton": 10,
+          "quantity": 23000,
+          "unitOfMeasure": "KG",
+          "unitPrice": 3.25,
+          "lineTotal": 74750
+        }
+      ]
+    },
+    {
+      "id": "inv-003",
+      "invoiceNumber": "PI-2026-0003",
+      "sourceInvoiceRef": "002",
+      "customerId": "cust-002",
+      "customer": {
+        "id": "cust-002",
+        "companyName": "G.T INDIA PVT LTD",
+        "addressLine1": "4012, 4th Floor, Naya Bazar, Khari Baoli",
+        "addressLine2": "Delhi 110006",
+        "country": "India",
+        "email": "imports@gtindia.com",
+        "isCustomer": true,
+        "isVendor": false
+      },
+      "issueDate": "2026-09-23T00:00:00.000Z",
+      "dueDate": "2026-09-30T00:00:00.000Z",
+      "currency": "USD",
+      "paymentTerms": "100% Advance Payment",
+      "subtotal": 74587.5,
+      "taxAmount": 0,
+      "totalAmount": 74587.5,
+      "status": "ISSUED",
+      "paymentStatus": "UNPAID",
+      "remainingBalance": 74587.5,
+      "lines": [
+        {
+          "id": "line-003",
+          "lineNumber": 1,
+          "description": "Black Raisins - 2,295 CTNS",
+          "cartonCount": 2295,
+          "packagingKgPerCarton": 10,
+          "quantity": 22950,
+          "unitOfMeasure": "KG",
+          "unitPrice": 3.25,
+          "lineTotal": 74587.5
+        }
+      ]
+    },
+    {
+      "id": "inv-004",
+      "invoiceNumber": "PI-2026-0004",
+      "sourceInvoiceRef": "002",
+      "customerId": "cust-001",
+      "customer": {
+        "id": "cust-001",
+        "companyName": "G.T JAYANTI AGROCHEM INDIA PVT LTD",
+        "addressLine1": "Shop No 14, APMC Market-1, Phase II, Turbhe",
+        "addressLine2": "Navi Mumbai, Maharashtra 400705",
+        "country": "India",
+        "email": "jayanti@gtagrochem.com",
+        "isCustomer": true,
+        "isVendor": false
+      },
+      "issueDate": "2026-09-23T00:00:00.000Z",
+      "dueDate": "2026-09-30T00:00:00.000Z",
+      "currency": "USD",
+      "paymentTerms": "100% Advance Payment",
+      "subtotal": 63000,
+      "taxAmount": 0,
+      "totalAmount": 63000,
+      "status": "ISSUED",
+      "paymentStatus": "PAID",
+      "remainingBalance": 0,
+      "lines": [
+        {
+          "id": "line-004",
+          "lineNumber": 1,
+          "description": "Black Raisins - 2,250 CTNS",
+          "cartonCount": 2250,
+          "packagingKgPerCarton": 10,
+          "quantity": 22500,
+          "unitOfMeasure": "KG",
+          "unitPrice": 2.8,
+          "lineTotal": 63000
+        }
+      ]
+    },
+    {
+      "id": "inv-005",
+      "invoiceNumber": "PI-2026-0005",
+      "sourceInvoiceRef": "001",
+      "customerId": "cust-003",
+      "customer": {
+        "id": "cust-003",
+        "companyName": "MANIK TRADERS",
+        "addressLine1": "Plot 88, Grain Merchant Enclave, Lawrence Road",
+        "addressLine2": "Delhi 110035",
+        "country": "India",
+        "email": "maniktraders@gmail.com",
+        "isCustomer": true,
+        "isVendor": false
+      },
+      "issueDate": "2026-09-28T00:00:00.000Z",
+      "dueDate": "2026-10-05T00:00:00.000Z",
+      "currency": "USD",
+      "paymentTerms": "100% Advance Payment",
+      "subtotal": 57533,
+      "taxAmount": 0,
+      "totalAmount": 57533,
+      "status": "ISSUED",
+      "paymentStatus": "UNPAID",
+      "remainingBalance": 57533,
+      "lines": [
+        {
+          "id": "line-005",
+          "lineNumber": 1,
+          "description": "Black Raisins - 1,383 CTNS",
+          "cartonCount": 1383,
+          "packagingKgPerCarton": 16,
+          "quantity": 22128,
+          "unitOfMeasure": "KG",
+          "unitPrice": 2.60009942,
+          "lineTotal": 57533
+        }
+      ]
+    },
+    {
+      "id": "inv-006",
+      "invoiceNumber": "PI-2026-0006",
+      "sourceInvoiceRef": "002",
+      "customerId": "cust-003",
+      "customer": {
+        "id": "cust-003",
+        "companyName": "MANIK TRADERS",
+        "addressLine1": "Plot 88, Grain Merchant Enclave, Lawrence Road",
+        "addressLine2": "Delhi 110035",
+        "country": "India",
+        "email": "maniktraders@gmail.com",
+        "isCustomer": true,
+        "isVendor": false
+      },
+      "issueDate": "2026-09-28T00:00:00.000Z",
+      "dueDate": "2026-10-05T00:00:00.000Z",
+      "currency": "USD",
+      "paymentTerms": "100% Advance Payment",
+      "subtotal": 62003,
+      "taxAmount": 0,
+      "totalAmount": 62003,
+      "status": "ISSUED",
+      "paymentStatus": "UNPAID",
+      "remainingBalance": 62003,
+      "lines": [
+        {
+          "id": "line-006",
+          "lineNumber": 1,
+          "description": "Black Raisins - 1,384 CTNS",
+          "cartonCount": 1384,
+          "packagingKgPerCarton": 16,
+          "quantity": 22144,
+          "unitOfMeasure": "KG",
+          "unitPrice": 2.8,
+          "lineTotal": 62003
+        }
+      ]
+    },
+    {
+      "id": "inv-007",
+      "invoiceNumber": "PI-2026-0007",
+      "sourceInvoiceRef": "003",
+      "customerId": "cust-003",
+      "customer": {
+        "id": "cust-003",
+        "companyName": "MANIK TRADERS",
+        "addressLine1": "Plot 88, Grain Merchant Enclave, Lawrence Road",
+        "addressLine2": "Delhi 110035",
+        "country": "India",
+        "email": "maniktraders@gmail.com",
+        "isCustomer": true,
+        "isVendor": false
+      },
+      "issueDate": "2026-09-28T00:00:00.000Z",
+      "dueDate": "2026-10-05T00:00:00.000Z",
+      "currency": "USD",
+      "paymentTerms": "100% Advance Payment",
+      "subtotal": 72020,
+      "taxAmount": 0,
+      "totalAmount": 72020,
+      "status": "ISSUED",
+      "paymentStatus": "UNPAID",
+      "remainingBalance": 72020,
+      "lines": [
+        {
+          "id": "line-007",
+          "lineNumber": 1,
+          "description": "Black Raisins - 1,385 CTNS",
+          "cartonCount": 1385,
+          "packagingKgPerCarton": 16,
+          "quantity": 22160,
+          "unitOfMeasure": "KG",
+          "unitPrice": 3.25,
+          "lineTotal": 72020
+        }
+      ]
+    },
+    {
+      "id": "inv-008",
+      "invoiceNumber": "PI-2026-0008",
+      "sourceInvoiceRef": "001",
+      "customerId": "cust-004",
+      "customer": {
+        "id": "cust-004",
+        "companyName": "SPDC BITES LLP",
+        "addressLine1": "Plot No. 12, Food Processing Park, Rai Industrial Area",
+        "addressLine2": "Sonipat, Haryana 131029",
+        "country": "India",
+        "email": "contact@spdcbites.com",
+        "isCustomer": true,
+        "isVendor": false
+      },
+      "issueDate": "2026-09-28T00:00:00.000Z",
+      "dueDate": "2026-10-05T00:00:00.000Z",
+      "currency": "USD",
+      "paymentTerms": "100% Advance Payment",
+      "subtotal": 71864,
+      "taxAmount": 0,
+      "totalAmount": 71864,
+      "status": "ISSUED",
+      "paymentStatus": "UNPAID",
+      "remainingBalance": 71864,
+      "lines": [
+        {
+          "id": "line-008",
+          "lineNumber": 1,
+          "description": "Black Raisins - 1,382 CTNS",
+          "cartonCount": 1382,
+          "packagingKgPerCarton": 16,
+          "quantity": 22122,
+          "unitOfMeasure": "KG",
+          "unitPrice": 3.24853087,
+          "lineTotal": 71864
+        }
+      ]
+    }
+  ],
+  "receipts": [
+    {
+      "id": "rcp-001",
+      "receiptNumber": "RCP-2026-0001",
+      "paymentId": "pay-001",
+      "payerName": "G.T JAYANTI AGROCHEM INDIA PVT LTD",
+      "amount": 78893.36,
+      "grossAmount": 79332.8,
+      "swiftFeeAmount": 439.44,
+      "currency": "USD",
+      "status": "ISSUED",
+      "receivingAccountName": "Afghan United Bank (AUB)",
+      "receivingAccountMasked": "101502******0472",
+      "issueDate": "2026-09-30T00:00:00.000Z",
+      "purpose": "Export Settlement for PI-2026-0001 (Black Raisins)",
+      "referenceNumber": "0464AIR261771143",
+      "createdAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "rcp-002",
+      "receiptNumber": "RCP-2026-0002",
+      "paymentId": "pay-002",
+      "payerName": "GT INDIA PVT LTD",
+      "amount": 74376.25,
+      "grossAmount": 74750,
+      "swiftFeeAmount": 373.75,
+      "currency": "USD",
+      "status": "ISSUED",
+      "receivingAccountName": "Afghan United Bank (AUB)",
+      "receivingAccountMasked": "101502******0472",
+      "issueDate": "2026-10-08T00:00:00.000Z",
+      "purpose": "Export Settlement for PI-2026-0002 (Black Raisins)",
+      "referenceNumber": "8483AIR261778937",
+      "createdAt": "2026-10-08T00:00:00.000Z"
+    },
+    {
+      "id": "rcp-003",
+      "receiptNumber": "RCP-2026-0003",
+      "paymentId": "pay-003",
+      "payerName": "G.T JAYANTI AGROCHEM INDIA PVT LTD",
+      "amount": 62685,
+      "grossAmount": 63000,
+      "swiftFeeAmount": 315,
+      "currency": "USD",
+      "status": "ISSUED",
+      "receivingAccountName": "Afghan United Bank (AUB)",
+      "receivingAccountMasked": "101502******0472",
+      "issueDate": "2026-10-12T00:00:00.000Z",
+      "purpose": "Export Settlement for PI-2026-0004 (Black Raisins - 2,250 CTNS)",
+      "referenceNumber": "0922AIR261783419",
+      "createdAt": "2026-10-12T00:00:00.000Z"
+    }
+  ],
+  "ledger": [
+    {
+      "id": "tx-001",
+      "effectiveDate": "2026-09-01T00:00:00.000Z",
+      "postedAt": "2026-09-01T00:00:00.000Z",
+      "reference": "OP-BAL-001",
+      "description": "Starting Balance Prior to Transfers",
+      "category": "BALANCE",
+      "debitAmount": 0,
+      "creditAmount": 83.36,
+      "runningBalance": 83.36,
+      "currency": "USD",
+      "reconciliationStatus": "RECONCILED"
+    },
+    {
+      "id": "tx-002",
+      "effectiveDate": "2026-09-30T00:00:00.000Z",
+      "postedAt": "2026-09-30T00:00:00.000Z",
+      "reference": "0464AIR261771143",
+      "description": "Inward Transfer: G.T JAYANTI AGROCHEM (INV 001)",
+      "category": "CREDIT",
+      "debitAmount": 0,
+      "creditAmount": 78893.36,
+      "runningBalance": 78976.72,
+      "currency": "USD",
+      "reconciliationStatus": "RECONCILED"
+    },
+    {
+      "id": "tx-003",
+      "effectiveDate": "2026-10-08T00:00:00.000Z",
+      "postedAt": "2026-10-08T00:00:00.000Z",
+      "reference": "8483AIR261778937",
+      "description": "Inward Transfer: GT INDIA PVT LTD",
+      "category": "CREDIT",
+      "debitAmount": 0,
+      "creditAmount": 74376.25,
+      "runningBalance": 153352.97,
+      "currency": "USD",
+      "reconciliationStatus": "RECONCILED"
+    },
+    {
+      "id": "tx-004",
+      "effectiveDate": "2026-10-08T00:00:00.000Z",
+      "postedAt": "2026-10-08T00:00:00.000Z",
+      "reference": "PAY-NOORI",
+      "description": "Payment to Hayatullah Noori",
+      "category": "DEBIT",
+      "debitAmount": 15200,
+      "creditAmount": 0,
+      "runningBalance": 138152.97,
+      "currency": "USD",
+      "reconciliationStatus": "RECONCILED"
+    },
+    {
+      "id": "tx-005",
+      "effectiveDate": "2026-10-08T00:00:00.000Z",
+      "postedAt": "2026-10-08T00:00:00.000Z",
+      "reference": "AD 5708262",
+      "description": "Payment to Sodiqjon Aminov (Tashkent)",
+      "category": "DEBIT",
+      "debitAmount": 35000,
+      "creditAmount": 0,
+      "runningBalance": 103152.97,
+      "currency": "USD",
+      "reconciliationStatus": "RECONCILED"
+    },
+    {
+      "id": "tx-006",
+      "effectiveDate": "2026-10-08T00:00:00.000Z",
+      "postedAt": "2026-10-08T00:00:00.000Z",
+      "reference": "PAY-NAJEB",
+      "description": "Payment to NAJEB AMIN LTD",
+      "category": "DEBIT",
+      "debitAmount": 78893.36,
+      "creditAmount": 0,
+      "runningBalance": 24259.61,
+      "currency": "USD",
+      "reconciliationStatus": "RECONCILED"
+    },
+    {
+      "id": "tx-007",
+      "effectiveDate": "2026-10-12T00:00:00.000Z",
+      "postedAt": "2026-10-12T00:00:00.000Z",
+      "reference": "0922AIR261783419",
+      "description": "Inward Transfer: G.T JAYANTI AGROCHEM (INV 004)",
+      "category": "CREDIT",
+      "debitAmount": 0,
+      "creditAmount": 62685,
+      "runningBalance": 86944.61,
+      "currency": "USD",
+      "reconciliationStatus": "RECONCILED"
+    }
+  ],
+  "shipments": [
+    {
+      "id": "shp-001",
+      "shipmentRef": "SHP-9001",
+      "containerNumber": "MSKU9023418",
+      "billOfLading": "BL-1928374",
+      "origin": "Kandahar",
+      "destination": "Nhava Sheva",
+      "carrier": "Maersk Line",
+      "shipmentDate": "2026-10-10T00:00:00.000Z",
+      "estimatedArrivalDate": "2026-10-22T00:00:00.000Z",
+      "status": "IN_TRANSIT",
+      "notes": "Kandahar -> Nhava Sheva via Maersk Line. Proforma Ref: 001"
+    },
+    {
+      "id": "shp-002",
+      "shipmentRef": "SHP-9002",
+      "containerNumber": "TGHU8172635",
+      "billOfLading": "BL-1928375",
+      "origin": "Dogharoun",
+      "destination": "Mundra",
+      "carrier": "CMA CGM",
+      "shipmentDate": "2026-10-12T00:00:00.000Z",
+      "estimatedArrivalDate": "2026-10-25T00:00:00.000Z",
+      "status": "BOOKED",
+      "notes": "Dogharoun -> Mundra via CMA CGM. Proforma Ref: 002"
+    }
+  ],
+  "bankAccounts": [
+    {
+      "id": "bank-001",
+      "bankName": "Afghan United Bank (AUB)",
+      "beneficiaryName": "Sky Ariana LTD",
+      "accountNumberMasked": "101502******0472",
+      "cifNumberMasked": "******4739",
+      "accountType": "AWDCCA",
+      "accountStatus": "Active",
+      "openingDate": "2026-09-13T00:00:00.000Z",
+      "branchName": "AUB Building Zarghona Maidan, Shahr-e-Now, Kabul",
+      "swiftCode": "AFGUAFKAXXX",
+      "correspondentBank": "AL SALAM BANK BAHRAIN",
+      "correspondentSwift": "ALSABHBMXXX",
+      "currency": "USD",
+      "isPrimary": true
+    }
+  ],
+  "remittanceProfiles": [
+    {
+      "id": "remit-intl",
+      "bankAccountId": "bank-001",
+      "profileType": "INTERNATIONAL",
+      "name": "International USD Inward Remittance (Al Salam / JPMorgan)",
+      "beneficiaryName": "SKY ARIANA LTD",
+      "beneficiaryAccount": "101502USD2940472",
+      "beneficiaryBank": "AFGHAN UNITED BANK",
+      "beneficiaryBankAddress": "AUB Building, Zarghona Maidan, Shahr-e-Now, Kabul",
+      "beneficiarySwift": "AFGUAFKAXXX",
+      "swiftField57A": "AFGUAFKAXXX",
+      "swiftField59A": "101502USD2940472 (Beneficiary account in field 59A; AFGUAFKAXXX in field 57A.)",
+      "aubAccountWithCorrespondent": "BH61ALSA00500951200102",
+      "correspondentBank": "AL SALAM BANK BAHRAIN",
+      "correspondentSwift": "ALSABHBMXXX",
+      "correspondentAccount": "400758954",
+      "correspondentLocation": "Sanabis, Bahrain",
+      "swiftField56A": "ALSABHBM",
+      "intermediaryBank": "JPMorgan Chase Bank, New York",
+      "intermediarySwift": "CHASUS33",
+      "swiftField54A": "Intermediary bank mandatory in field 54A",
+      "mt103VerificationFlag": true,
+      "verificationNotes": "IMPORTANT: Intermediary bank mandatory in field 54A.",
+      "isDefault": true,
+      "isActive": true
+    },
+    {
+      "id": "remit-local",
+      "bankAccountId": "bank-001",
+      "profileType": "LOCAL",
+      "name": "Local USD Inward Remittance (DAB Clearing)",
+      "beneficiaryName": "SKY ARIANA LTD",
+      "beneficiaryAccount": "101502USD2940472",
+      "beneficiaryBank": "AFGHAN UNITED BANK",
+      "beneficiaryBankAddress": "AUB Building, Zarghona Maidan, Shahr-e-Now, Kabul",
+      "beneficiarySwift": "AFGUAFKAXXX",
+      "correspondentBank": "(DAB) DA AFGHANISTAN BANK",
+      "correspondentSwift": "AFGBAFKA",
+      "correspondentAccount": "3000205027231",
+      "correspondentLocation": "Ibni-sina Watt, Kabul",
+      "isDefault": false,
+      "isActive": true,
+      "verificationNotes": "Approved for local domestic clearing in Afghanistan."
+    }
+  ],
+  "payments": [],
+  "auditEvents": [
+    {
+      "id": "aud-001",
+      "action": "SYSTEM_INITIALIZED",
+      "entityType": "SYSTEM",
+      "entityId": "ROOT",
+      "actorEmail": "system@aqcompanies.com",
+      "timestamp": "2026-10-18T11:17:22.151Z",
+      "details": {
+        "message": "AQ Companies Financial & Logistics Core initialized"
+      }
+    }
+  ]
+}

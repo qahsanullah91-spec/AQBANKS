@@ -2,10 +2,14 @@
   "version": 2,
 
   "framework": "vite",
-  "installCommand": "rm -rf frontend/node_modules && npm --prefix frontend install --legacy-peer-deps",
+  "installCommand": "npm install --legacy-peer-deps && npm --prefix frontend install --legacy-peer-deps",
   "buildCommand": "npm --prefix frontend run build",
   "outputDirectory": "frontend/dist",
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

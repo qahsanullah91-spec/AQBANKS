@@ -15,6 +15,7 @@ import { Admin } from './pages/Admin';
 import { Receipts } from './pages/Receipts';
 import { useTheme } from './context/ThemeContext';
 import { useLanguage, LanguageSelector } from './context/LanguageContext';
+import { CloudSyncIndicator } from './components/CloudSyncIndicator';
 import { initPrintLifecycle } from './utils/print';
 import {
   LayoutDashboard,
@@ -367,6 +368,7 @@ export const App: React.FC = () => {
 
         {/* User Context, Language Selector & Immutable Cryptographic Role Badge */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <CloudSyncIndicator />
           {/* Language Selector in Navigation Bar (Desktop & Mobile) */}
           <LanguageSelector />
 
@@ -531,6 +533,13 @@ export const App: React.FC = () => {
                   <span className="font-semibold text-slate-600 dark:text-slate-300 text-[10px]">{t('nav.systemVersion')}</span>
                   <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800 font-bold">
                     TLS 256-BIT
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                  <span>Cloud Database</span>
+                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                    PostgreSQL Live
                   </span>
                 </div>
                 <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1.5">

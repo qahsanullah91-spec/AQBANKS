@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "name": "aqbank",
+
   "framework": "vite",
   "installCommand": "rm -rf frontend/node_modules && npm --prefix frontend install --legacy-peer-deps",
   "buildCommand": "npm --prefix frontend run build",

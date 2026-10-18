@@ -199,7 +199,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <div className="mt-2 sm:mt-3">
               <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
                 <div className="text-2xl sm:text-3xl font-extrabold text-blue-700 dark:text-blue-400 tracking-tight font-mono tabular-nums" dir="ltr">
-                  ${Number(metrics.totalInvoiced).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ${Number(metrics?.totalInvoiced || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 shrink-0">
                   {metrics.totalInvoicesCount || 8} INVOICES

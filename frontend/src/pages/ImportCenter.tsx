@@ -152,23 +152,23 @@ export const ImportCenter: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono">
               <span className="text-slate-400 font-sans block text-[10px] uppercase">{t('import.totalCredits')}</span>
-              <span className="font-bold text-blue-400 text-sm" dir="ltr">${dryRunData.checkpointTotals.totalCredits}</span>
+              <span className="font-bold text-blue-400 text-sm" dir="ltr">${dryRunData.checkpointTotals?.totalCredits || '0.00'}</span>
             </div>
             <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono">
               <span className="text-slate-400 font-sans block text-[10px] uppercase">{t('import.totalDebits')}</span>
-              <span className="font-bold text-rose-400 text-sm" dir="ltr">${dryRunData.checkpointTotals.totalDebits}</span>
+              <span className="font-bold text-rose-400 text-sm" dir="ltr">${dryRunData.checkpointTotals?.totalDebits || '0.00'}</span>
             </div>
             <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono">
               <span className="text-slate-400 font-sans block text-[10px] uppercase">{t('import.calculatedBalance')}</span>
-              <span className="font-bold text-emerald-400 text-sm" dir="ltr">${dryRunData.checkpointTotals.availableBalance}</span>
+              <span className="font-bold text-emerald-400 text-sm" dir="ltr">${dryRunData.checkpointTotals?.availableBalance || '0.00'}</span>
             </div>
             <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono">
               <span className="text-slate-400 font-sans block text-[10px] uppercase">{t('import.totalInvoiced')}</span>
-              <span className="font-bold text-white text-sm" dir="ltr">${dryRunData.checkpointTotals.totalInvoiced}</span>
+              <span className="font-bold text-white text-sm" dir="ltr">${dryRunData.checkpointTotals?.totalInvoiced || '0.00'}</span>
             </div>
             <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono">
               <span className="text-slate-400 font-sans block text-[10px] uppercase">{t('import.pendingReceivables')}</span>
-              <span className="font-bold text-amber-400 text-sm" dir="ltr">${dryRunData.checkpointTotals.totalPending}</span>
+              <span className="font-bold text-amber-400 text-sm" dir="ltr">${dryRunData.checkpointTotals?.totalPending || '0.00'}</span>
             </div>
           </div>
 

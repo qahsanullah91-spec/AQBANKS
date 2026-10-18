@@ -108,11 +108,22 @@ export const triggerPrint = (documentTitle?: string) => {
       thead {
         display: table-header-group !important;
       }
+      tfoot {
+        display: table-row-group !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
       tr {
         break-inside: avoid !important;
         page-break-inside: avoid !important;
       }
-      .print-avoid-break {
+      table th, table td {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .print-avoid-break,
+      .signature-block,
+      .audit-seal-block {
         break-inside: avoid !important;
         page-break-inside: avoid !important;
       }

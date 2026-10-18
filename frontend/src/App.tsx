@@ -165,6 +165,69 @@ export const App: React.FC = () => {
     };
   }, [currentUser, inactivityWarningOpen]);
 
+  // Dynamic Navigation Badges Synchronizer
+  const refreshNavBadges = async () => {
+    try {
+      const [invList, rcpList, shpList, overview] = await Promise.all([
+        api.getInvoices().catch(() => []),
+        api.getReceipts().catch(() => []),
+        api.getShipments().catch(() => []),
+        api.getDashboardOverview().catch(() => null)
+      ]);
+
+      const unpaid = Array.isArray(invList)
+        ? invList.filter((i: any) => i.status !== 'VOID' && i.paymentStatus !== 'PAID').length
+        : 5;
+
+      const receiptsCount = Array.isArray(rcpList)
+        ? rcpList.filter((r: any) => r.status === 'ISSUED' || r.status === 'VALID').length
+        : 3;
+
+      const shipmentsCount = Array.isArray(shpList)
+        ? shpList.filter((s: any) => s.status !== 'DELIVERED' && s.status !== 'CANCELLED').length
+        : 2;
+
+      let balStr = '$24.3k';
+      if (overview?.metrics?.availableBalance) {
+        const num = parseFloat(overview.metrics.availableBalance);
+        balStr = !isNaN(num)
+          ? (num >= 1000 ? `$${(num / 1000).toFixed(1)}k` : `$${num.toFixed(2)}`)
+          : `$${overview.metrics.availableBalance}`;
+      }
+
+      setNavBadges(prev => {
+        if (
+          prev.unpaidInvoices === unpaid &&
+          prev.activeShipments === shipmentsCount &&
+          prev.validReceipts === receiptsCount &&
+          prev.availableBalance === balStr
+        ) {
+          return prev;
+        }
+        return {
+          unpaidInvoices: unpaid,
+          activeShipments: shipmentsCount,
+          validReceipts: receiptsCount,
+          availableBalance: balStr
+        };
+      });
+    } catch (err) {
+      console.error('Failed to load navigation badges:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (!currentUser) return;
+    refreshNavBadges();
+    const handleMutated = () => refreshNavBadges();
+    window.addEventListener('aq:data-mutated', handleMutated);
+    window.addEventListener('focus', handleMutated);
+    return () => {
+      window.removeEventListener('aq:data-mutated', handleMutated);
+      window.removeEventListener('focus', handleMutated);
+    };
+  }, [currentUser?.id]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
@@ -228,69 +291,6 @@ export const App: React.FC = () => {
 
     return ['dashboard', 'logistics', 'invoices'].includes(tabId);
   };
-
-  // Dynamic Navigation Badges Synchronizer
-  const refreshNavBadges = async () => {
-    try {
-      const [invList, rcpList, shpList, overview] = await Promise.all([
-        api.getInvoices().catch(() => []),
-        api.getReceipts().catch(() => []),
-        api.getShipments().catch(() => []),
-        api.getDashboardOverview().catch(() => null)
-      ]);
-
-      const unpaid = Array.isArray(invList)
-        ? invList.filter((i: any) => i.status !== 'VOID' && i.paymentStatus !== 'PAID').length
-        : 5;
-
-      const receiptsCount = Array.isArray(rcpList)
-        ? rcpList.filter((r: any) => r.status === 'ISSUED' || r.status === 'VALID').length
-        : 3;
-
-      const shipmentsCount = Array.isArray(shpList)
-        ? shpList.filter((s: any) => s.status !== 'DELIVERED' && s.status !== 'CANCELLED').length
-        : 2;
-
-      let balStr = '$24.3k';
-      if (overview?.metrics?.availableBalance) {
-        const num = parseFloat(overview.metrics.availableBalance);
-        balStr = !isNaN(num)
-          ? (num >= 1000 ? `$${(num / 1000).toFixed(1)}k` : `$${num.toFixed(2)}`)
-          : `$${overview.metrics.availableBalance}`;
-      }
-
-      setNavBadges(prev => {
-        if (
-          prev.unpaidInvoices === unpaid &&
-          prev.activeShipments === shipmentsCount &&
-          prev.validReceipts === receiptsCount &&
-          prev.availableBalance === balStr
-        ) {
-          return prev;
-        }
-        return {
-          unpaidInvoices: unpaid,
-          activeShipments: shipmentsCount,
-          validReceipts: receiptsCount,
-          availableBalance: balStr
-        };
-      });
-    } catch (err) {
-      console.error('Failed to load navigation badges:', err);
-    }
-  };
-
-  useEffect(() => {
-    if (!currentUser) return;
-    refreshNavBadges();
-    const handleMutated = () => refreshNavBadges();
-    window.addEventListener('aq:data-mutated', handleMutated);
-    window.addEventListener('focus', handleMutated);
-    return () => {
-      window.removeEventListener('aq:data-mutated', handleMutated);
-      window.removeEventListener('focus', handleMutated);
-    };
-  }, [currentUser?.id]);
 
   const navSections = [
     {

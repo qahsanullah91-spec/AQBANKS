@@ -385,26 +385,34 @@ function getInitialState(): DBState {
       id: 'rcp-001',
       receiptNumber: 'RCP-2026-0001',
       paymentId: 'pay-001',
+      payerName: 'G.T JAYANTI AGROCHEM INDIA PVT LTD',
       amount: 78893.36,
       grossAmount: 79332.80,
       swiftFeeAmount: 439.44,
       currency: 'USD',
-      status: 'VALID',
+      status: 'ISSUED',
       receivingAccountName: 'Afghan United Bank (AUB)',
       receivingAccountMasked: '101502******0472',
+      issueDate: '2026-09-30T00:00:00.000Z',
+      purpose: 'Export Settlement for PI-2026-0001 (Black Raisins)',
+      referenceNumber: '0464AIR261771143',
       createdAt: '2026-09-30T00:00:00.000Z'
     },
     {
       id: 'rcp-002',
       receiptNumber: 'RCP-2026-0002',
       paymentId: 'pay-002',
+      payerName: 'GT INDIA PVT LTD',
       amount: 74376.25,
       grossAmount: 74750.00,
       swiftFeeAmount: 373.75,
       currency: 'USD',
-      status: 'VALID',
+      status: 'ISSUED',
       receivingAccountName: 'Afghan United Bank (AUB)',
       receivingAccountMasked: '101502******0472',
+      issueDate: '2026-10-08T00:00:00.000Z',
+      purpose: 'Export Settlement for PI-2026-0002 (Black Raisins)',
+      referenceNumber: '8483AIR261778937',
       createdAt: '2026-10-08T00:00:00.000Z'
     }
   ];
@@ -624,12 +632,12 @@ class MockBackendEngine {
   }
 
   private loadState(): DBState {
+    const fresh = getInitialState();
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         // Ensure requested users always exist with their credentials even if cached
-        const fresh = getInitialState();
         for (const u of fresh.users) {
           const idx = parsed.users.findIndex((x: any) => x.email.toLowerCase() === u.email.toLowerCase());
           if (idx >= 0) {
@@ -638,12 +646,20 @@ class MockBackendEngine {
             parsed.users.push(u);
           }
         }
+        if (!Array.isArray(parsed.invoices)) parsed.invoices = fresh.invoices;
+        if (!Array.isArray(parsed.receipts)) parsed.receipts = fresh.receipts;
+        if (!Array.isArray(parsed.ledger)) parsed.ledger = fresh.ledger;
+        if (!Array.isArray(parsed.shipments)) parsed.shipments = fresh.shipments;
+        if (!Array.isArray(parsed.customers)) parsed.customers = fresh.customers;
+        if (!Array.isArray(parsed.bankAccounts)) parsed.bankAccounts = fresh.bankAccounts;
+        if (!Array.isArray(parsed.remittanceProfiles)) parsed.remittanceProfiles = fresh.remittanceProfiles;
+        if (!Array.isArray(parsed.payments)) parsed.payments = [];
+        if (!Array.isArray(parsed.auditEvents)) parsed.auditEvents = [];
         return parsed;
       }
     } catch {
       // ignore
     }
-    const fresh = getInitialState();
     this.saveState(fresh);
     return fresh;
   }
@@ -653,6 +669,16 @@ class MockBackendEngine {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) {
       console.warn('Failed to save to localStorage:', e);
+    }
+  }
+
+  public recalculateLedgerBalances() {
+    let balance = 0;
+    for (const tx of this.state.ledger) {
+      const credit = Number(tx.creditAmount || 0);
+      const debit = Number(tx.debitAmount || 0);
+      balance = balance + credit - debit;
+      tx.runningBalance = Number(balance.toFixed(2));
     }
   }
 
@@ -668,7 +694,7 @@ class MockBackendEngine {
     const pathname = url.pathname;
     const body = options.body ? JSON.parse(options.body as string) : {};
 
-    // 1. Auth Login
+    // 1. Auth Login & 2FA
     if (pathname === '/auth/login' && method === 'POST') {
       const email = (body.email || '').trim().toLowerCase();
       const password = (body.password || '').trim();
@@ -695,7 +721,6 @@ class MockBackendEngine {
         permissions: user.permissions
       };
 
-      // Mock JWT token
       const token = `mock-jwt-${btoa(JSON.stringify(userObj))}-${Date.now()}`;
       return {
         accessToken: token,
@@ -704,7 +729,28 @@ class MockBackendEngine {
       } as any;
     }
 
-    // 2. Auth me / users
+    if (pathname === '/auth/verify-2fa' && method === 'POST') {
+      const user = this.state.users[0];
+      const userObj: User = {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        roles: user.roles,
+        permissions: user.permissions
+      };
+      const token = `mock-jwt-${btoa(JSON.stringify(userObj))}-${Date.now()}`;
+      return {
+        accessToken: token,
+        token,
+        user: userObj
+      } as any;
+    }
+
+    if (pathname === '/auth/resend-2fa' && method === 'POST') {
+      return { success: true, message: 'New 2FA security code dispatched.' } as any;
+    }
+
     if (pathname === '/auth/me') {
       const user = this.state.users[0];
       return { user } as any;
@@ -722,12 +768,12 @@ class MockBackendEngine {
       })) as any;
     }
 
-    // 3. Dashboard Overview
+    // 2. Dashboard Overview
     if (pathname === '/dashboard/overview') {
       const totalInvoiced = this.state.invoices.reduce((sum, inv) => sum + Number(inv.totalAmount || 0), 0);
       const paidInvoices = this.state.invoices.filter(i => i.paymentStatus === 'PAID');
       const totalCollected = paidInvoices.reduce((sum, inv) => sum + Number(inv.totalAmount || 0), 0);
-      const pendingReceivables = totalInvoiced - totalCollected;
+      const pendingReceivables = Math.max(0, totalInvoiced - totalCollected);
 
       const totalCredits = this.state.ledger.reduce((sum, tx) => sum + Number(tx.creditAmount || 0), 0);
       const totalDebits = this.state.ledger.reduce((sum, tx) => sum + Number(tx.debitAmount || 0), 0);
@@ -769,12 +815,38 @@ class MockBackendEngine {
       return overview as any;
     }
 
-    // 4. Invoices
+    // 3. Proforma Invoices
     if (pathname === '/invoices') {
       if (method === 'GET') {
+        const querySearch = url.searchParams.get('search')?.toLowerCase();
+        if (querySearch) {
+          return this.state.invoices.filter(inv =>
+            inv.invoiceNumber.toLowerCase().includes(querySearch) ||
+            inv.customer?.companyName.toLowerCase().includes(querySearch) ||
+            (inv.sourceInvoiceRef && inv.sourceInvoiceRef.toLowerCase().includes(querySearch))
+          ) as any;
+        }
         return this.state.invoices as any;
       }
       if (method === 'POST') {
+        const lines = (body.lines || []).map((l: any, idx: number) => {
+          const qty = Number(l.quantity) || 0;
+          const price = Number(l.unitPrice) || 0;
+          return {
+            id: `line-${Date.now()}-${idx}`,
+            lineNumber: idx + 1,
+            description: l.description,
+            cartonCount: l.cartonCount ? Number(l.cartonCount) : undefined,
+            packagingKgPerCarton: l.packagingKgPerCarton ? Number(l.packagingKgPerCarton) : undefined,
+            quantity: qty,
+            unitOfMeasure: l.unitOfMeasure || 'KG',
+            unitPrice: price,
+            lineTotal: Number((qty * price).toFixed(2))
+          };
+        });
+        const calculatedTotal = lines.reduce((sum: number, l: any) => sum + l.lineTotal, 0);
+        const finalTotal = calculatedTotal > 0 ? calculatedTotal : (Number(body.totalAmount) || 0);
+
         const newInvoice: Invoice = {
           id: `inv-${Date.now()}`,
           invoiceNumber: body.invoiceNumber || `PI-2026-${String(this.state.invoices.length + 1).padStart(4, '0')}`,
@@ -785,13 +857,13 @@ class MockBackendEngine {
           dueDate: body.dueDate,
           currency: body.currency || 'USD',
           paymentTerms: body.paymentTerms || '100% Advance Payment',
-          subtotal: body.totalAmount || 0,
+          subtotal: Number(finalTotal.toFixed(2)),
           taxAmount: 0,
-          totalAmount: body.totalAmount || 0,
+          totalAmount: Number(finalTotal.toFixed(2)),
           status: 'ISSUED',
           paymentStatus: 'UNPAID',
-          remainingBalance: body.totalAmount || 0,
-          lines: body.lines || []
+          remainingBalance: Number(finalTotal.toFixed(2)),
+          lines
         };
         this.state.invoices.unshift(newInvoice);
         this.saveState();
@@ -799,6 +871,161 @@ class MockBackendEngine {
       }
     }
 
+    // 3a. Record Payment on Proforma Invoice with SWIFT Fee Deduction
+    const recordPaymentMatch = pathname.match(/^\/invoices\/([^/]+)\/record-payment$/);
+    if (recordPaymentMatch && method === 'POST') {
+      const id = recordPaymentMatch[1];
+      const inv = this.state.invoices.find(i => i.id === id || i.invoiceNumber === id);
+      if (!inv) throw new Error('Invoice not found');
+
+      const payAmount = Number(body.amount || body.paymentAmount || inv.totalAmount || 0);
+      const swiftFee = Number(body.swiftFeeDeducted || body.swiftFeeAmount || 0);
+      const netCredited = Math.max(0, Number((payAmount - swiftFee).toFixed(2)));
+
+      const totalAllocated = payAmount;
+      const invoiceTotal = Number(inv.totalAmount || 0);
+      inv.paymentStatus = totalAllocated >= invoiceTotal ? 'PAID' : 'PARTIALLY_PAID';
+      inv.remainingBalance = Math.max(0, Number((invoiceTotal - totalAllocated).toFixed(2)));
+      inv.status = 'ISSUED';
+
+      let createdReceipt: Receipt | null = null;
+      let createdLedger: LedgerTransaction | null = null;
+      let createdPayment: any = null;
+
+      if (body.createReceiptAndLedger !== false) {
+        const paymentId = `pay-${Date.now()}`;
+        createdPayment = {
+          id: paymentId,
+          customerId: inv.customerId,
+          customer: inv.customer,
+          paymentDate: body.paymentDate || new Date().toISOString(),
+          reference: body.bankReference || `AUB-WIRE-${inv.invoiceNumber}`,
+          paymentMethod: 'WIRE_TRANSFER',
+          totalAmount: payAmount,
+          allocatedAmount: payAmount,
+          unallocatedAmount: 0,
+          currency: 'USD',
+          notes: body.notes || `Payment for invoice ${inv.invoiceNumber}`
+        };
+        this.state.payments.unshift(createdPayment);
+
+        const rcpNumber = `RCP-2026-${String(this.state.receipts.length + 1).padStart(4, '0')}`;
+        createdReceipt = {
+          id: `rcp-${Date.now()}`,
+          receiptNumber: rcpNumber,
+          paymentId,
+          payerName: inv.customer?.companyName || 'Consignee',
+          receivingAccountName: 'Afghan United Bank (AUB)',
+          receivingAccountMasked: '101502******0472',
+          amount: netCredited,
+          grossAmount: payAmount,
+          swiftFeeAmount: swiftFee,
+          currency: 'USD',
+          paymentMethod: 'WIRE_TRANSFER',
+          bankReference: body.bankReference || `AUB-${inv.invoiceNumber}`,
+          status: 'ISSUED',
+          issueDate: body.paymentDate || new Date().toISOString(),
+          purpose: `Settlement for ${inv.invoiceNumber} (${inv.customer?.companyName || ''})`,
+          notes: body.notes || (swiftFee > 0 ? `Wire payment for ${inv.invoiceNumber} with $${swiftFee.toFixed(2)} SWIFT fee deducted` : `Wire payment for ${inv.invoiceNumber}`),
+          createdAt: body.paymentDate || new Date().toISOString()
+        };
+        if (createdReceipt) {
+          this.state.receipts.unshift(createdReceipt);
+        }
+
+        createdLedger = {
+          id: `tx-${Date.now()}`,
+          effectiveDate: body.paymentDate || new Date().toISOString(),
+          postedAt: new Date().toISOString(),
+          reference: body.bankReference || `AUB-${inv.invoiceNumber}`,
+          description: `Payment received for ${inv.invoiceNumber} - ${inv.customer?.companyName || ''}`,
+          category: 'CREDIT',
+          debitAmount: 0,
+          creditAmount: netCredited,
+          runningBalance: 0,
+          currency: 'USD',
+          reconciliationStatus: 'RECONCILED',
+          notes: swiftFee > 0 ? `Gross payment: $${payAmount.toFixed(2)} less SWIFT fee: $${swiftFee.toFixed(2)}` : null
+        };
+        this.state.ledger.push(createdLedger);
+        this.recalculateLedgerBalances();
+      }
+
+      this.state.auditEvents.unshift({
+        id: `aud-${Date.now()}`,
+        action: 'INVOICE_PAYMENT_RECORDED',
+        entityType: 'INVOICE',
+        entityId: inv.id,
+        actorEmail: 'admin@aqcompanies.com',
+        timestamp: new Date().toISOString(),
+        details: {
+          invoiceNumber: inv.invoiceNumber,
+          amount: payAmount,
+          swiftFeeDeducted: swiftFee,
+          netCredited,
+          receiptNumber: createdReceipt?.receiptNumber
+        }
+      });
+
+      this.saveState();
+      return {
+        success: true,
+        invoice: inv,
+        receipt: createdReceipt,
+        ledger: createdLedger,
+        payment: createdPayment
+      } as any;
+    }
+
+    // 3b. Toggle Invoice Payment Status
+    const togglePaymentMatch = pathname.match(/^\/invoices\/([^/]+)\/toggle-payment$/);
+    if (togglePaymentMatch && method === 'PATCH') {
+      const id = togglePaymentMatch[1];
+      const inv = this.state.invoices.find(i => i.id === id || i.invoiceNumber === id);
+      if (!inv) throw new Error('Invoice not found');
+      if (body.paymentStatus) {
+        inv.paymentStatus = body.paymentStatus;
+      } else {
+        inv.paymentStatus = inv.paymentStatus === 'PAID' ? 'UNPAID' : 'PAID';
+      }
+      inv.remainingBalance = inv.paymentStatus === 'PAID' ? 0 : inv.totalAmount;
+      this.saveState();
+      return { success: true, invoice: inv } as any;
+    }
+
+    // 3c. PDF Document Snapshot Data
+    const pdfDataMatch = pathname.match(/^\/invoices\/([^/]+)\/pdf-data$/);
+    if (pdfDataMatch && method === 'GET') {
+      const id = pdfDataMatch[1];
+      const inv = this.state.invoices.find(i => i.id === id || i.invoiceNumber === id);
+      if (!inv) throw new Error('Invoice not found');
+      return {
+        ...inv,
+        grandTotal: `$${Number(inv.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        customer: inv.customer || this.state.customers.find(c => c.id === inv.customerId),
+        lines: (inv.lines || []).map(l => ({
+          ...l,
+          lineTotal: `$${Number(l.lineTotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          unitPrice: `$${Number(l.unitPrice).toFixed(4)}`,
+          cartonDisplay: l.cartonCount ? `${Number(l.cartonCount).toLocaleString()} CTNS` : undefined
+        })),
+        bankDetails: {
+          beneficiaryName: 'SKY ARIANA LTD',
+          accountNumber: '101502USD2940472',
+          bankName: 'AFGHAN UNITED BANK',
+          swiftBic: 'AFGUAFKAXXX',
+          bankAddress: 'AUB Building, Zarghona Maidan, Shahr-e-Now, Kabul',
+          correspondentBank: 'AL SALAM BANK BAHRAIN',
+          correspondentSwift: 'ALSABHBMXXX',
+          aubAccountWithCorrespondent: 'BH61ALSA00500951200102',
+          intermediaryBank: 'JPMorgan Chase Bank, New York',
+          intermediarySwift: 'CHASUS33',
+          intermediaryAccount: '400758954'
+        }
+      } as any;
+    }
+
+    // 3d. Single Invoice Actions (GET, PUT, DELETE)
     const invMatch = pathname.match(/^\/invoices\/([^/]+)$/);
     if (invMatch) {
       const id = invMatch[1];
@@ -807,8 +1034,43 @@ class MockBackendEngine {
         if (!inv) throw new Error('Invoice not found');
         return inv as any;
       }
+      if (method === 'PUT') {
+        if (!inv) throw new Error('Invoice not found');
+        if (body.customerId) {
+          inv.customerId = body.customerId;
+          inv.customer = this.state.customers.find(c => c.id === body.customerId) || inv.customer;
+        }
+        if (body.sourceInvoiceRef !== undefined) inv.sourceInvoiceRef = body.sourceInvoiceRef;
+        if (body.issueDate) inv.issueDate = body.issueDate;
+        if (body.dueDate !== undefined) inv.dueDate = body.dueDate;
+        if (body.paymentTerms) inv.paymentTerms = body.paymentTerms;
+        if (body.paymentStatus) inv.paymentStatus = body.paymentStatus;
+        if (body.lines && Array.isArray(body.lines)) {
+          inv.lines = body.lines.map((l: any, idx: number) => {
+            const qty = Number(l.quantity) || 0;
+            const price = Number(l.unitPrice) || 0;
+            return {
+              id: l.id || `line-${Date.now()}-${idx}`,
+              lineNumber: idx + 1,
+              description: l.description || 'Cargo',
+              cartonCount: l.cartonCount ? Number(l.cartonCount) : undefined,
+              packagingKgPerCarton: l.packagingKgPerCarton ? Number(l.packagingKgPerCarton) : undefined,
+              quantity: qty,
+              unitOfMeasure: l.unitOfMeasure || 'KG',
+              unitPrice: price,
+              lineTotal: Number((qty * price).toFixed(2))
+            };
+          });
+          const grandTotal = (inv.lines || []).reduce((sum, l) => sum + Number(l.lineTotal || 0), 0);
+          inv.subtotal = Number(grandTotal.toFixed(2));
+          inv.totalAmount = Number(grandTotal.toFixed(2));
+          inv.remainingBalance = inv.paymentStatus === 'PAID' ? 0 : inv.totalAmount;
+        }
+        this.saveState();
+        return inv as any;
+      }
       if (method === 'DELETE') {
-        this.state.invoices = this.state.invoices.filter(i => i.id !== id);
+        this.state.invoices = this.state.invoices.filter(i => i.id !== id && i.invoiceNumber !== id);
         this.saveState();
         return { success: true } as any;
       }
@@ -834,9 +1096,22 @@ class MockBackendEngine {
       return { success: true, invoice: inv } as any;
     }
 
-    // 5. Receipts
+    // 4. Receipts
     if (pathname === '/receipts' && method === 'GET') {
       return this.state.receipts as any;
+    }
+
+    const rcpVoidMatch = pathname.match(/^\/receipts\/([^/]+)\/void$/);
+    if (rcpVoidMatch && method === 'POST') {
+      const id = rcpVoidMatch[1];
+      const rcp = this.state.receipts.find(r => r.id === id || r.receiptNumber === id);
+      if (rcp) {
+        rcp.status = 'VOIDED';
+        rcp.voidReason = body.voidReason || 'Voided by Compliance Officer';
+        rcp.voidedAt = new Date().toISOString();
+        this.saveState();
+      }
+      return { success: true, receipt: rcp } as any;
     }
 
     const rcpMatch = pathname.match(/^\/receipts\/([^/]+)$/);
@@ -846,18 +1121,149 @@ class MockBackendEngine {
       return rcp as any;
     }
 
-    // 6. Ledger
+    // 5. Ledger
+    if (pathname === '/ledger/cash-in' && method === 'POST') {
+      const amt = Number(body.amount) || 0;
+      const fee = Number(body.swiftFee) || 0;
+      const net = Math.max(0, Number((amt - fee).toFixed(2)));
+      const effectiveDate = body.effectiveDate || new Date().toISOString();
+
+      const newEntry: LedgerTransaction = {
+        id: `tx-${Date.now()}`,
+        effectiveDate,
+        postedAt: new Date().toISOString(),
+        reference: body.reference || '',
+        description: body.description || (body.payer ? `Inward Wire from ${body.payer}` : 'Inward Transfer'),
+        category: 'CREDIT',
+        debitAmount: 0,
+        creditAmount: net,
+        runningBalance: 0,
+        currency: 'USD',
+        reconciliationStatus: 'RECONCILED',
+        notes: body.notes || (fee > 0 ? `Gross $${amt.toFixed(2)} less SWIFT fee $${fee.toFixed(2)}` : undefined)
+      };
+      this.state.ledger.push(newEntry);
+      this.recalculateLedgerBalances();
+
+      let createdReceipt: Receipt | null = null;
+      if (body.createReceipt) {
+        const rcpNumber = `RCP-2026-${String(this.state.receipts.length + 1).padStart(4, '0')}`;
+        createdReceipt = {
+          id: `rcp-${Date.now()}`,
+          receiptNumber: rcpNumber,
+          paymentId: `pay-${Date.now()}`,
+          payerName: body.payer || 'Consignee',
+          receivingAccountName: 'Afghan United Bank (AUB)',
+          receivingAccountMasked: '101502******0472',
+          amount: net,
+          grossAmount: amt,
+          swiftFeeAmount: fee,
+          currency: 'USD',
+          paymentMethod: 'WIRE_TRANSFER',
+          bankReference: body.reference,
+          status: 'ISSUED',
+          issueDate: effectiveDate,
+          purpose: body.notes || (body.payer ? `Inward Remittance from ${body.payer}` : 'Treasury Inward Credit'),
+          notes: body.notes,
+          createdAt: effectiveDate
+        };
+        if (createdReceipt) {
+          this.state.receipts.unshift(createdReceipt);
+        }
+      }
+
+      if (body.invoiceId) {
+        const inv = this.state.invoices.find(i => i.id === body.invoiceId);
+        if (inv) {
+          inv.paymentStatus = 'PAID';
+          inv.remainingBalance = 0;
+        }
+      }
+
+      this.saveState();
+      return { success: true, entry: newEntry, receipt: createdReceipt } as any;
+    }
+
+    if (pathname === '/ledger/cash-out' && method === 'POST') {
+      const debit = Number(body.amount) || 0;
+      const newEntry: LedgerTransaction = {
+        id: `tx-${Date.now()}`,
+        effectiveDate: body.effectiveDate || new Date().toISOString(),
+        postedAt: new Date().toISOString(),
+        reference: body.reference || '',
+        description: body.description || (body.payee ? `Disbursement to ${body.payee}` : 'Outflow Disbursement'),
+        category: 'DEBIT',
+        debitAmount: debit,
+        creditAmount: 0,
+        runningBalance: 0,
+        currency: 'USD',
+        reconciliationStatus: 'RECONCILED',
+        notes: body.notes
+      };
+      this.state.ledger.push(newEntry);
+      this.recalculateLedgerBalances();
+      this.saveState();
+      return newEntry as any;
+    }
+
+    const txReverseMatch = pathname.match(/^\/ledger\/([^/]+)\/reverse$/);
+    if (txReverseMatch && method === 'POST') {
+      const id = txReverseMatch[1];
+      const target = this.state.ledger.find(t => t.id === id);
+      if (!target) throw new Error('Target transaction not found');
+
+      const isCredit = Number(target.creditAmount || 0) > 0;
+      const reverseEntry: LedgerTransaction = {
+        id: `tx-rev-${Date.now()}`,
+        effectiveDate: new Date().toISOString(),
+        postedAt: new Date().toISOString(),
+        reference: `REV-${target.reference || id}`,
+        description: `REVERSAL: ${target.description} (Reason: ${body.reason || 'Correction'})`,
+        category: isCredit ? 'DEBIT' : 'CREDIT',
+        debitAmount: isCredit ? Number(target.creditAmount) : 0,
+        creditAmount: isCredit ? 0 : Number(target.debitAmount),
+        runningBalance: 0,
+        currency: 'USD',
+        reconciliationStatus: 'RECONCILED',
+        notes: body.reason
+      };
+      this.state.ledger.push(reverseEntry);
+      this.recalculateLedgerBalances();
+      this.saveState();
+      return { success: true, reversalEntry: reverseEntry } as any;
+    }
+
+    const txMatch = pathname.match(/^\/ledger\/([^/]+)$/);
+    if (txMatch) {
+      const id = txMatch[1];
+      const entry = this.state.ledger.find(t => t.id === id);
+      if (method === 'PUT') {
+        if (!entry) throw new Error('Ledger transaction not found');
+        if (body.effectiveDate) entry.effectiveDate = body.effectiveDate;
+        if (body.reference !== undefined) entry.reference = body.reference;
+        if (body.description) entry.description = body.description;
+        if (body.debitAmount !== undefined) entry.debitAmount = Number(body.debitAmount) || 0;
+        if (body.creditAmount !== undefined) entry.creditAmount = Number(body.creditAmount) || 0;
+        if (body.notes !== undefined) entry.notes = body.notes;
+        this.recalculateLedgerBalances();
+        this.saveState();
+        return entry as any;
+      }
+      if (method === 'DELETE') {
+        this.state.ledger = this.state.ledger.filter(t => t.id !== id);
+        this.recalculateLedgerBalances();
+        this.saveState();
+        return { success: true } as any;
+      }
+    }
+
     if (pathname === '/ledger') {
       if (method === 'GET') {
         return this.state.ledger as any;
       }
       if (method === 'POST') {
-        const lastBal = this.state.ledger.length > 0
-          ? Number(this.state.ledger[this.state.ledger.length - 1].runningBalance)
-          : 0;
         const debit = Number(body.debitAmount || 0);
         const credit = Number(body.creditAmount || 0);
-        const newBal = lastBal + credit - debit;
 
         const newEntry: LedgerTransaction = {
           id: `tx-${Date.now()}`,
@@ -868,13 +1274,54 @@ class MockBackendEngine {
           category: body.category || (debit > 0 ? 'DEBIT' : 'CREDIT'),
           debitAmount: debit,
           creditAmount: credit,
-          runningBalance: newBal,
+          runningBalance: 0,
           currency: 'USD',
           reconciliationStatus: 'RECONCILED'
         };
         this.state.ledger.push(newEntry);
+        this.recalculateLedgerBalances();
         this.saveState();
         return newEntry as any;
+      }
+    }
+
+    // 6. Payments
+    if (pathname === '/payments') {
+      if (method === 'GET') {
+        return this.state.payments as any;
+      }
+      if (method === 'POST') {
+        const paymentId = `pay-${Date.now()}`;
+        const totalAmt = Number(body.totalAmount) || 0;
+        const newPayment = {
+          id: paymentId,
+          customerId: body.customerId,
+          customer: this.state.customers.find(c => c.id === body.customerId),
+          paymentDate: body.paymentDate || new Date().toISOString(),
+          reference: body.reference || `WIRE-${Math.floor(100000 + Math.random() * 900000)}`,
+          paymentMethod: 'WIRE_TRANSFER',
+          totalAmount: totalAmt,
+          allocatedAmount: totalAmt,
+          unallocatedAmount: 0,
+          currency: 'USD',
+          allocations: body.allocations || []
+        };
+        this.state.payments.unshift(newPayment);
+
+        if (Array.isArray(body.allocations)) {
+          for (const alloc of body.allocations) {
+            const inv = this.state.invoices.find(i => i.id === alloc.invoiceId);
+            if (inv) {
+              const allocAmt = Number(alloc.amount) || 0;
+              const rem = Math.max(0, Number(inv.remainingBalance || inv.totalAmount) - allocAmt);
+              inv.remainingBalance = rem;
+              if (rem === 0) inv.paymentStatus = 'PAID';
+            }
+          }
+        }
+
+        this.saveState();
+        return newPayment as any;
       }
     }
 
@@ -901,6 +1348,13 @@ class MockBackendEngine {
       }
     }
 
+    const custMatch = pathname.match(/^\/customers\/([^/]+)$/);
+    if (custMatch && method === 'GET') {
+      const cust = this.state.customers.find(c => c.id === custMatch[1]);
+      if (!cust) throw new Error('Customer not found');
+      return cust as any;
+    }
+
     // 8. Shipments
     if (pathname === '/shipments') {
       if (method === 'GET') return this.state.shipments as any;
@@ -922,6 +1376,18 @@ class MockBackendEngine {
       }
     }
 
+    const shpStatusMatch = pathname.match(/^\/shipments\/([^/]+)\/status$/);
+    if (shpStatusMatch && method === 'POST') {
+      const id = shpStatusMatch[1];
+      const shp = this.state.shipments.find(s => s.id === id);
+      if (shp) {
+        shp.status = body.newStatus;
+        if (body.reason) shp.notes = (shp.notes ? `${shp.notes} | ` : '') + body.reason;
+        this.saveState();
+      }
+      return { success: true, shipment: shp } as any;
+    }
+
     // 9. Bank Accounts & Remittance
     if (pathname === '/bank-accounts') {
       return this.state.bankAccounts as any;
@@ -931,11 +1397,77 @@ class MockBackendEngine {
       return { unmaskedNumber: '101502USD2940472', bankName: 'Afghan United Bank (AUB)' } as any;
     }
 
-    if (pathname === '/remittance-profiles') {
-      return this.state.remittanceProfiles as any;
+    if (pathname.includes('/bank-accounts/') && pathname.endsWith('/history') && method === 'GET') {
+      return [
+        {
+          versionNumber: 1,
+          action: 'INITIAL_PROVISION',
+          createdAt: new Date().toISOString(),
+          changeReason: 'Initial setup of Afghan United Bank settlement account',
+          user: { name: 'Ahsanullah Qureshi', email: 'ahsanullah@aqcompanies.com' }
+        }
+      ] as any;
     }
 
-    // 10. Admin & Audit
+    const bankAccMatch = pathname.match(/^\/bank-accounts\/([^/]+)$/);
+    if (bankAccMatch && method === 'PUT') {
+      const id = bankAccMatch[1];
+      const acc = this.state.bankAccounts.find(b => b.id === id);
+      if (acc) {
+        Object.assign(acc, body);
+        this.saveState();
+      }
+      return acc as any;
+    }
+
+    if (pathname === '/remittance-profiles') {
+      if (method === 'GET') return this.state.remittanceProfiles as any;
+      if (method === 'POST') {
+        const newProf = {
+          id: `rp-${Date.now()}`,
+          name: body.name || 'Remittance Profile',
+          profileType: body.profileType || 'INTERNATIONAL',
+          currency: 'USD',
+          isDefault: body.isDefault || false,
+          isActive: true,
+          ...body
+        };
+        this.state.remittanceProfiles.push(newProf);
+        this.saveState();
+        return newProf as any;
+      }
+    }
+
+    // 10. Reports
+    if (pathname.startsWith('/reports/customer-statement/')) {
+      const custId = pathname.replace('/reports/customer-statement/', '');
+      const cust = this.state.customers.find(c => c.id === custId) || this.state.customers[0];
+      const custInvoices = this.state.invoices.filter(i => i.customerId === cust?.id);
+      const totalInvoiced = custInvoices.reduce((s, i) => s + Number(i.totalAmount || 0), 0);
+      const totalPaid = custInvoices.filter(i => i.paymentStatus === 'PAID').reduce((s, i) => s + Number(i.totalAmount || 0), 0);
+      return {
+        customer: cust,
+        invoices: custInvoices,
+        totalInvoiced,
+        totalPaid,
+        outstandingBalance: Math.max(0, totalInvoiced - totalPaid)
+      } as any;
+    }
+
+    if (pathname === '/reports/receivables-aging') {
+      const unpaid = this.state.invoices.filter(i => i.paymentStatus !== 'PAID');
+      const total = unpaid.reduce((s, i) => s + Number(i.remainingBalance || i.totalAmount || 0), 0);
+      return {
+        current: Number((total * 0.4).toFixed(2)),
+        days30: Number((total * 0.35).toFixed(2)),
+        days60: Number((total * 0.15).toFixed(2)),
+        days90Plus: Number((total * 0.10).toFixed(2)),
+        totalReceivables: Number(total.toFixed(2)),
+        invoices: unpaid
+      } as any;
+    }
+
+    // 11. Admin & Audit
     if (pathname === '/audit') {
       return { events: this.state.auditEvents, total: this.state.auditEvents.length } as any;
     }

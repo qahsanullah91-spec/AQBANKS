@@ -35,17 +35,27 @@ export interface InvoiceLine {
 export interface Receipt {
   id: string;
   receiptNumber: string;
-  paymentId: string;
+  paymentId?: string;
+  ledgerTransactionId?: string;
+  issueDate?: string;
+  payerName?: string;
   amount: number | string;
   grossAmount?: number | string | null;
   swiftFeeAmount?: number | string | null;
   currency: string;
-  status: 'VALID' | 'VOIDED';
+  status: 'VALID' | 'VOIDED' | 'ISSUED';
   receivingAccountMasked?: string;
   receivingAccountName?: string;
+  paymentMethod?: string;
+  bankReference?: string;
+  referenceNumber?: string;
+  purpose?: string;
+  amountInWords?: string;
+  notes?: string | null;
   createdAt: string;
   voidedAt?: string | null;
   voidReason?: string | null;
+  issuedBy?: any;
   payment?: Payment;
 }
 

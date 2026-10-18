@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, startTransition } from 'react';
 import { api } from '../services/api';
 import { LedgerTransaction, Invoice } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -103,7 +103,7 @@ export const Ledger: React.FC = () => {
   }, [showPrintModal, showReportModal, showCashInModal, showCashOutModal, editingTx, deletingTx, reversalTx]);
 
   // Cash In Auto-Save
-  const cashInDraftData = {
+  const cashInDraftData = useMemo(() => ({
     cashInDate,
     cashInAmount,
     cashInSwiftFee,
@@ -113,7 +113,17 @@ export const Ledger: React.FC = () => {
     cashInInvoiceId,
     cashInNotes,
     cashInCreateReceipt
-  };
+  }), [
+    cashInDate,
+    cashInAmount,
+    cashInSwiftFee,
+    cashInPayer,
+    cashInDescription,
+    cashInReference,
+    cashInInvoiceId,
+    cashInNotes,
+    cashInCreateReceipt
+  ]);
 
   const cashInAutoSave = useAutoSave(
     'aq_draft_cash_in',
@@ -151,7 +161,7 @@ export const Ledger: React.FC = () => {
   };
 
   // Cash Out Auto-Save
-  const cashOutDraftData = {
+  const cashOutDraftData = useMemo(() => ({
     cashOutDate,
     cashOutAmount,
     cashOutPayee,
@@ -159,7 +169,15 @@ export const Ledger: React.FC = () => {
     cashOutDescription,
     cashOutReference,
     cashOutNotes
-  };
+  }), [
+    cashOutDate,
+    cashOutAmount,
+    cashOutPayee,
+    cashOutCategory,
+    cashOutDescription,
+    cashOutReference,
+    cashOutNotes
+  ]);
 
   const cashOutAutoSave = useAutoSave(
     'aq_draft_cash_out',
@@ -398,10 +416,25 @@ export const Ledger: React.FC = () => {
 
   // KPI Calculations
   const safeTransactions = Array.isArray(transactions) ? transactions : [];
-  const totalDebits = safeTransactions.reduce((sum, t) => sum + (Number(t.debitAmount) || 0), 0);
-  const totalCredits = safeTransactions.reduce((sum, t) => sum + (Number(t.creditAmount) || 0), 0);
-  const debitCount = safeTransactions.filter(t => (Number(t.debitAmount) || 0) > 0).length;
-  const creditCount = safeTransactions.filter(t => (Number(t.creditAmount) || 0) > 0).length;
+  const { totalDebits, totalCredits, debitCount, creditCount } = useMemo(() => {
+    let debits = 0;
+    let credits = 0;
+    let dCount = 0;
+    let cCount = 0;
+    for (let i = 0; i < safeTransactions.length; i++) {
+      const d = Number(safeTransactions[i].debitAmount) || 0;
+      const c = Number(safeTransactions[i].creditAmount) || 0;
+      if (d > 0) {
+        debits += d;
+        dCount++;
+      }
+      if (c > 0) {
+        credits += c;
+        cCount++;
+      }
+    }
+    return { totalDebits: debits, totalCredits: credits, debitCount: dCount, creditCount: cCount };
+  }, [safeTransactions]);
 
   const handleOpenPrintStatement = () => {
     setPrintConfig({
@@ -421,134 +454,8 @@ export const Ledger: React.FC = () => {
     setShowReportModal(true);
   };
 
-  return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Title & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 sm:pb-4 border-b border-slate-800">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{t('ledger.title')}</h1>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
-              AFGHAN UNITED BANK • 101502USD2940472
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Official chronological bank statement ledger with verified deterministic running balance.
-          </p>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <button
-            onClick={handleOpenPrintStatement}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition shadow-sm"
-            title={t('ledger.print', 'Print Statement')}
-          >
-            <Printer className="w-3.5 h-3.5 text-blue-400" />
-            <span>{t('ledger.print', 'Print Statement')}</span>
-          </button>
-          <button
-            onClick={handleOpenReportModal}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition shadow-sm"
-            title={t('ledger.report', 'Statement Report')}
-          >
-            <FileText className="w-3.5 h-3.5 text-amber-400" />
-            <span>{t('ledger.report', 'Statement Report')}</span>
-          </button>
-          <button
-            onClick={exportCsv}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
-          >
-            <Download className="w-3.5 h-3.5" /> {t('common.export', 'Export CSV')}
-          </button>
-          <button
-            onClick={() => setShowCashInModal(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition"
-          >
-            <ArrowDownLeft className="w-4 h-4 text-emerald-200" />
-            <span>+ {t('ledger.cashIn', 'Cash In (Receive Money)')}</span>
-          </button>
-          <button
-            onClick={() => setShowCashOutModal(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-rose-950 transition"
-          >
-            <ArrowUpRight className="w-4 h-4 text-rose-200" />
-            <span>- {t('ledger.cashOut', 'Cash Out (Pay Expense)')}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 4 Liquid Glass KPI Cards Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* 1. Opening Baseline */}
-        <div className="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-xl relative overflow-hidden">
-          <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold block">{t('ledger.balance', 'Opening Baseline Balance')}</span>
-          <div className="text-lg sm:text-xl font-bold font-mono text-slate-900 dark:text-white mt-1" dir="ltr">
-            ${Number(openingBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-          </div>
-          <p className="text-[11px] text-slate-500 mt-0.5">Prior period baseline ($83.36)</p>
-        </div>
-
-        {/* 2. Total Cash In (Credits) */}
-        <div className="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-xl relative overflow-hidden">
-          <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold block">{t('ledger.credit', 'Total Cash In (Credits)')}</span>
-          <div className="text-lg sm:text-xl font-bold font-mono text-emerald-700 dark:text-emerald-400 mt-1" dir="ltr">
-            +${totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-          </div>
-          <p className="text-[11px] text-emerald-700 dark:text-emerald-500 flex items-center gap-1 mt-0.5 font-medium">
-            <ArrowDownLeft className="w-3.5 h-3.5" /> {creditCount} inward credit transactions
-          </p>
-        </div>
-
-        {/* 3. Total Cash Out (Debits) */}
-        <div className="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-xl relative overflow-hidden">
-          <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold block">{t('ledger.debit', 'Total Cash Out (Debits)')}</span>
-          <div className="text-lg sm:text-xl font-bold font-mono text-rose-700 dark:text-rose-400 mt-1" dir="ltr">
-            -${totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-          </div>
-          <p className="text-[11px] text-rose-700 dark:text-rose-500 flex items-center gap-1 mt-0.5 font-medium">
-            <ArrowUpRight className="w-3.5 h-3.5" /> {debitCount} outward disbursement entries
-          </p>
-        </div>
-
-        {/* 4. Verified Available Balance */}
-        <div className="p-3 sm:p-4 bg-slate-900 border border-emerald-300 dark:border-emerald-900/60 rounded-xl relative overflow-hidden">
-          <span className="text-[10px] sm:text-xs text-emerald-700 dark:text-emerald-400 uppercase font-semibold block">Verified Available Balance</span>
-          <div className="text-xl sm:text-2xl font-extrabold font-mono text-emerald-700 dark:text-emerald-400 mt-1" dir="ltr">
-            ${Number(currentEndingBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-          </div>
-          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1 mt-0.5 font-medium">
-            <ShieldCheck className="w-3.5 h-3.5" /> Account: 101502******0472
-          </p>
-        </div>
-      </div>
-
-      {/* Search and Filter */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-        <div className="relative flex-1">
-          <Search className={`w-4 h-4 text-slate-500 absolute top-3.5 ${isRtl ? 'right-3' : 'left-3'}`} />
-          <input
-            type="text"
-            placeholder={t('ledger.searchPlaceholder')}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className={`w-full bg-slate-900 border border-slate-800 rounded-lg py-2.5 min-h-[44px] text-xs text-white focus:outline-none focus:border-emerald-500 ${
-              isRtl ? 'pr-9 pl-3 text-right' : 'pl-9 pr-3 text-left'
-            }`}
-          />
-        </div>
-        <select
-          value={categoryFilter}
-          onChange={e => setCategoryFilter(e.target.value)}
-          className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 min-h-[44px] text-xs text-slate-300 focus:outline-none"
-        >
-          <option value="">{t('ledger.allCategories')}</option>
-          <option value="CREDIT">{t('ledger.credit')}</option>
-          <option value="DEBIT">{t('ledger.debit')}</option>
-          <option value="BALANCE">{t('ledger.balance')}</option>
-        </select>
-      </div>
-
+  const renderedTransactionsList = useMemo(() => (
+    <>
       {/* MOBILE CARD VIEW (< 640px) */}
       <div className="block sm:hidden space-y-3">
         {loading ? (
@@ -769,6 +676,146 @@ export const Ledger: React.FC = () => {
           </table>
         </div>
       </div>
+    </>
+  ), [safeTransactions, loading, isRtl, totalDebits, totalCredits, currentEndingBalance, t]);
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      {/* Title & Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 sm:pb-4 border-b border-slate-800">
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{t('ledger.title')}</h1>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
+              AFGHAN UNITED BANK • 101502USD2940472
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+            Official chronological bank statement ledger with verified deterministic running balance.
+          </p>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <button
+            onClick={handleOpenPrintStatement}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition shadow-sm"
+            title={t('ledger.print', 'Print Statement')}
+          >
+            <Printer className="w-3.5 h-3.5 text-blue-400" />
+            <span>{t('ledger.print', 'Print Statement')}</span>
+          </button>
+          <button
+            onClick={handleOpenReportModal}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition shadow-sm"
+            title={t('ledger.report', 'Statement Report')}
+          >
+            <FileText className="w-3.5 h-3.5 text-amber-400" />
+            <span>{t('ledger.report', 'Statement Report')}</span>
+          </button>
+          <button
+            onClick={exportCsv}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
+          >
+            <Download className="w-3.5 h-3.5" /> {t('common.export', 'Export CSV')}
+          </button>
+          <button
+            onClick={() => setShowCashInModal(true)}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition"
+          >
+            <ArrowDownLeft className="w-4 h-4 text-emerald-200" />
+            <span>+ {t('ledger.cashIn', 'Cash In (Receive Money)')}</span>
+          </button>
+          <button
+            onClick={() => setShowCashOutModal(true)}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-rose-950 transition"
+          >
+            <ArrowUpRight className="w-4 h-4 text-rose-200" />
+            <span>- {t('ledger.cashOut', 'Cash Out (Pay Expense)')}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 4 Liquid Glass KPI Cards Strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* 1. Opening Baseline */}
+        <div className="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-xl relative overflow-hidden">
+          <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold block">{t('ledger.balance', 'Opening Baseline Balance')}</span>
+          <div className="text-lg sm:text-xl font-bold font-mono text-slate-900 dark:text-white mt-1" dir="ltr">
+            ${Number(openingBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </div>
+          <p className="text-[11px] text-slate-500 mt-0.5">Prior period baseline ($83.36)</p>
+        </div>
+
+        {/* 2. Total Cash In (Credits) */}
+        <div className="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-xl relative overflow-hidden">
+          <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold block">{t('ledger.credit', 'Total Cash In (Credits)')}</span>
+          <div className="text-lg sm:text-xl font-bold font-mono text-emerald-700 dark:text-emerald-400 mt-1" dir="ltr">
+            +${totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </div>
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-500 flex items-center gap-1 mt-0.5 font-medium">
+            <ArrowDownLeft className="w-3.5 h-3.5" /> {creditCount} inward credit transactions
+          </p>
+        </div>
+
+        {/* 3. Total Cash Out (Debits) */}
+        <div className="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-xl relative overflow-hidden">
+          <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold block">{t('ledger.debit', 'Total Cash Out (Debits)')}</span>
+          <div className="text-lg sm:text-xl font-bold font-mono text-rose-700 dark:text-rose-400 mt-1" dir="ltr">
+            -${totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </div>
+          <p className="text-[11px] text-rose-700 dark:text-rose-500 flex items-center gap-1 mt-0.5 font-medium">
+            <ArrowUpRight className="w-3.5 h-3.5" /> {debitCount} outward disbursement entries
+          </p>
+        </div>
+
+        {/* 4. Verified Available Balance */}
+        <div className="p-3 sm:p-4 bg-slate-900 border border-emerald-300 dark:border-emerald-900/60 rounded-xl relative overflow-hidden">
+          <span className="text-[10px] sm:text-xs text-emerald-700 dark:text-emerald-400 uppercase font-semibold block">Verified Available Balance</span>
+          <div className="text-xl sm:text-2xl font-extrabold font-mono text-emerald-700 dark:text-emerald-400 mt-1" dir="ltr">
+            ${Number(currentEndingBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </div>
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1 mt-0.5 font-medium">
+            <ShieldCheck className="w-3.5 h-3.5" /> Account: 101502******0472
+          </p>
+        </div>
+      </div>
+
+      {/* Search and Filter */}
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+        <div className="relative flex-1">
+          <Search className={`w-4 h-4 text-slate-500 absolute top-3.5 ${isRtl ? 'right-3' : 'left-3'}`} />
+          <input
+            type="text"
+            placeholder={t('ledger.searchPlaceholder')}
+            value={search}
+            onChange={e => {
+              const val = e.target.value;
+              startTransition(() => setSearch(val));
+            }}
+            className={`w-full bg-slate-900 border border-slate-800 rounded-lg py-2.5 min-h-[44px] text-xs text-white focus:outline-none focus:border-emerald-500 ${
+              isRtl ? 'pr-9 pl-3 text-right' : 'pl-9 pr-3 text-left'
+            }`}
+          />
+        </div>
+        <select
+          value={categoryFilter}
+          onChange={e => {
+            const val = e.target.value;
+            startTransition(() => setCategoryFilter(val));
+          }}
+          className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 min-h-[44px] text-xs text-slate-300 focus:outline-none"
+        >
+          <option value="">{t('ledger.allCategories')}</option>
+          <option value="CREDIT">{t('ledger.credit')}</option>
+          <option value="DEBIT">{t('ledger.debit')}</option>
+          <option value="BALANCE">{t('ledger.balance')}</option>
+        </select>
+      </div>
+
+      {/* MEMOIZED TRANSACTIONS LIST (MOBILE CARDS + DESKTOP TABLE) */}
+      {renderedTransactionsList}
+
 
       {/* CASH IN MODAL (+ Receive Money) */}
       {showCashInModal && (
@@ -807,7 +854,10 @@ export const Ledger: React.FC = () => {
                     <input
                       type="date"
                       value={cashInDate}
-                      onChange={e => setCashInDate(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value;
+                        startTransition(() => setCashInDate(val));
+                      }}
                       required
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
                     />
@@ -818,7 +868,10 @@ export const Ledger: React.FC = () => {
                       type="number"
                       step="0.01"
                       value={cashInAmount}
-                      onChange={e => setCashInAmount(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value;
+                        startTransition(() => setCashInAmount(val));
+                      }}
                       placeholder="0.00"
                       required
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:border-emerald-500"
@@ -834,7 +887,10 @@ export const Ledger: React.FC = () => {
                       type="number"
                       step="0.01"
                       value={cashInSwiftFee}
-                      onChange={e => setCashInSwiftFee(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value;
+                        startTransition(() => setCashInSwiftFee(val));
+                      }}
                       placeholder="0.00 (e.g. 23.75)"
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:border-emerald-500"
                       dir="ltr"
@@ -845,7 +901,10 @@ export const Ledger: React.FC = () => {
                     <input
                       type="text"
                       value={cashInReference}
-                      onChange={e => setCashInReference(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value;
+                        startTransition(() => setCashInReference(val));
+                      }}
                       placeholder="e.g. 0464AIR261771143"
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
                     />
@@ -881,7 +940,10 @@ export const Ledger: React.FC = () => {
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('ledger.linkInvoice', 'Link to Proforma Invoice (Optional)')}</label>
                   <select
                     value={cashInInvoiceId}
-                    onChange={e => handleSelectInvoiceForCashIn(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      startTransition(() => handleSelectInvoiceForCashIn(val));
+                    }}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
                   >
                     <option value="">-- None / General Inward Wire --</option>
@@ -900,7 +962,10 @@ export const Ledger: React.FC = () => {
                   <input
                     type="text"
                     value={cashInPayer}
-                    onChange={e => setCashInPayer(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      startTransition(() => setCashInPayer(val));
+                    }}
                     placeholder="e.g. GT INDIA PVT LTD"
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
                   />
@@ -911,7 +976,10 @@ export const Ledger: React.FC = () => {
                   <input
                     type="text"
                     value={cashInDescription}
-                    onChange={e => setCashInDescription(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      startTransition(() => setCashInDescription(val));
+                    }}
                     placeholder="e.g. Inward Wire Transfer from Consignee"
                     required
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
@@ -923,7 +991,10 @@ export const Ledger: React.FC = () => {
                   <input
                     type="text"
                     value={cashInNotes}
-                    onChange={e => setCashInNotes(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      startTransition(() => setCashInNotes(val));
+                    }}
                     placeholder="Optional internal remarks..."
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
                   />
@@ -1006,7 +1077,10 @@ export const Ledger: React.FC = () => {
                     <input
                       type="date"
                       value={cashOutDate}
-                      onChange={e => setCashOutDate(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value;
+                        startTransition(() => setCashOutDate(val));
+                      }}
                       required
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-rose-500"
                     />
@@ -1017,7 +1091,10 @@ export const Ledger: React.FC = () => {
                       type="number"
                       step="0.01"
                       value={cashOutAmount}
-                      onChange={e => setCashOutAmount(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value;
+                        startTransition(() => setCashOutAmount(val));
+                      }}
                       placeholder="0.00"
                       required
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:border-rose-500"
@@ -1032,7 +1109,10 @@ export const Ledger: React.FC = () => {
                     <input
                       type="text"
                       value={cashOutPayee}
-                      onChange={e => setCashOutPayee(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value;
+                        startTransition(() => setCashOutPayee(val));
+                      }}
                       placeholder="e.g. NAJEB AMIN LTD / Sodiqjon Aminov"
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-rose-500"
                     />
@@ -1042,7 +1122,10 @@ export const Ledger: React.FC = () => {
                     <input
                       type="text"
                       value={cashOutReference}
-                      onChange={e => setCashOutReference(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value;
+                        startTransition(() => setCashOutReference(val));
+                      }}
                       placeholder="e.g. OUT-WIRE-889"
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-rose-500"
                     />
@@ -1053,7 +1136,10 @@ export const Ledger: React.FC = () => {
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Expense Category</label>
                   <select
                     value={cashOutCategory}
-                    onChange={e => setCashOutCategory(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      startTransition(() => setCashOutCategory(val));
+                    }}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:border-rose-500"
                   >
                     <option value="SUPPLIER_PAYMENT">Supplier Payment (Goods / Produce)</option>
@@ -1070,7 +1156,10 @@ export const Ledger: React.FC = () => {
                   <input
                     type="text"
                     value={cashOutDescription}
-                    onChange={e => setCashOutDescription(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      startTransition(() => setCashOutDescription(val));
+                    }}
                     placeholder="e.g. Payment for Raisin Processing & Packaging"
                     required
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-rose-500"
@@ -1082,7 +1171,10 @@ export const Ledger: React.FC = () => {
                   <input
                     type="text"
                     value={cashOutNotes}
-                    onChange={e => setCashOutNotes(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      startTransition(() => setCashOutNotes(val));
+                    }}
                     placeholder="Optional internal remarks..."
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-rose-500"
                   />

@@ -37,16 +37,32 @@ export function useAutoSave<T>(
     }
   }, [storageKey]);
 
+  const serializedRef = useRef<string>('');
+
   // Debounced auto-save effect
   useEffect(() => {
     if (!isEnabled) return;
 
+    let serialized = '';
+    try {
+      serialized = JSON.stringify(currentData);
+    } catch {
+      serialized = '';
+    }
+
     if (isFirstRender.current) {
       isFirstRender.current = false;
+      serializedRef.current = serialized;
       return;
     }
 
-    setStatus('saving');
+    // Skip if data has not changed structurally
+    if (serialized && serialized === serializedRef.current) {
+      return;
+    }
+    serializedRef.current = serialized;
+
+    setStatus(prev => (prev === 'saving' ? prev : 'saving'));
 
     if (timerRef.current) {
       clearTimeout(timerRef.current);

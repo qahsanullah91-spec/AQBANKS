@@ -207,7 +207,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               </div>
               <div className="mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-800/80 space-y-1">
                 <div className="text-[11px] text-slate-700 dark:text-slate-300 font-mono font-medium truncate">
-                  {metrics.totalInvoicesCount || 8} Invoices · {Number(metrics.totalWeightKg || 179164).toLocaleString()} KG Net
+                  {metrics.totalInvoicesCount || 8} Invoices · {typeof metrics.totalWeightKg === 'string' ? metrics.totalWeightKg : Number(metrics.totalWeightKg || 179164).toLocaleString()} KG Net
                 </div>
                 <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 pt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block shrink-0" />
@@ -474,7 +474,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   </div>
                   <div dir="ltr">
                     <span className="text-slate-500 font-sans text-[10px]">Bal: </span>
-                    <span className="text-slate-900 dark:text-white font-bold">${Number(tx.runningBalanceFormatted).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    <span className="text-slate-900 dark:text-white font-bold">${Number(tx.runningBalanceFormatted ?? tx.runningBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                 </div>
               </div>
@@ -523,7 +523,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                       {Number(tx.creditAmount) > 0 ? `$${Number(tx.creditAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                     </td>
                     <td className={`py-2.5 px-3 font-bold text-slate-900 dark:text-white ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
-                      ${Number(tx.runningBalanceFormatted).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ${Number(tx.runningBalanceFormatted ?? tx.runningBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
                   </tr>
                 ))

@@ -63,7 +63,7 @@ export const App: React.FC = () => {
     }
     return null;
   });
-  const [loading, setLoading] = useState(() => !getAuthToken() ? false : false);
+  const [loading, setLoading] = useState(() => Boolean(getAuthToken() && !getStoredUser()));
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -389,10 +389,10 @@ export const App: React.FC = () => {
           <div className="flex items-center gap-2 px-1 sm:px-2 border-slate-200 dark:border-slate-800 rtl:border-r ltr:border-l">
             <div className="text-right rtl:text-left hidden sm:block">
               <div className="text-xs font-semibold text-slate-900 dark:text-white leading-tight">
-                {currentUser.firstName} {currentUser.lastName}
+                {currentUser?.firstName || 'System'} {currentUser?.lastName || 'Administrator'}
               </div>
               <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate max-w-[130px] block">
-                {currentUser.email}
+                {currentUser?.email || 'admin@aqcompanies.com'}
               </span>
             </div>
 
@@ -535,7 +535,7 @@ export const App: React.FC = () => {
                 </div>
                 <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0 animate-pulse" />
-                  <span>ID: {currentUser.id.slice(0, 8)}... • RBAC SECURED</span>
+                  <span>ID: {currentUser?.id ? String(currentUser.id).slice(0, 8) : 'usr-001'}... • RBAC SECURED</span>
                 </div>
               </div>
             ) : (

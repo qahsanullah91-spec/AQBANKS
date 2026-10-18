@@ -3,7 +3,7 @@
 
 import { User, Customer, Invoice, Receipt, LedgerTransaction, Shipment, BankAccount, RemittanceProfile, DashboardOverview } from '../types';
 
-const STORAGE_KEY = 'aq_standalone_db_v1';
+const STORAGE_KEY = 'aq_standalone_db_v2';
 
 const ALL_PERMISSIONS = [
   'user:manage', 'settings:manage', 'invoice:create_draft', 'invoice:issue',
@@ -242,8 +242,8 @@ function getInitialState(): DBState {
       taxAmount: 0,
       totalAmount: 63000.00,
       status: 'ISSUED',
-      paymentStatus: 'UNPAID',
-      remainingBalance: 63000.00,
+      paymentStatus: 'PAID',
+      remainingBalance: 0,
       lines: [
         {
           id: 'line-004',
@@ -414,6 +414,23 @@ function getInitialState(): DBState {
       purpose: 'Export Settlement for PI-2026-0002 (Black Raisins)',
       referenceNumber: '8483AIR261778937',
       createdAt: '2026-10-08T00:00:00.000Z'
+    },
+    {
+      id: 'rcp-003',
+      receiptNumber: 'RCP-2026-0003',
+      paymentId: 'pay-003',
+      payerName: 'G.T JAYANTI AGROCHEM INDIA PVT LTD',
+      amount: 62685.00,
+      grossAmount: 63000.00,
+      swiftFeeAmount: 315.00,
+      currency: 'USD',
+      status: 'ISSUED',
+      receivingAccountName: 'Afghan United Bank (AUB)',
+      receivingAccountMasked: '101502******0472',
+      issueDate: '2026-10-12T00:00:00.000Z',
+      purpose: 'Export Settlement for PI-2026-0004 (Black Raisins - 2,250 CTNS)',
+      referenceNumber: '0922AIR261783419',
+      createdAt: '2026-10-12T00:00:00.000Z'
     }
   ];
 
@@ -493,6 +510,19 @@ function getInitialState(): DBState {
       debitAmount: 78893.36,
       creditAmount: 0,
       runningBalance: 24259.61,
+      currency: 'USD',
+      reconciliationStatus: 'RECONCILED'
+    },
+    {
+      id: 'tx-007',
+      effectiveDate: '2026-10-12T00:00:00.000Z',
+      postedAt: '2026-10-12T00:00:00.000Z',
+      reference: '0922AIR261783419',
+      description: 'Inward Transfer: G.T JAYANTI AGROCHEM (INV 004)',
+      category: 'CREDIT',
+      debitAmount: 0,
+      creditAmount: 62685.00,
+      runningBalance: 86944.61,
       currency: 'USD',
       reconciliationStatus: 'RECONCILED'
     }
@@ -646,15 +676,46 @@ class MockBackendEngine {
             parsed.users.push(u);
           }
         }
-        if (!Array.isArray(parsed.invoices)) parsed.invoices = fresh.invoices;
-        if (!Array.isArray(parsed.receipts)) parsed.receipts = fresh.receipts;
-        if (!Array.isArray(parsed.ledger)) parsed.ledger = fresh.ledger;
+        if (!Array.isArray(parsed.invoices)) {
+          parsed.invoices = fresh.invoices;
+        } else {
+          // Ensure PI-2026-0004 ($63,000) is marked PAID with $0 remaining balance
+          const pi4 = parsed.invoices.find((i: any) => i.invoiceNumber === 'PI-2026-0004' || i.id === 'inv-004');
+          if (pi4) {
+            pi4.paymentStatus = 'PAID';
+            pi4.remainingBalance = 0;
+            pi4.status = 'ISSUED';
+          }
+        }
+
+        if (!Array.isArray(parsed.receipts)) {
+          parsed.receipts = fresh.receipts;
+        } else {
+          // Ensure all official baseline receipts (including RCP-2026-0003 for 63,000) are merged
+          for (const fr of fresh.receipts) {
+            if (!parsed.receipts.some((r: any) => r.receiptNumber === fr.receiptNumber || r.id === fr.id)) {
+              parsed.receipts.push(fr);
+            }
+          }
+        }
+
+        if (!Array.isArray(parsed.ledger)) {
+          parsed.ledger = fresh.ledger;
+        } else {
+          for (const ft of fresh.ledger) {
+            if (!parsed.ledger.some((t: any) => t.id === ft.id || (t.reference && t.reference === ft.reference))) {
+              parsed.ledger.push(ft);
+            }
+          }
+        }
+
         if (!Array.isArray(parsed.shipments)) parsed.shipments = fresh.shipments;
         if (!Array.isArray(parsed.customers)) parsed.customers = fresh.customers;
         if (!Array.isArray(parsed.bankAccounts)) parsed.bankAccounts = fresh.bankAccounts;
         if (!Array.isArray(parsed.remittanceProfiles)) parsed.remittanceProfiles = fresh.remittanceProfiles;
         if (!Array.isArray(parsed.payments)) parsed.payments = [];
         if (!Array.isArray(parsed.auditEvents)) parsed.auditEvents = [];
+        this.saveState(parsed);
         return parsed;
       }
     } catch {

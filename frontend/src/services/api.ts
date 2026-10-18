@@ -92,7 +92,7 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
     // If endpoint returned 404, 405 (static file rewrite), HTML, or 50x,
     // seamlessly execute via standalone mock backend engine
     console.info(`[AQ Portal Gateway] Servicing '${endpoint}' via built-in high-availability engine.`);
-    const data = await mockBackend.handleRequest<T>(endpoint, options);
+    const data = await mockBackend.handleRequest<T>(endpoint, { ...options, headers });
     notifyMutation();
     return data;
   } catch (err: any) {
@@ -102,7 +102,7 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
     }
     // Network errors (e.g. offline, remote backend unavailable)
     console.info(`[AQ Portal Gateway] Network unavailable, routing '${endpoint}' to local engine.`);
-    const data = await mockBackend.handleRequest<T>(endpoint, options);
+    const data = await mockBackend.handleRequest<T>(endpoint, { ...options, headers });
     if (typeof window !== 'undefined' && (options.method || 'GET').toUpperCase() !== 'GET') {
       window.dispatchEvent(new CustomEvent('aq:data-mutated'));
     }

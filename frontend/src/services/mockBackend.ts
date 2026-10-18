@@ -752,8 +752,22 @@ class MockBackendEngine {
     }
 
     if (pathname === '/auth/me') {
-      const user = this.state.users[0];
-      return { user } as any;
+      const authHeader = (options.headers as any)?.Authorization || (options.headers as any)?.authorization || '';
+      const token = authHeader.replace(/^Bearer\s+/i, '');
+      let user = this.state.users[0];
+      if (token && token.startsWith('demo-jwt-token-')) {
+        const email = token.replace('demo-jwt-token-', '').toLowerCase();
+        const found = this.state.users.find(u => u.email.toLowerCase() === email);
+        if (found) user = found;
+      }
+      return {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        roles: Array.isArray(user.roles) ? user.roles : ['ADMIN'],
+        permissions: Array.isArray(user.permissions) ? user.permissions : []
+      } as any;
     }
 
     if (pathname === '/auth/users') {

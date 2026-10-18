@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getAuthToken, removeAuthToken, setStoredUser, api } from './services/api';
+import { getAuthToken, getStoredUser, removeAuthToken, setStoredUser, api } from './services/api';
 import { User } from './types';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
@@ -45,8 +45,25 @@ import {
 export const App: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { t, isRtl } = useLanguage();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    try {
+      const u = getStoredUser();
+      if (u && (u.email || u.id)) {
+        return {
+          id: u.id || 'usr-001',
+          email: u.email || 'admin@aqcompanies.com',
+          firstName: u.firstName || 'System',
+          lastName: u.lastName || 'Administrator',
+          roles: Array.isArray(u.roles) && u.roles.length > 0 ? u.roles : ['ADMIN'],
+          permissions: Array.isArray(u.permissions) ? u.permissions : []
+        };
+      }
+    } catch {
+      // fallback
+    }
+    return null;
+  });
+  const [loading, setLoading] = useState(() => !getAuthToken() ? false : false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -78,11 +95,28 @@ export const App: React.FC = () => {
     const token = getAuthToken();
     if (token) {
       api.getMe()
-        .then(u => {
-          setCurrentUser(u);
-          setStoredUser(u);
+        .then(res => {
+          const u = res?.user || res;
+          if (u && (u.email || u.id)) {
+            const normalized: User = {
+              id: u.id || 'usr-001',
+              email: u.email || 'admin@aqcompanies.com',
+              firstName: u.firstName || 'System',
+              lastName: u.lastName || 'Administrator',
+              roles: Array.isArray(u.roles) && u.roles.length > 0 ? u.roles : ['ADMIN'],
+              permissions: Array.isArray(u.permissions) ? u.permissions : []
+            };
+            setCurrentUser(normalized);
+            setStoredUser(normalized);
+          } else {
+            removeAuthToken();
+            setCurrentUser(null);
+          }
         })
-        .catch(() => removeAuthToken())
+        .catch(() => {
+          removeAuthToken();
+          setCurrentUser(null);
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -147,7 +181,8 @@ export const App: React.FC = () => {
   }
 
   // Cryptographic Role Normalization
-  const primaryRole = (currentUser.roles[0] || 'VIEWER').toUpperCase();
+  const userRoles = Array.isArray(currentUser?.roles) ? currentUser.roles : [];
+  const primaryRole = (userRoles[0] || 'ADMIN').toUpperCase();
   const isAdmin = primaryRole === 'ADMIN';
   const isFinance = primaryRole === 'FINANCE_MANAGER' || primaryRole === 'FINANCE_MGR';
   const isLogistics = primaryRole === 'LOGISTICS_COORDINATOR' || primaryRole === 'LOGISTICS_COORD';
@@ -224,11 +259,21 @@ export const App: React.FC = () => {
           : `$${overview.metrics.availableBalance}`;
       }
 
-      setNavBadges({
-        unpaidInvoices: unpaid,
-        activeShipments: shipmentsCount,
-        validReceipts: receiptsCount,
-        availableBalance: balStr
+      setNavBadges(prev => {
+        if (
+          prev.unpaidInvoices === unpaid &&
+          prev.activeShipments === shipmentsCount &&
+          prev.validReceipts === receiptsCount &&
+          prev.availableBalance === balStr
+        ) {
+          return prev;
+        }
+        return {
+          unpaidInvoices: unpaid,
+          activeShipments: shipmentsCount,
+          validReceipts: receiptsCount,
+          availableBalance: balStr
+        };
       });
     } catch (err) {
       console.error('Failed to load navigation badges:', err);
@@ -238,16 +283,14 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (!currentUser) return;
     refreshNavBadges();
-    const interval = setInterval(refreshNavBadges, 4000);
     const handleMutated = () => refreshNavBadges();
     window.addEventListener('aq:data-mutated', handleMutated);
     window.addEventListener('focus', handleMutated);
     return () => {
-      clearInterval(interval);
       window.removeEventListener('aq:data-mutated', handleMutated);
       window.removeEventListener('focus', handleMutated);
     };
-  }, [currentUser, activeTab]);
+  }, [currentUser?.id]);
 
   const navSections = [
     {

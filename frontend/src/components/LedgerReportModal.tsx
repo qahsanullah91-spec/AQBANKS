@@ -102,13 +102,14 @@ export const LedgerReportModal: React.FC<LedgerReportModalProps> = ({
   };
 
   // Sort all transactions chronologically ascending
+  const safeAllTransactions = Array.isArray(allTransactions) ? allTransactions : [];
   const sortedAllTxs = useMemo(() => {
-    return [...allTransactions].sort((a, b) => {
+    return [...safeAllTransactions].sort((a, b) => {
       const dateA = new Date(a.effectiveDate).getTime();
       const dateB = new Date(b.effectiveDate).getTime();
       return dateA - dateB;
     });
-  }, [allTransactions]);
+  }, [safeAllTransactions]);
 
   // Filter transactions
   const filteredTxs = useMemo(() => {
@@ -154,19 +155,19 @@ export const LedgerReportModal: React.FC<LedgerReportModalProps> = ({
   }, [sortedAllTxs, startDate, periodPreset, openingBalance]);
 
   const totalCredits = useMemo(() => {
-    return filteredTxs.reduce((sum, tx) => sum + (Number(tx.creditAmount) || 0), 0);
+    return (filteredTxs || []).reduce((sum, tx) => sum + (Number(tx.creditAmount) || 0), 0);
   }, [filteredTxs]);
 
   const totalDebits = useMemo(() => {
-    return filteredTxs.reduce((sum, tx) => sum + (Number(tx.debitAmount) || 0), 0);
+    return (filteredTxs || []).reduce((sum, tx) => sum + (Number(tx.debitAmount) || 0), 0);
   }, [filteredTxs]);
 
   const creditCount = useMemo(() => {
-    return filteredTxs.filter(tx => (Number(tx.creditAmount) || 0) > 0).length;
+    return (filteredTxs || []).filter(tx => (Number(tx.creditAmount) || 0) > 0).length;
   }, [filteredTxs]);
 
   const debitCount = useMemo(() => {
-    return filteredTxs.filter(tx => (Number(tx.debitAmount) || 0) > 0).length;
+    return (filteredTxs || []).filter(tx => (Number(tx.debitAmount) || 0) > 0).length;
   }, [filteredTxs]);
 
   const netCashFlow = totalCredits - totalDebits;

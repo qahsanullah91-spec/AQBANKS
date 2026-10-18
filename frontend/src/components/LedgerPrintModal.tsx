@@ -58,22 +58,24 @@ export const LedgerPrintModal: React.FC<LedgerPrintModalProps> = ({
 
   if (!isOpen) return null;
 
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+
   // Compute totals if not provided
   const computedTotalDebits = propTotalDebits !== undefined
     ? propTotalDebits
-    : transactions.reduce((sum, tx) => sum + (Number(tx.debitAmount) || 0), 0);
+    : safeTransactions.reduce((sum, tx) => sum + (Number(tx.debitAmount) || 0), 0);
 
   const computedTotalCredits = propTotalCredits !== undefined
     ? propTotalCredits
-    : transactions.reduce((sum, tx) => sum + (Number(tx.creditAmount) || 0), 0);
+    : safeTransactions.reduce((sum, tx) => sum + (Number(tx.creditAmount) || 0), 0);
 
   const computedDebitCount = propDebitCount !== undefined
     ? propDebitCount
-    : transactions.filter(tx => (Number(tx.debitAmount) || 0) > 0).length;
+    : safeTransactions.filter(tx => (Number(tx.debitAmount) || 0) > 0).length;
 
   const computedCreditCount = propCreditCount !== undefined
     ? propCreditCount
-    : transactions.filter(tx => (Number(tx.creditAmount) || 0) > 0).length;
+    : safeTransactions.filter(tx => (Number(tx.creditAmount) || 0) > 0).length;
 
   const todayStr = new Date().toISOString().split('T')[0];
   const statementRef = `AQ-STMT-${todayStr.replace(/-/g, '')}-0472`;
@@ -84,7 +86,7 @@ export const LedgerPrintModal: React.FC<LedgerPrintModalProps> = ({
 
   const handleExportCsv = () => {
     const headers = ['Effective Date', 'Reference', 'Description', 'Category', 'Debit (USD)', 'Credit (USD)', 'Running Balance (USD)', 'Status'];
-    const rows = transactions.map(item => [
+    const rows = safeTransactions.map(item => [
       formatDisplayDate(item.effectiveDate),
       item.reference || '-',
       `"${item.description.replace(/"/g, '""')}"`,
@@ -295,8 +297,8 @@ export const LedgerPrintModal: React.FC<LedgerPrintModalProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 font-mono text-[11px]">
-                {transactions.length > 0 ? (
-                  transactions.map((tx, idx) => (
+                {safeTransactions.length > 0 ? (
+                  safeTransactions.map((tx, idx) => (
                     <tr key={tx.id || idx} className="hover:bg-slate-50">
                       <td className={`py-2.5 px-3 text-slate-600 ${isRtl ? 'text-right' : 'text-left'}`} dir="ltr">
                         {formatDisplayDate(tx.effectiveDate)}
@@ -350,7 +352,7 @@ export const LedgerPrintModal: React.FC<LedgerPrintModalProps> = ({
               <tfoot className="bg-slate-100 font-mono text-xs border-t-2 border-slate-300">
                 <tr>
                   <td colSpan={4} className="py-3 px-3 text-slate-900 font-bold uppercase tracking-wider font-sans">
-                    Statement Summary Totals ({transactions.length} Entries)
+                    Statement Summary Totals ({safeTransactions.length} Entries)
                   </td>
                   <td className={`py-3 px-3 font-black text-rose-700 text-xs ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
                     ${computedTotalDebits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

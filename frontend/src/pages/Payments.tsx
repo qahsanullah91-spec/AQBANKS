@@ -80,7 +80,7 @@ export const Payments: React.FC = () => {
   const handleAddAllocation = (invId: string, maxAmount: number) => {
     const existing = allocations.find(a => a.invoiceId === invId);
     if (existing) return;
-    const currentAllocated = allocations.reduce((sum, a) => sum + a.amount, 0);
+    const currentAllocated = (allocations || []).reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
     const enteredTotal = Number(totalAmount) || 0;
     const remainingToAllocate = Math.max(0, enteredTotal - currentAllocated);
     const amountToApply = Math.min(maxAmount, remainingToAllocate > 0 ? remainingToAllocate : maxAmount);
@@ -96,7 +96,7 @@ export const Payments: React.FC = () => {
     setAllocations(allocations.filter(a => a.invoiceId !== invId));
   };
 
-  const totalAllocated = allocations.reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+  const totalAllocated = (allocations || []).reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
   const unallocatedRemaining = Math.max(0, (Number(totalAmount) || 0) - totalAllocated);
 
   const handleRecordPayment = async (e: React.FormEvent) => {

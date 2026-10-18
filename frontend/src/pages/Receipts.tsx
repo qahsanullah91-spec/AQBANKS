@@ -96,7 +96,7 @@ export const Receipts: React.FC = () => {
     return true;
   });
 
-  const totalReceipted = receipts
+  const totalReceipted = (receipts || [])
     .filter(r => r.status === 'ISSUED')
     .reduce((sum, r) => sum + Number(r.amount), 0);
 

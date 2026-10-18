@@ -1335,7 +1335,27 @@ class MockBackendEngine {
 
     if (pathname === '/ledger') {
       if (method === 'GET') {
-        return this.state.ledger as any;
+        let filtered = [...this.state.ledger];
+        const category = url.searchParams.get('category');
+        const search = url.searchParams.get('search');
+        if (category && category !== 'ALL') {
+          filtered = filtered.filter(t => t.category === category);
+        }
+        if (search) {
+          const s = search.toLowerCase();
+          filtered = filtered.filter(t =>
+            (t.description && t.description.toLowerCase().includes(s)) ||
+            (t.reference && t.reference.toLowerCase().includes(s))
+          );
+        }
+        const lastTx = this.state.ledger.length > 0 ? this.state.ledger[this.state.ledger.length - 1] : null;
+        const currentEndingBalance = lastTx ? Number(lastTx.runningBalance).toFixed(2) : '86944.61';
+        return {
+          openingBalance: '83.36',
+          currentEndingBalance,
+          totalCount: filtered.length,
+          transactions: filtered
+        } as any;
       }
       if (method === 'POST') {
         const debit = Number(body.debitAmount || 0);

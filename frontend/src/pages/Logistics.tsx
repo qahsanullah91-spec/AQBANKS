@@ -277,8 +277,8 @@ export const Logistics: React.FC = () => {
 
         if (unassignedInvoices.length === 0) return null;
 
-        const totalCartons = unassignedInvoices.reduce((s, i) => s + (Number(i.lines?.[0]?.cartonCount) || 0), 0);
-        const totalNetKg = unassignedInvoices.reduce((s, i) => s + (Number(i.lines?.[0]?.quantity) || 0), 0);
+        const totalCartons = unassignedInvoices.reduce((s, i) => s + (i.lines || []).reduce((ls, l) => ls + (Number(l.cartonCount) || 0), 0), 0);
+        const totalNetKg = unassignedInvoices.reduce((s, i) => s + (i.lines || []).reduce((ls, l) => ls + (Number(l.quantity) || 0), 0), 0);
         const totalUnassignedAmount = unassignedInvoices.reduce((s, i) => s + Number(i.totalAmount || 0), 0);
 
         return (

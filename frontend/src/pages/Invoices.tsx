@@ -290,7 +290,7 @@ export const Invoices: React.FC = () => {
   };
 
   const calculateFormTotal = () => {
-    return lines.reduce((sum, l) => sum + (Number(l.lineTotal) || 0), 0);
+    return (lines || []).reduce((sum, l) => sum + (Number(l.lineTotal) || 0), 0);
   };
 
   const handleCreateDraft = async (e: React.FormEvent) => {
@@ -504,7 +504,7 @@ export const Invoices: React.FC = () => {
   };
 
   const calculateEditFormTotal = () => {
-    return editLines.reduce((sum, l) => sum + (Number(l.lineTotal) || 0), 0);
+    return (editLines || []).reduce((sum, l) => sum + (Number(l.lineTotal) || 0), 0);
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -641,7 +641,7 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
 
       {/* 3-Card Summary KPI Strip */}
       {(() => {
-        const issuedInvoices = invoices.filter(i => i.status !== 'VOID');
+        const issuedInvoices = (invoices || []).filter(i => i.status !== 'VOID');
         const totalInvoiced = issuedInvoices.reduce((sum, i) => sum + Number(i.totalAmount || 0), 0);
         const paidInvoices = issuedInvoices.filter(i => i.paymentStatus === 'PAID');
         const totalPaid = paidInvoices.reduce((sum, i) => sum + Number(i.totalAmount || 0), 0);
@@ -1636,7 +1636,7 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
               <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-2 pt-2 border-t-2 border-slate-900 print:mt-1.5 print:pt-1.5">
                 <div className="text-[11px] text-slate-600 font-mono flex items-center gap-3">
                   {(() => {
-                    const totalCartons = previewInvoice.lines.reduce((sum: number, l: any) => sum + (Number(l.cartonCount) || 0), 0);
+                    const totalCartons = (previewInvoice.lines || []).reduce((sum: number, l: any) => sum + (Number(l.cartonCount) || 0), 0);
                     return totalCartons > 0 ? (
                       <span>Total Packing: <strong className="text-slate-900">{totalCartons.toLocaleString()} CTNS</strong></span>
                     ) : null;

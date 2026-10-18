@@ -162,6 +162,9 @@ export const en = {
   'logistics.carrier': 'Ocean / Land Carrier',
   'logistics.eta': 'Estimated Arrival (ETA)',
   'logistics.actualArrival': 'Actual Arrival',
+  'logistics.printManifest': 'Print Logistics Manifest',
+  'logistics.printSlip': 'Print Waybill',
+  'logistics.printPreviewTitle': 'Freight Shipments & Logistics Print Preview',
   'logistics.emptyState': 'No freight shipments found.',
 
   // Account Statement / Ledger

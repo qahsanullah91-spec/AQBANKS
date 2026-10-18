@@ -1773,12 +1773,19 @@ class MockBackendEngine {
       const custInvoices = this.state.invoices.filter(i => i.customerId === cust?.id);
       const totalInvoiced = custInvoices.reduce((s, i) => s + Number(i.totalAmount || 0), 0);
       const totalPaid = custInvoices.filter(i => i.paymentStatus === 'PAID').reduce((s, i) => s + Number(i.totalAmount || 0), 0);
+      const outstandingBalance = Math.max(0, totalInvoiced - totalPaid);
       return {
         customer: cust,
         invoices: custInvoices,
+        payments: [],
+        summary: {
+          totalInvoiced: totalInvoiced.toFixed(2),
+          totalPaymentsReceived: totalPaid.toFixed(2),
+          outstandingBalance: outstandingBalance.toFixed(2)
+        },
         totalInvoiced,
         totalPaid,
-        outstandingBalance: Math.max(0, totalInvoiced - totalPaid)
+        outstandingBalance
       } as any;
     }
 

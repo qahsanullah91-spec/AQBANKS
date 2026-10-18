@@ -14,8 +14,10 @@ import {
   Package,
   ArrowRight,
   Clock,
-  ShieldCheck
+  ShieldCheck,
+  Printer
 } from 'lucide-react';
+import { LogisticsPrintModal } from '../components/LogisticsPrintModal';
 
 export const Logistics: React.FC = () => {
   const { t, isRtl } = useLanguage();
@@ -30,21 +32,29 @@ export const Logistics: React.FC = () => {
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printShipmentId, setPrintShipmentId] = useState<string | null>(null);
   const [statusModalShipment, setStatusModalShipment] = useState<Shipment | null>(null);
   const [newStatus, setNewStatus] = useState('IN_TRANSIT');
   const [statusReason, setStatusReason] = useState('');
+
+  const handleOpenPrintModal = (shipmentId: string | null = null) => {
+    setPrintShipmentId(shipmentId);
+    setShowPrintModal(true);
+  };
 
   // Close modals on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (showCreateModal) setShowCreateModal(false);
+        else if (showPrintModal) setShowPrintModal(false);
         else if (statusModalShipment) setStatusModalShipment(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showCreateModal, statusModalShipment]);
+  }, [showCreateModal, showPrintModal, statusModalShipment]);
 
   // Create Form State
   const [shipmentRef, setShipmentRef] = useState('');
@@ -129,22 +139,32 @@ export const Logistics: React.FC = () => {
             {t('logistics.subtitle')}
           </p>
         </div>
-        {canMutateLogistics ? (
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
           <button
-            onClick={() => {
-              setShipmentRef(`SHP-${Math.floor(9000 + Math.random() * 1000)}`);
-              setShowCreateModal(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition self-start sm:self-auto"
+            onClick={() => handleOpenPrintModal(null)}
+            className="flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition shadow-sm"
+            title={t('logistics.printManifest', 'Print Logistics Manifest')}
           >
-            <Plus className="w-4 h-4" /> {t('logistics.newShipment')}
+            <Printer className="w-4 h-4 text-cyan-400" />
+            <span>{t('logistics.printManifest', 'Print Logistics Manifest')}</span>
           </button>
-        ) : (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-400 font-mono">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>Read-Only Logistics View ({userRole})</span>
-          </div>
-        )}
+          {canMutateLogistics ? (
+            <button
+              onClick={() => {
+                setShipmentRef(`SHP-${Math.floor(9000 + Math.random() * 1000)}`);
+                setShowCreateModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition"
+            >
+              <Plus className="w-4 h-4" /> {t('logistics.newShipment')}
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-400 font-mono">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Read-Only Logistics View ({userRole})</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -242,22 +262,32 @@ export const Logistics: React.FC = () => {
                 )}
               </div>
 
-              {/* Status Update Button */}
-              <div className="mt-5 pt-3 border-t border-slate-800 flex justify-between items-center">
+              {/* Status Update & Print Buttons */}
+              <div className="mt-5 pt-3 border-t border-slate-800 flex justify-between items-center gap-2 flex-wrap">
                 <span className="text-[11px] text-slate-500" dir="ltr">
                   {s.statusHistory && s.statusHistory.length > 0 ? `Updated: ${formatDisplayDate(s.statusHistory[0].changedAt)}` : ''}
                 </span>
-                {canMutateLogistics && (
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => {
-                      setStatusModalShipment(s);
-                      setNewStatus(s.status);
-                    }}
-                    className="px-3 py-1.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition"
+                    onClick={() => handleOpenPrintModal(s.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 hover:text-white text-slate-300 text-xs font-semibold rounded-lg border border-slate-700 transition"
+                    title={t('logistics.printSlip', 'Print Waybill')}
                   >
-                    Update Status & Timeline
+                    <Printer className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>{t('logistics.printSlip', 'Print Waybill')}</span>
                   </button>
-                )}
+                  {canMutateLogistics && (
+                    <button
+                      onClick={() => {
+                        setStatusModalShipment(s);
+                        setNewStatus(s.status);
+                      }}
+                      className="px-3 py-1.5 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition"
+                    >
+                      Update Status & Timeline
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))
@@ -592,6 +622,15 @@ export const Logistics: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* LOGISTICS PRINT MODAL */}
+      <LogisticsPrintModal
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        shipments={shipments}
+        invoices={invoices}
+        initialShipmentId={printShipmentId}
+      />
     </div>
   );
 };

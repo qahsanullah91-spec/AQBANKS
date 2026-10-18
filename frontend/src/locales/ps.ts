@@ -164,6 +164,9 @@ export const ps: Record<TranslationKey, string> = {
   'logistics.carrier': 'سمندري / ځمکنی بار وړونکی',
   'logistics.eta': 'د اټکل رسېدو نېټه (ETA)',
   'logistics.actualArrival': 'د اصلي رسېدو نېټه',
+  'logistics.printManifest': 'د لوژستیک مانیفیسټ چاپ کړئ',
+  'logistics.printSlip': 'بارنامه چاپ کړئ',
+  'logistics.printPreviewTitle': 'د بار وړلو او لوژستیک چاپ مخکتنه',
   'logistics.emptyState': 'د بار وړلو هیڅ معلومات ونه موندل شول.',
 
   // Account Statement / Ledger

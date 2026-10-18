@@ -193,53 +193,68 @@ export const Reports: React.FC = () => {
           </div>
         </div>
 
-        {statementData && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono">
-              <div>
-                <span className="text-slate-400 font-sans block text-[10px] uppercase">{t('reports.allTimeInvoiced')}</span>
-                <span className="text-base font-bold text-white tabular-nums" dir="ltr">
-                  {formatCurrency(statementData.summary.totalInvoiced)}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 font-sans block text-[10px] uppercase">{t('reports.paymentsReceived')}</span>
-                <span className="text-base font-bold text-emerald-400 tabular-nums" dir="ltr">
-                  {formatCurrency(statementData.summary.totalPaymentsReceived)}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 font-sans block text-[10px] uppercase">{t('reports.netOutstanding')}</span>
-                <span className="text-base font-extrabold text-amber-400 tabular-nums" dir="ltr">
-                  {formatCurrency(statementData.summary.outstandingBalance)}
-                </span>
-              </div>
-            </div>
+        {statementData && (() => {
+          const summary = statementData.summary || {
+            totalInvoiced: statementData.totalInvoiced ?? 0,
+            totalPaymentsReceived: statementData.totalPaymentsReceived ?? statementData.totalPaid ?? 0,
+            outstandingBalance: statementData.outstandingBalance ?? 0
+          };
+          const invoicesList = Array.isArray(statementData.invoices) ? statementData.invoices : [];
 
-            {/* Invoices List */}
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">{t('reports.issuedInvoices')}</span>
-              <div className="space-y-2">
-                {statementData.invoices.map((inv: any) => (
-                  <div key={inv.id} className="p-3 bg-slate-950 border border-slate-800 rounded-lg flex justify-between items-center text-xs hover:bg-slate-900 transition">
-                    <div>
-                      <span className="font-semibold text-white" dir="ltr">{inv.invoiceNumber}</span>
-                      <span className="text-slate-500 mx-2 font-mono" dir="ltr">{formatDisplayDate(inv.issueDate)}</span>
+          return (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono">
+                <div>
+                  <span className="text-slate-400 font-sans block text-[10px] uppercase">{t('reports.allTimeInvoiced')}</span>
+                  <span className="text-base font-bold text-white tabular-nums" dir="ltr">
+                    {formatCurrency(summary.totalInvoiced)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-sans block text-[10px] uppercase">{t('reports.paymentsReceived')}</span>
+                  <span className="text-base font-bold text-emerald-400 tabular-nums" dir="ltr">
+                    {formatCurrency(summary.totalPaymentsReceived)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-sans block text-[10px] uppercase">{t('reports.netOutstanding')}</span>
+                  <span className="text-base font-extrabold text-amber-400 tabular-nums" dir="ltr">
+                    {formatCurrency(summary.outstandingBalance)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Invoices List */}
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">{t('reports.issuedInvoices')}</span>
+                <div className="space-y-2">
+                  {invoicesList.length > 0 ? (
+                    invoicesList.map((inv: any) => (
+                      <div key={inv.id || inv.invoiceNumber} className="p-3 bg-slate-950 border border-slate-800 rounded-lg flex justify-between items-center text-xs hover:bg-slate-900 transition">
+                        <div>
+                          <span className="font-semibold text-white" dir="ltr">{inv.invoiceNumber}</span>
+                          <span className="text-slate-500 mx-2 font-mono" dir="ltr">{formatDisplayDate(inv.issueDate)}</span>
+                        </div>
+                        <div className="flex items-center gap-3 font-mono">
+                          <span className="text-slate-300 tabular-nums" dir="ltr">{formatCurrency(inv.totalAmount)}</span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-sans font-semibold ${
+                            inv.paymentStatus === 'PAID' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-amber-950 text-amber-300 border border-amber-800'
+                          }`}>
+                            {t(`status.${inv.paymentStatus === 'PAID' ? 'paid' : inv.paymentStatus === 'PARTIALLY_PAID' ? 'partiallyPaid' : 'unpaid'}` as any)}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-slate-500 text-xs bg-slate-950 rounded-lg border border-slate-800">
+                      No invoices found for this customer.
                     </div>
-                    <div className="flex items-center gap-3 font-mono">
-                      <span className="text-slate-300 tabular-nums" dir="ltr">{formatCurrency(inv.totalAmount)}</span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-sans font-semibold ${
-                        inv.paymentStatus === 'PAID' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-amber-950 text-amber-300 border border-amber-800'
-                      }`}>
-                        {t(`status.${inv.paymentStatus === 'PAID' ? 'paid' : inv.paymentStatus === 'PARTIALLY_PAID' ? 'partiallyPaid' : 'unpaid'}` as any)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );

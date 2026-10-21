@@ -26,7 +26,8 @@ import {
   Trash2,
   Banknote,
   RefreshCw,
-  Copy
+  Copy,
+  UserPlus
 } from 'lucide-react';
 import { formatDisplayDate, formatDateForInput } from '../utils/date';
 import { formatAmountInWords } from '../utils/numberToWords';
@@ -47,6 +48,77 @@ export const Invoices: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [copiedWire, setCopiedWire] = useState(false);
+
+  // Add Customer Modal State
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [addCustomerTarget, setAddCustomerTarget] = useState<'create' | 'edit'>('create');
+  const [newCustName, setNewCustName] = useState('');
+  const [newCustCountry, setNewCustCountry] = useState('');
+  const [newCustAddress1, setNewCustAddress1] = useState('');
+  const [newCustAddress2, setNewCustAddress2] = useState('');
+  const [newCustContact, setNewCustContact] = useState('');
+  const [newCustEmail, setNewCustEmail] = useState('');
+  const [newCustPhone, setNewCustPhone] = useState('');
+  const [newCustSubmitting, setNewCustSubmitting] = useState(false);
+  const [newCustError, setNewCustError] = useState<string | null>(null);
+
+  const resetNewCustomerForm = () => {
+    setNewCustName('');
+    setNewCustCountry('');
+    setNewCustAddress1('');
+    setNewCustAddress2('');
+    setNewCustContact('');
+    setNewCustEmail('');
+    setNewCustPhone('');
+    setNewCustError(null);
+    setNewCustSubmitting(false);
+  };
+
+  const handleCreateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCustName.trim()) {
+      setNewCustError('Company / Buyer Name is required');
+      return;
+    }
+    try {
+      setNewCustSubmitting(true);
+      setNewCustError(null);
+      const payload = {
+        companyName: newCustName.trim(),
+        country: newCustCountry.trim() || undefined,
+        addressLine1: newCustAddress1.trim() || undefined,
+        addressLine2: newCustAddress2.trim() || undefined,
+        contactPerson: newCustContact.trim() || undefined,
+        email: newCustEmail.trim() || undefined,
+        phone: newCustPhone.trim() || undefined,
+        isCustomer: true,
+        isVendor: false
+      };
+      const createdCust = await api.createCustomer(payload);
+
+      // Add to customers state list
+      setCustomers(prev => {
+        const filtered = prev.filter(c => c.id !== createdCust.id);
+        return [...filtered, createdCust].sort((a, b) => a.companyName.localeCompare(b.companyName));
+      });
+
+      // Auto-select in active modal
+      if (addCustomerTarget === 'create') {
+        setCustomerId(createdCust.id);
+      } else {
+        setEditCustomerId(createdCust.id);
+      }
+
+      toast.success(t('invoices.clientCreatedSuccess', `Client "${createdCust.companyName}" successfully registered and assigned!`));
+      resetNewCustomerForm();
+      setShowAddCustomerModal(false);
+    } catch (err: any) {
+      setNewCustError(err.message || 'Failed to register client');
+      toast.error(err.message || 'Failed to register client');
+    } finally {
+      setNewCustSubmitting(false);
+    }
+  };
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -104,7 +176,11 @@ export const Invoices: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (previewInvoice) setPreviewInvoice(null);
+        if (showAddCustomerModal) {
+          setShowAddCustomerModal(false);
+          resetNewCustomerForm();
+        }
+        else if (previewInvoice) setPreviewInvoice(null);
         else if (showCreateModal) setShowCreateModal(false);
         else if (editingInvoice) setEditingInvoice(null);
         else if (paymentModalInvoice) setPaymentModalInvoice(null);
@@ -114,7 +190,7 @@ export const Invoices: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [previewInvoice, showCreateModal, editingInvoice, paymentModalInvoice, voidInvoiceId, deleteInvoiceId]);
+  }, [showAddCustomerModal, previewInvoice, showCreateModal, editingInvoice, paymentModalInvoice, voidInvoiceId, deleteInvoiceId]);
 
   // Create Invoice Auto-Save
   const createDraftData = {
@@ -1139,18 +1215,70 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('invoices.customerLabel')}</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        {t('invoices.customerLabel')} <span className="text-rose-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddCustomerTarget('create');
+                          setNewCustError(null);
+                          setShowAddCustomerModal(true);
+                        }}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 hover:underline transition"
+                        title="Add a new customer / buyer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>{t('invoices.addNewCustomer')}</span>
+                      </button>
+                    </div>
                     <select
                       value={customerId}
-                      onChange={e => setCustomerId(e.target.value)}
+                      onChange={e => {
+                        if (e.target.value === '__NEW_CUSTOMER__') {
+                          setAddCustomerTarget('create');
+                          setNewCustError(null);
+                          setShowAddCustomerModal(true);
+                          return;
+                        }
+                        setCustomerId(e.target.value);
+                      }}
                       required
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
                     >
                       <option value="">-- {t('invoices.selectCustomer')} --</option>
                       {customers.map(c => (
-                        <option key={c.id} value={c.id}>{c.companyName}</option>
+                        <option key={c.id} value={c.id}>
+                          {c.companyName} {c.country ? `(${c.country})` : ''}
+                        </option>
                       ))}
+                      <option value="__NEW_CUSTOMER__" className="text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40">
+                        {t('invoices.addNewCustomerOption')}
+                      </option>
                     </select>
+
+                    {/* Quick Selected Customer Detail Card */}
+                    {(() => {
+                      const selCust = customers.find(c => c.id === customerId);
+                      if (!selCust) return null;
+                      return (
+                        <div className="mt-1.5 p-2 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-800/50 text-[11px] text-slate-700 dark:text-slate-300 flex items-start gap-2 animate-in fade-in duration-150">
+                          <Building2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+                          <div className="min-w-0 flex-1 leading-snug">
+                            <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">{selCust.companyName}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                              {[selCust.addressLine1, selCust.addressLine2, selCust.country].filter(Boolean).join(', ') || 'No address specified'}
+                            </div>
+                            {selCust.contactPerson && (
+                              <div className="text-[10px] text-emerald-700 dark:text-emerald-300 truncate">
+                                Attn: {selCust.contactPerson} {selCust.phone ? `• ${selCust.phone}` : ''}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('invoices.issueDate')}</label>
@@ -2075,16 +2203,69 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Customer / Consignee *</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-slate-700 dark:text-slate-300 font-semibold text-xs">
+                        {t('invoices.customerLabel')} *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddCustomerTarget('edit');
+                          setNewCustError(null);
+                          setShowAddCustomerModal(true);
+                        }}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 hover:underline transition"
+                        title="Add a new customer / buyer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>{t('invoices.addNewCustomer')}</span>
+                      </button>
+                    </div>
                     <select
                       value={editCustomerId}
-                      onChange={e => setEditCustomerId(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-white"
+                      onChange={e => {
+                        if (e.target.value === '__NEW_CUSTOMER__') {
+                          setAddCustomerTarget('edit');
+                          setNewCustError(null);
+                          setShowAddCustomerModal(true);
+                          return;
+                        }
+                        setEditCustomerId(e.target.value);
+                      }}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 text-xs text-slate-900 dark:text-white"
                     >
+                      <option value="">-- {t('invoices.selectCustomer')} --</option>
                       {customers.map(c => (
-                        <option key={c.id} value={c.id}>{c.companyName}</option>
+                        <option key={c.id} value={c.id}>
+                          {c.companyName} {c.country ? `(${c.country})` : ''}
+                        </option>
                       ))}
+                      <option value="__NEW_CUSTOMER__" className="text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40">
+                        {t('invoices.addNewCustomerOption')}
+                      </option>
                     </select>
+
+                    {/* Quick Selected Customer Detail Card for Edit Modal */}
+                    {(() => {
+                      const selCust = customers.find(c => c.id === editCustomerId);
+                      if (!selCust) return null;
+                      return (
+                        <div className="mt-1.5 p-2 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-800/50 text-[11px] text-slate-700 dark:text-slate-300 flex items-start gap-2 animate-in fade-in duration-150">
+                          <Building2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+                          <div className="min-w-0 flex-1 leading-snug">
+                            <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">{selCust.companyName}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                              {[selCust.addressLine1, selCust.addressLine2, selCust.country].filter(Boolean).join(', ') || 'No address specified'}
+                            </div>
+                            {selCust.contactPerson && (
+                              <div className="text-[10px] text-emerald-700 dark:text-emerald-300 truncate">
+                                Attn: {selCust.contactPerson} {selCust.phone ? `• ${selCust.phone}` : ''}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div>
                     <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Source Invoice Ref</label>
@@ -2282,6 +2463,201 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
           </div>
         </div>
       )}
+      {/* REGISTER NEW CLIENT MODAL (High-Z index overlay, nested safety) */}
+      {showAddCustomerModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-[70] animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
+                    {t('invoices.addCustomerModalTitle')}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {t('invoices.addCustomerModalSubtitle')}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddCustomerModal(false);
+                  resetNewCustomerForm();
+                }}
+                className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleCreateCustomer} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-xs">
+                {newCustError && (
+                  <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>{newCustError}</span>
+                  </div>
+                )}
+
+                {/* Company Name */}
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {t('invoices.companyName')} <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    value={newCustName}
+                    onChange={e => setNewCustName(e.target.value)}
+                    placeholder={t('invoices.companyNamePlaceholder')}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                {/* Country */}
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {t('invoices.country')}
+                  </label>
+                  <input
+                    type="text"
+                    value={newCustCountry}
+                    onChange={e => setNewCustCountry(e.target.value)}
+                    placeholder={t('invoices.countryPlaceholder')}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 mb-1.5"
+                  />
+                  {/* Quick Country Pills */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] text-slate-400 font-medium">Quick Pick:</span>
+                    {['India', 'United Arab Emirates', 'Afghanistan', 'Uzbekistan', 'Tajikistan', 'Turkey', 'China', 'Pakistan'].map(ctry => (
+                      <button
+                        key={ctry}
+                        type="button"
+                        onClick={() => setNewCustCountry(ctry)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-medium transition ${
+                          newCustCountry === ctry
+                            ? 'bg-emerald-600 text-white shadow-sm'
+                            : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        {ctry}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Addresses */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      {t('invoices.addressLine1')}
+                    </label>
+                    <input
+                      type="text"
+                      value={newCustAddress1}
+                      onChange={e => setNewCustAddress1(e.target.value)}
+                      placeholder="e.g., Plot 108, Phase 2, GIDC Estate / Industrial Area"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      {t('invoices.addressLine2')}
+                    </label>
+                    <input
+                      type="text"
+                      value={newCustAddress2}
+                      onChange={e => setNewCustAddress2(e.target.value)}
+                      placeholder="e.g., Ahmedabad, Gujarat - 382445"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Contact Person & Phone */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      {t('invoices.contactPerson')}
+                    </label>
+                    <input
+                      type="text"
+                      value={newCustContact}
+                      onChange={e => setNewCustContact(e.target.value)}
+                      placeholder={t('invoices.contactPersonPlaceholder')}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      {t('invoices.clientPhone')}
+                    </label>
+                    <input
+                      type="text"
+                      value={newCustPhone}
+                      onChange={e => setNewCustPhone(e.target.value)}
+                      placeholder={t('invoices.clientPhonePlaceholder')}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {t('invoices.clientEmail')}
+                  </label>
+                  <input
+                    type="email"
+                    value={newCustEmail}
+                    onChange={e => setNewCustEmail(e.target.value)}
+                    placeholder={t('invoices.clientEmailPlaceholder')}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-3 px-5 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddCustomerModal(false);
+                    resetNewCustomerForm();
+                  }}
+                  className="px-4 py-2.5 min-h-[40px] bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-300 rounded-lg text-xs font-semibold transition"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={newCustSubmitting || !newCustName.trim()}
+                  className="px-4 py-2.5 min-h-[40px] bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition"
+                >
+                  {newCustSubmitting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>{t('invoices.savingClient')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>{t('invoices.saveAndSelectClient')}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

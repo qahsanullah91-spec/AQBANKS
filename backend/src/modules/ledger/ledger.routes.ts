@@ -6,6 +6,7 @@ import { authenticate, AuthenticatedRequest } from '../../middleware/auth.js';
 import { requirePermission, requireRole } from '../../middleware/rbac.js';
 import { recordAuditEvent } from '../../middleware/audit.js';
 import { receiptsService } from '../receipts/receipts.service.js';
+import { classifyExpense } from '../reports/reports.routes.js';
 
 const router = Router();
 
@@ -98,6 +99,7 @@ router.get('/', authenticate, requirePermission('ledger:view'), async (req: Auth
 
     const results = filteredTxs.map(tx => ({
       ...tx,
+      expenseCategory: classifyExpense(tx),
       runningBalance: balanceMap.get(tx.id) || '0.00'
     }));
 
@@ -529,6 +531,9 @@ router.post('/cash-out', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 
     }
 
     const desc = data.payeeName ? `Payment to ${data.payeeName} - ${data.description}` : data.description;
+    const finalNotes = data.notes
+      ? (data.notes.includes('[') ? data.notes : `[${data.category}] ${data.notes}`)
+      : `[${data.category}]`;
 
     const ledgerTx = await prisma.ledgerTransaction.create({
       data: {
@@ -540,7 +545,7 @@ router.post('/cash-out', authenticate, requireRole(['ADMIN', 'FINANCE_MANAGER', 
         debitAmount: amountDec.toNumber(),
         creditAmount: 0,
         currency: 'USD',
-        notes: data.notes || null
+        notes: finalNotes
       }
     });
 

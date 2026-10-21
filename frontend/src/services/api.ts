@@ -227,7 +227,10 @@ export const api = {
 
   // Reports
   getReceivablesAging: () => apiRequest('/reports/receivables-aging'),
-  getCustomerStatement: (customerId: string) => apiRequest(`/reports/customer-statement/${customerId}`),
+  getCustomerStatement: (customerId: string, params: { startDate?: string; endDate?: string } = {}) => apiRequest(`/reports/customer-statement/${customerId}${buildQueryString(params)}`),
+  getProfitLossReport: (params: { startDate?: string; endDate?: string } = {}) => apiRequest(`/reports/profit-loss${buildQueryString(params)}`),
+  getBalanceSheetReport: (params: { asOfDate?: string } = {}) => apiRequest(`/reports/balance-sheet${buildQueryString(params)}`),
+  getCashFlowReport: (params: { startDate?: string; endDate?: string } = {}) => apiRequest(`/reports/cash-flow${buildQueryString(params)}`),
 
   // Receipts
   getReceipts: (params: any = {}) => apiRequest(`/receipts${buildQueryString(params)}`),

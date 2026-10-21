@@ -495,6 +495,19 @@ export const Ledger: React.FC = () => {
                     {t('ledger.reversal', 'REVERSAL')}
                   </span>
                 )}
+                {tx.expenseCategory && (
+                  <span className={`block mt-1 px-1.5 py-0.5 rounded text-[9px] font-sans font-medium uppercase w-fit ${
+                    tx.expenseCategory === 'LOGISTICS_FREIGHT' ? 'bg-sky-100 text-sky-800 border border-sky-300 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800' :
+                    tx.expenseCategory === 'CUSTOMS_DUTY' ? 'bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800' :
+                    tx.expenseCategory === 'STORAGE_WAREHOUSING' ? 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800' :
+                    tx.expenseCategory === 'PACKAGING_MATERIALS' ? 'bg-cyan-100 text-cyan-800 border border-cyan-300 dark:bg-cyan-950 dark:text-cyan-300 dark:border-cyan-800' :
+                    tx.expenseCategory === 'BANK_SWIFT_FEES' ? 'bg-indigo-100 text-indigo-800 border border-indigo-300 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800' :
+                    tx.expenseCategory === 'COMMISSION_BROKERAGE' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' :
+                    'bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:text-slate-300'
+                  }`}>
+                    {t(`coa.${tx.expenseCategory}` as any, tx.expenseCategory.replace(/_/g, ' '))}
+                  </span>
+                )}
               </div>
 
               <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-800/80 font-mono text-xs">
@@ -593,13 +606,28 @@ export const Ledger: React.FC = () => {
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-sans font-semibold uppercase ${
-                        tx.category === 'CREDIT' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' :
-                        tx.category === 'DEBIT' ? 'bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800' :
-                        'bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:text-slate-300'
-                      }`}>
-                        {tx.category}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-sans font-semibold uppercase inline-block w-fit ${
+                          tx.category === 'CREDIT' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' :
+                          tx.category === 'DEBIT' ? 'bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800' :
+                          'bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:text-slate-300'
+                        }`}>
+                          {tx.category}
+                        </span>
+                        {tx.expenseCategory && (
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-sans font-medium uppercase inline-block w-fit ${
+                            tx.expenseCategory === 'LOGISTICS_FREIGHT' ? 'bg-sky-100 text-sky-800 border border-sky-300 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800' :
+                            tx.expenseCategory === 'CUSTOMS_DUTY' ? 'bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800' :
+                            tx.expenseCategory === 'STORAGE_WAREHOUSING' ? 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800' :
+                            tx.expenseCategory === 'PACKAGING_MATERIALS' ? 'bg-cyan-100 text-cyan-800 border border-cyan-300 dark:bg-cyan-950 dark:text-cyan-300 dark:border-cyan-800' :
+                            tx.expenseCategory === 'BANK_SWIFT_FEES' ? 'bg-indigo-100 text-indigo-800 border border-indigo-300 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800' :
+                            tx.expenseCategory === 'COMMISSION_BROKERAGE' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' :
+                            'bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:text-slate-300'
+                          }`}>
+                            {t(`coa.${tx.expenseCategory}` as any, tx.expenseCategory.replace(/_/g, ' '))}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className={`py-3 px-4 text-rose-700 dark:text-rose-400 font-semibold ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
                       {Number(tx.debitAmount) > 0 ? `$${Number(tx.debitAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
@@ -1142,12 +1170,13 @@ export const Ledger: React.FC = () => {
                     }}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 min-h-[44px] text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:border-rose-500"
                   >
-                    <option value="SUPPLIER_PAYMENT">Supplier Payment (Goods / Produce)</option>
-                    <option value="OPERATING_EXPENSE">Operating Expense (General)</option>
-                    <option value="PORT_HANDLING">Port Handling & Logistics</option>
-                    <option value="CUSTOMS_DUTY">Customs Clearance & Duty</option>
-                    <option value="BANK_CHARGES">Bank Charges & SWIFT Fees</option>
-                    <option value="OTHER">Other Disbursement</option>
+                    <option value="LOGISTICS_FREIGHT">{t('coa.LOGISTICS_FREIGHT', 'Freight & Ocean Shipping Operations')}</option>
+                    <option value="CUSTOMS_DUTY">{t('coa.CUSTOMS_DUTY', 'Customs Clearance & Border Duties')}</option>
+                    <option value="STORAGE_WAREHOUSING">{t('coa.STORAGE_WAREHOUSING', 'Warehousing, Cold Storage & Demurrage')}</option>
+                    <option value="PACKAGING_MATERIALS">{t('coa.PACKAGING_MATERIALS', 'Packaging Materials & Cartons')}</option>
+                    <option value="BANK_SWIFT_FEES">{t('coa.BANK_SWIFT_FEES', 'Bank Charges & SWIFT Wire Fees')}</option>
+                    <option value="COMMISSION_BROKERAGE">{t('coa.COMMISSION_BROKERAGE', 'Trade Brokerage & Commissions')}</option>
+                    <option value="OPERATING_EXPENSE">{t('coa.OPERATING_EXPENSE', 'General & Administrative Operating Expense')}</option>
                   </select>
                 </div>
 

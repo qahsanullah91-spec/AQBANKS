@@ -8,13 +8,13 @@ import { recordAuditEvent } from '../../middleware/audit.js';
 const router = Router();
 
 const customerSchema = z.object({
-  companyName: z.string().min(2),
-  contactPerson: z.string().optional().nullable(),
-  email: z.string().email().optional().nullable(),
-  phone: z.string().optional().nullable(),
-  addressLine1: z.string().optional().nullable(),
-  addressLine2: z.string().optional().nullable(),
-  country: z.string().optional().nullable(),
+  companyName: z.string().min(2, 'Company name must be at least 2 characters'),
+  contactPerson: z.string().optional().nullable().or(z.literal('')),
+  email: z.string().email().optional().nullable().or(z.literal('')),
+  phone: z.string().optional().nullable().or(z.literal('')),
+  addressLine1: z.string().optional().nullable().or(z.literal('')),
+  addressLine2: z.string().optional().nullable().or(z.literal('')),
+  country: z.string().optional().nullable().or(z.literal('')),
   isCustomer: z.boolean().default(true),
   isVendor: z.boolean().default(false)
 });
@@ -74,19 +74,28 @@ router.get('/:id', authenticate, async (req: AuthenticatedRequest, res: Response
 });
 
 // POST /api/customers
-router.post('/', authenticate, requirePermission('settings:manage'), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+router.post('/', authenticate, (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  const allowed =
+    req.user?.roles.some(r => ['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR'].includes(r.toUpperCase())) ||
+    req.user?.permissions.includes('settings:manage') ||
+    req.user?.permissions.includes('invoice:create_draft');
+  if (allowed) {
+    return next();
+  }
+  res.status(403).json({ error: 'FORBIDDEN', message: 'Access denied: missing permission to create customers' });
+}, async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const data = customerSchema.parse(req.body);
 
     const customer = await prisma.customer.create({
       data: {
-        companyName: data.companyName,
-        contactPerson: data.contactPerson,
-        email: data.email,
-        phone: data.phone,
-        addressLine1: data.addressLine1,
-        addressLine2: data.addressLine2,
-        country: data.country,
+        companyName: data.companyName.trim(),
+        contactPerson: data.contactPerson?.trim() || null,
+        email: data.email?.trim() || null,
+        phone: data.phone?.trim() || null,
+        addressLine1: data.addressLine1?.trim() || null,
+        addressLine2: data.addressLine2?.trim() || null,
+        country: data.country?.trim() || null,
         isCustomer: data.isCustomer,
         isVendor: data.isVendor
       }
@@ -108,7 +117,15 @@ router.post('/', authenticate, requirePermission('settings:manage'), async (req:
 });
 
 // PUT /api/customers/:id
-router.put('/:id', authenticate, requirePermission('settings:manage'), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+router.put('/:id', authenticate, (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  const allowed =
+    req.user?.roles.some(r => ['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR'].includes(r.toUpperCase())) ||
+    req.user?.permissions.includes('settings:manage');
+  if (allowed) {
+    return next();
+  }
+  res.status(403).json({ error: 'FORBIDDEN', message: 'Access denied: missing permission to update customers' });
+}, async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const data = customerSchema.partial().parse(req.body);
 

@@ -1,4 +1,4 @@
-// Comprehensive in-browser financial & logistics standalone database engine
+﻿// Comprehensive in-browser financial & logistics standalone database engine
 // Provides 100% functionality and persistence for cloud and offline deployments
 
 import { User, Customer, Invoice, Receipt, LedgerTransaction, Shipment, BankAccount, RemittanceProfile, DashboardOverview } from '../types';
@@ -1661,12 +1661,13 @@ class MockBackendEngine {
       if (method === 'POST') {
         const newCust: Customer = {
           id: `cust-${Date.now()}`,
-          companyName: body.companyName,
-          addressLine1: body.addressLine1,
-          addressLine2: body.addressLine2,
-          country: body.country || 'Afghanistan',
-          email: body.email,
-          phone: body.phone,
+          companyName: (body.companyName || '').trim(),
+          contactPerson: (body.contactPerson || '').trim(),
+          addressLine1: (body.addressLine1 || '').trim(),
+          addressLine2: (body.addressLine2 || '').trim(),
+          country: (body.country || '').trim() || 'Global',
+          email: (body.email || '').trim(),
+          phone: (body.phone || '').trim(),
           isCustomer: true,
           isVendor: body.isVendor || false
         };

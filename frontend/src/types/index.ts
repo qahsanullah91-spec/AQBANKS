@@ -113,6 +113,7 @@ export interface LedgerTransaction {
   reconciliationStatus: 'UNRECONCILED' | 'RECONCILED' | 'DISCREPANCY';
   isReversal?: boolean;
   notes?: string | null;
+  expenseCategory?: string;
 }
 
 export interface RemittanceProfile {
@@ -206,3 +207,138 @@ export interface DashboardOverview {
   latestTransactions: any[];
   recentShipments: any[];
 }
+
+export interface ExpenseCategorySummary {
+  label: string;
+  amount: number;
+  count: number;
+  transactions?: any[];
+}
+
+export interface ProfitLossReport {
+  period: {
+    startDate: string | null;
+    endDate: string | null;
+  };
+  revenue: {
+    billedRevenue: number;
+    cashCollected: number;
+    invoiceCount: number;
+    invoices: Array<{
+      id: string;
+      invoiceNumber: string;
+      customerName: string;
+      date: string;
+      totalAmount: number;
+      status: string;
+    }>;
+  };
+  directTradeCosts: number;
+  grossProfit: number;
+  grossMarginPercent: number;
+  expensesByCategory: Record<string, ExpenseCategorySummary>;
+  totalExpenses: number;
+  netOperatingIncome: number;
+  netMarginPercent: number;
+}
+
+export interface BalanceSheetReport {
+  asOfDate: string;
+  assets: {
+    cashAndEquivalents: number;
+    bankAccountName: string;
+    accountNumberMasked: string;
+    accountsReceivable: number;
+    openInvoiceCount: number;
+    totalAssets: number;
+    openInvoices: Array<{
+      id: string;
+      invoiceNumber: string;
+      customerName: string;
+      issueDate: string;
+      totalAmount: number;
+      paidAsOf: number;
+      outstanding: number;
+    }>;
+  };
+  liabilities: {
+    unallocatedCustomerAdvances: number;
+    totalLiabilities: number;
+  };
+  equity: {
+    openingCapital: number;
+    retainedEarnings: number;
+    totalEquity: number;
+  };
+  audit: {
+    isBalanced: boolean;
+    discrepancy: number;
+  };
+}
+
+export interface CashFlowReport {
+  period: {
+    startDate: string | null;
+    endDate: string | null;
+  };
+  cashFlows: {
+    operatingActivities: {
+      customerReceipts: number;
+      vendorDisbursements: number;
+      disbursementsByCategory: Record<string, number>;
+      swiftFeesTracked: number;
+      netCashFromOperations: number;
+    };
+  };
+  cashSummary: {
+    beginningCash: number;
+    netChangeInCash: number;
+    endingCash: number;
+  };
+}
+
+export interface CustomerStatementEntry {
+  id: string;
+  date: string;
+  type: 'INVOICE' | 'PAYMENT';
+  reference: string;
+  description: string;
+  debit: number;
+  credit: number;
+  swiftFee: number;
+  runningBalance: number;
+  status?: string;
+  paymentMethod?: string;
+}
+
+export interface CustomerStatementReport {
+  customer: {
+    id: string;
+    companyName: string;
+    contactPerson?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    country?: string | null;
+    addressLine1?: string | null;
+    addressLine2?: string | null;
+  };
+  period: {
+    startDate: string | null;
+    endDate: string | null;
+    isCustom: boolean;
+  };
+  summary: {
+    openingBalance: number;
+    totalInvoiced: number;
+    totalPaymentsReceived: number;
+    netPeriodChange: number;
+    closingBalance: number;
+    allTimeInvoiced: number;
+    allTimePaid: number;
+    allTimeOutstanding: number;
+  };
+  entries: CustomerStatementEntry[];
+  invoices?: any[];
+  payments?: any[];
+}
+

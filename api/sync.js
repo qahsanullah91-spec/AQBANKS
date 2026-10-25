@@ -470,8 +470,11 @@ export default async function handler(req, res) {
       return await supabasePost(req, res);
     } catch (err) {
       console.error('[API /api/sync] Supabase error:', err);
-      return res.status(500).json({
-        error: 'Cloud synchronization error',
+      const missing = String(err.message || '').includes('PGRST205');
+      return res.status(missing ? 503 : 500).json({
+        error: missing
+          ? 'Supabase tables not initialized — run docs/supabase-seed.sql in the Supabase SQL Editor once.'
+          : 'Cloud synchronization error',
         details: err.message
       });
     }

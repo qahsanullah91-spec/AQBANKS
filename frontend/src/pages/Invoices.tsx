@@ -1685,11 +1685,11 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
             {/* 1. CORPORATE LETTERHEAD HEADER */}
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-3 border-b-2 border-slate-900 print:pb-2">
               <div className="flex items-center gap-3.5">
-                <div className="h-14 w-auto flex items-center justify-start shrink-0">
+                <div className="h-[84px] w-auto flex items-center justify-start shrink-0">
                   <img
                     src="/sky-ariana-logo.png"
                     alt="Sky Ariana Ltd. Official Logo"
-                    className="h-12 w-auto object-contain"
+                    className="h-20 w-auto object-contain"
                   />
                 </div>
                 <div>

@@ -57,7 +57,7 @@ router.get('/receivables-aging', authenticate, requireRole(['ADMIN', 'FINANCE_MA
   try {
     const invoices = await prisma.invoice.findMany({
       where: {
-        paymentStatus: { in: ['UNPAID', 'PARTIALLY_PAID'] },
+        paymentStatus: { in: ['UNPAID', 'PARTIALLY_PAID', 'OVERDUE'] },
         status: 'ISSUED'
       },
       include: { customer: true, paymentAllocations: true }

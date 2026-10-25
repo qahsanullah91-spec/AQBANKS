@@ -496,7 +496,9 @@ export const Ledger: React.FC = () => {
                   </span>
                 )}
                 {tx.expenseCategory && (
-                  <span className={`block mt-1 px-1.5 py-0.5 rounded text-[9px] font-sans font-medium uppercase w-fit ${
+                  <span
+                    title={t(`coa.${tx.expenseCategory}` as any, tx.expenseCategory.replace(/_/g, ' '))}
+                    className={`block mt-1 px-1.5 py-0.5 rounded text-[9px] font-sans font-medium uppercase w-fit max-w-full truncate whitespace-nowrap ${
                     tx.expenseCategory === 'LOGISTICS_FREIGHT' ? 'bg-sky-100 text-sky-800 border border-sky-300 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800' :
                     tx.expenseCategory === 'CUSTOMS_DUTY' ? 'bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800' :
                     tx.expenseCategory === 'STORAGE_WAREHOUSING' ? 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800' :
@@ -615,25 +617,28 @@ export const Ledger: React.FC = () => {
                           {tx.category}
                         </span>
                         {tx.expenseCategory && (
-                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-sans font-medium uppercase inline-block w-fit ${
-                            tx.expenseCategory === 'LOGISTICS_FREIGHT' ? 'bg-sky-100 text-sky-800 border border-sky-300 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800' :
-                            tx.expenseCategory === 'CUSTOMS_DUTY' ? 'bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800' :
-                            tx.expenseCategory === 'STORAGE_WAREHOUSING' ? 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800' :
-                            tx.expenseCategory === 'PACKAGING_MATERIALS' ? 'bg-cyan-100 text-cyan-800 border border-cyan-300 dark:bg-cyan-950 dark:text-cyan-300 dark:border-cyan-800' :
-                            tx.expenseCategory === 'BANK_SWIFT_FEES' ? 'bg-indigo-100 text-indigo-800 border border-indigo-300 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800' :
-                            tx.expenseCategory === 'COMMISSION_BROKERAGE' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' :
-                            'bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:text-slate-300'
-                          }`}>
+                          <span
+                            title={t(`coa.${tx.expenseCategory}` as any, tx.expenseCategory.replace(/_/g, ' '))}
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-sans font-medium uppercase inline-block w-fit max-w-[180px] truncate whitespace-nowrap ${
+                              tx.expenseCategory === 'LOGISTICS_FREIGHT' ? 'bg-sky-100 text-sky-800 border border-sky-300 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800' :
+                              tx.expenseCategory === 'CUSTOMS_DUTY' ? 'bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800' :
+                              tx.expenseCategory === 'STORAGE_WAREHOUSING' ? 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800' :
+                              tx.expenseCategory === 'PACKAGING_MATERIALS' ? 'bg-cyan-100 text-cyan-800 border border-cyan-300 dark:bg-cyan-950 dark:text-cyan-300 dark:border-cyan-800' :
+                              tx.expenseCategory === 'BANK_SWIFT_FEES' ? 'bg-indigo-100 text-indigo-800 border border-indigo-300 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800' :
+                              tx.expenseCategory === 'COMMISSION_BROKERAGE' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' :
+                              'bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:text-slate-300'
+                            }`}
+                          >
                             {t(`coa.${tx.expenseCategory}` as any, tx.expenseCategory.replace(/_/g, ' '))}
                           </span>
                         )}
                       </div>
                     </td>
                     <td className={`py-3 px-4 text-rose-700 dark:text-rose-400 font-semibold ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
-                      {Number(tx.debitAmount) > 0 ? `$${Number(tx.debitAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
+                      {Number(tx.debitAmount) > 0 ? `$${Number(tx.debitAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : ''}
                     </td>
                     <td className={`py-3 px-4 text-emerald-700 dark:text-emerald-400 font-semibold ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
-                      {Number(tx.creditAmount) > 0 ? `$${Number(tx.creditAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
+                      {Number(tx.creditAmount) > 0 ? `$${Number(tx.creditAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : ''}
                     </td>
                     <td className={`py-3 px-4 font-bold text-slate-900 dark:text-white ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
                       ${Number(tx.runningBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -727,52 +732,55 @@ export const Ledger: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
             onClick={handleOpenPrintStatement}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition shadow-sm"
+            className="flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 min-h-[44px] min-w-[44px] sm:min-h-[40px] sm:min-w-0 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition shadow-sm"
             title={t('ledger.print', 'Print Statement')}
           >
             <Printer className="w-3.5 h-3.5 text-blue-400" />
-            <span>{t('ledger.print', 'Print Statement')}</span>
+            <span className="hidden sm:inline">{t('ledger.print', 'Print Statement')}</span>
           </button>
           <button
             onClick={handleOpenReportModal}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition shadow-sm"
+            className="flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 min-h-[44px] min-w-[44px] sm:min-h-[40px] sm:min-w-0 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition shadow-sm"
             title={t('ledger.report', 'Statement Report')}
           >
             <FileText className="w-3.5 h-3.5 text-amber-400" />
-            <span>{t('ledger.report', 'Statement Report')}</span>
+            <span className="hidden sm:inline">{t('ledger.report', 'Statement Report')}</span>
           </button>
           <button
             onClick={exportCsv}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
+            className="flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 min-h-[44px] min-w-[44px] sm:min-h-[40px] sm:min-w-0 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
+            title={t('common.export', 'Export CSV')}
           >
-            <Download className="w-3.5 h-3.5" /> {t('common.export', 'Export CSV')}
+            <Download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{t('common.export', 'Export CSV')}</span>
           </button>
           <button
             onClick={() => setShowCashInModal(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition"
+            title={t('ledger.cashIn', 'Cash In (Receive Money)')}
+            className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-950 transition"
           >
-            <ArrowDownLeft className="w-4 h-4 text-emerald-200" />
-            <span>+ {t('ledger.cashIn', 'Cash In (Receive Money)')}</span>
+            <ArrowDownLeft className="w-4 h-4 text-emerald-200 shrink-0" />
+            <span>+ {t('ledger.cashIn', 'Cash In (Receive Money)').replace(/\s*\([^)]*\)\s*$/, '')}</span>
           </button>
           <button
             onClick={() => setShowCashOutModal(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-rose-950 transition"
+            title={t('ledger.cashOut', 'Cash Out (Pay Expense)')}
+            className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[44px] bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-rose-950 transition"
           >
-            <ArrowUpRight className="w-4 h-4 text-rose-200" />
-            <span>- {t('ledger.cashOut', 'Cash Out (Pay Expense)')}</span>
+            <ArrowUpRight className="w-4 h-4 text-rose-200 shrink-0" />
+            <span>- {t('ledger.cashOut', 'Cash Out (Pay Expense)').replace(/\s*\([^)]*\)\s*$/, '')}</span>
           </button>
         </div>
       </div>
 
       {/* 4 Liquid Glass KPI Cards Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* 1. Opening Baseline */}
         <div className="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-xl relative overflow-hidden">
           <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold block">{t('ledger.balance', 'Opening Baseline Balance')}</span>
           <div className="text-lg sm:text-xl font-bold font-mono text-slate-900 dark:text-white mt-1" dir="ltr">
             ${Number(openingBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
-          <p className="text-[11px] text-slate-500 mt-0.5">Prior period baseline ($83.36)</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Prior period baseline</p>
         </div>
 
         {/* 2. Total Cash In (Credits) */}

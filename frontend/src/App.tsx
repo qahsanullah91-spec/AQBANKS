@@ -13,10 +13,16 @@ import { ImportCenter } from './pages/ImportCenter';
 import { Reports } from './pages/Reports';
 import { Admin } from './pages/Admin';
 import { Receipts } from './pages/Receipts';
+import { Settings as SettingsPage } from './pages/Settings';
 import { useTheme } from './context/ThemeContext';
 import { useLanguage, LanguageSelector } from './context/LanguageContext';
+import { LockProvider, useLock } from './context/LockContext';
+import { LockScreenOverlay } from './components/LockScreenOverlay';
 import { CloudSyncIndicator } from './components/CloudSyncIndicator';
 import { initPrintLifecycle } from './utils/print';
+import { APP_VERSION, checkForUpdates, updateAndRestart } from './constants/version';
+import type { UpdateCheckResult } from './constants/version';
+import type { UpdateManifest } from './types';
 import {
   LayoutDashboard,
   FileText,
@@ -40,12 +46,20 @@ import {
   Lock,
   ChevronRight,
   ChevronLeft,
-  Sparkles
+  Sparkles,
+  Download
 } from 'lucide-react';
 
-export const App: React.FC = () => {
+export const App: React.FC = () => (
+  <LockProvider>
+    <AppShell />
+  </LockProvider>
+);
+
+const AppShell: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { t, isRtl } = useLanguage();
+  const lock = useLock();
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
       const u = getStoredUser();
@@ -69,6 +83,10 @@ export const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+
+  // Live software update check (launch + manual via Settings → Software Update)
+  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
+  const [updateBannerDismissed, setUpdateBannerDismissed] = useState(false);
 
   // Inactivity Session Timeout State (15 min auto-lock, 60s warning)
   const [inactivityWarningOpen, setInactivityWarningOpen] = useState(false);
@@ -166,6 +184,11 @@ export const App: React.FC = () => {
     };
   }, [currentUser, inactivityWarningOpen]);
 
+  useEffect(() => {
+    if (!currentUser) return;
+    checkForUpdates().then(setUpdateInfo).catch(() => {});
+  }, [currentUser?.id]);
+
   // Dynamic Navigation Badges Synchronizer
   const refreshNavBadges = async () => {
     try {
@@ -177,7 +200,7 @@ export const App: React.FC = () => {
       ]);
 
       const unpaid = Array.isArray(invList)
-        ? invList.filter((i: any) => i.status !== 'VOID' && i.paymentStatus !== 'PAID').length
+        ? invList.filter((i: any) => i.status !== 'VOID' && i.paymentStatus !== 'PAID' && i.paymentStatus !== 'CANCELED').length
         : 5;
 
       const receiptsCount = Array.isArray(rcpList)
@@ -272,6 +295,9 @@ export const App: React.FC = () => {
 
   // RBAC Access Permission Matrix for Navigation and Tabs
   const isTabPermitted = (tabId: string): boolean => {
+    // Settings is available to every authenticated role; admin-only panels are
+    // gated inside the Settings module itself.
+    if (tabId === 'settings') return true;
     if (isAdmin) return true;
 
     if (isFinance) {
@@ -293,7 +319,18 @@ export const App: React.FC = () => {
     return ['dashboard', 'logistics', 'invoices'].includes(tabId);
   };
 
-  const navSections = [
+  interface NavItem {
+    id: string;
+    label: string;
+    icon: React.ElementType;
+    badge?: string;
+    badgeColor?: string;
+  }
+  interface NavSection {
+    title: string;
+    items: NavItem[];
+  }
+  const navSections: NavSection[] = [
     {
       title: 'CORE OPERATIONS',
       items: [
@@ -317,7 +354,8 @@ export const App: React.FC = () => {
       title: 'GOVERNANCE & TOOLS',
       items: [
         { id: 'import', label: t('nav.import'), icon: FileSpreadsheet },
-        { id: 'admin', label: t('nav.admin'), icon: Settings }
+        { id: 'admin', label: t('nav.admin'), icon: Settings },
+        { id: 'settings', label: t('nav.settings', 'System Settings'), icon: Sparkles }
       ]
     }
   ];
@@ -338,7 +376,7 @@ export const App: React.FC = () => {
   return (
     <div className="h-screen w-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden">
       {/* Top Header Bar */}
-      <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-3 sm:px-4 sticky top-0 z-40 shrink-0">
+      <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 px-3 sm:px-4 sticky top-0 z-40 shrink-0">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -348,14 +386,14 @@ export const App: React.FC = () => {
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-slate-50 dark:bg-slate-950 p-1 flex items-center justify-center border border-slate-200 dark:border-slate-700/60 shadow-sm shrink-0">
+            <div className="hidden min-[360px]:flex w-9 h-9 rounded-lg bg-slate-50 dark:bg-slate-950 p-1 items-center justify-center border border-slate-200 dark:border-slate-700/60 shadow-sm shrink-0">
               <img
                 src="/logo.png"
                 alt="AQ Companies Official Logo"
                 className="w-full h-full object-contain filter drop-shadow-[0_0_4px_rgba(255,255,255,0.3)]"
               />
             </div>
-            <div className="truncate">
+            <div className="hidden sm:block truncate">
               <span className="font-extrabold text-xs sm:text-sm tracking-wide text-slate-900 dark:text-white block sm:inline">
                 {t('nav.portalTitle')}
               </span>
@@ -403,7 +441,7 @@ export const App: React.FC = () => {
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               aria-label={t('nav.toggleTheme')}
-              className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 rounded-lg transition"
+              className="p-1.5 sm:p-2 min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 rounded-lg transition"
             >
               {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-sky-600 dark:text-sky-400" />}
             </button>
@@ -413,13 +451,54 @@ export const App: React.FC = () => {
               onClick={handleLogout}
               title={t('nav.signOut')}
               aria-label={t('nav.signOut')}
-              className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-400 dark:hover:text-rose-400 dark:hover:bg-slate-800 rounded-lg transition"
+              className="p-1.5 sm:p-2 min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-400 dark:hover:text-rose-400 dark:hover:bg-slate-800 rounded-lg transition"
             >
               <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
       </header>
+
+      {/* ========================================================
+          LIVE UPDATE AVAILABLE BANNER
+          ======================================================== */}
+      {updateInfo?.updateAvailable && updateInfo.manifest && !updateBannerDismissed && (
+        <div className="shrink-0 px-3 sm:px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex flex-wrap items-center justify-between gap-2 shadow-lg z-30">
+          <div className="flex items-center gap-2 min-w-0">
+            <Download className="w-4 h-4 shrink-0" />
+            <span className="text-xs font-bold">
+              {t('updates.bannerTitle', 'Update Available')}:
+            </span>
+            <span className="text-xs font-mono truncate">
+              {updateInfo.manifest.version}
+            </span>
+            <span className="hidden sm:inline text-[11px] text-emerald-100 truncate">
+              {updateInfo.manifest.notes || ''}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => { setActiveTab('settings'); setUpdateBannerDismissed(true); }}
+              className="px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-[11px] font-bold transition"
+            >
+              {t('updates.viewChangelog', 'View Changelog')}
+            </button>
+            <button
+              onClick={() => updateAndRestart()}
+              className="px-2.5 py-1 rounded-lg bg-white text-emerald-700 hover:bg-emerald-50 text-[11px] font-bold transition"
+            >
+              {t('updates.updateNow', 'Update & Reload Now')}
+            </button>
+            <button
+              onClick={() => setUpdateBannerDismissed(true)}
+              aria-label={t('common.dismiss', 'Dismiss')}
+              className="p-1 rounded-lg hover:bg-white/20 transition"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 flex overflow-hidden relative min-h-0">
         {/* Backdrop for mobile drawer */}
@@ -530,7 +609,7 @@ export const App: React.FC = () => {
             {!sidebarCollapsed ? (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-600 dark:text-slate-300 text-[10px]">{t('nav.systemVersion')}</span>
+                  <span className="font-semibold text-slate-600 dark:text-slate-300 text-[10px]">{APP_VERSION}</span>
                   <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800 font-bold">
                     TLS 256-BIT
                   </span>
@@ -595,6 +674,7 @@ export const App: React.FC = () => {
               {activeTab === 'import' && <ImportCenter />}
               {activeTab === 'reports' && <Reports />}
               {activeTab === 'admin' && <Admin />}
+              {activeTab === 'settings' && <SettingsPage currentUser={currentUser} />}
             </>
           )}
         </main>
@@ -631,6 +711,17 @@ export const App: React.FC = () => {
           <span className="text-[10px] font-medium mt-0.5">{t('nav.more')}</span>
         </button>
       </nav>
+
+      {/* ========================================================
+          FULL-SCREEN PASSLOCK OVERLAY (blocks the app until unlocked)
+          ======================================================== */}
+      {lock.settings.enabled && lock.isLocked && (
+        <LockScreenOverlay
+          userName={`${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim()}
+          userEmail={currentUser?.email}
+          onSignOut={handleLogout}
+        />
+      )}
 
       {/* ========================================================
           IDLE SESSION TIMEOUT INACTIVITY WARNING MODAL (LIQUID GLASS)

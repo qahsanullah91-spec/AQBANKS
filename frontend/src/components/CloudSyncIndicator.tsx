@@ -72,7 +72,7 @@ export const CloudSyncIndicator: React.FC = () => {
       <button
         onClick={handleManualSync}
         title={`PostgreSQL Cloud Database • Version #${lastVersion || 1} • Last synced ${timeAgo}. Click to synchronize immediately.`}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold transition-all border shadow-sm ${
+        className={`inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-[10px] font-mono font-bold transition-all border shadow-sm shrink-0 ${
           syncStatus === 'saving' || isRotating
             ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
             : syncStatus === 'offline' || syncStatus === 'error'
@@ -92,6 +92,8 @@ export const CloudSyncIndicator: React.FC = () => {
             ? 'Saving...'
             : syncStatus === 'offline'
             ? 'Offline'
+            : syncStatus === 'error'
+            ? 'Sync Error'
             : 'Cloud Synced'}
         </span>
         {syncStatus === 'synced' && !isRotating && (
@@ -99,7 +101,9 @@ export const CloudSyncIndicator: React.FC = () => {
             • {timeAgo}
           </span>
         )}
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+        <span className={`w-1.5 h-1.5 rounded-full animate-pulse shrink-0 hidden sm:inline-block ${
+          syncStatus === 'offline' || syncStatus === 'error' ? 'bg-rose-500' : 'bg-emerald-500'
+        }`} />
       </button>
     </>
   );

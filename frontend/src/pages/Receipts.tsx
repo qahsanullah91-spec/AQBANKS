@@ -12,7 +12,9 @@ import {
   ShieldCheck,
   RefreshCw,
   Eye,
-  Download
+  Download,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import { triggerPrint } from '../utils/print';
 
@@ -20,6 +22,7 @@ export const Receipts: React.FC = () => {
   const { t, isRtl } = useLanguage();
   const userRole = getUserRole();
   const canVoidReceipt = userRole === 'ADMIN' || userRole === 'FINANCE_MGR';
+  const canManageReceipts = ['ADMIN', 'FINANCE_MANAGER', 'FINANCE_MGR'].includes(userRole);
   const [receipts, setReceipts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -31,6 +34,19 @@ export const Receipts: React.FC = () => {
   const [voiding, setVoiding] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingReceipt, setEditingReceipt] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({
+    payerName: '',
+    purpose: '',
+    referenceNumber: '',
+    notes: '',
+    issueDate: '',
+    grossAmount: '',
+    swiftFeeAmount: ''
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchReceipts = async () => {
     setLoading(true);
@@ -76,6 +92,83 @@ export const Receipts: React.FC = () => {
 
   const handlePrint = () => {
     triggerPrint(selectedReceipt ? `Receipt-${selectedReceipt.receiptNumber}` : 'Official-Treasury-Receipt');
+  };
+
+  const openEditModal = (r: any) => {
+    setEditingReceipt(r);
+    setEditForm({
+      payerName: r.payerName || '',
+      purpose: r.purpose || '',
+      referenceNumber: r.referenceNumber || '',
+      notes: r.notes || '',
+      issueDate: r.issueDate ? new Date(r.issueDate).toISOString().slice(0, 10) : '',
+      grossAmount: r.grossAmount != null ? String(r.grossAmount) : String(Number(r.amount) + Number(r.swiftFeeAmount || 0)),
+      swiftFeeAmount: String(r.swiftFeeAmount || 0)
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editingReceipt) return;
+    if (!editForm.payerName.trim() || !editForm.purpose.trim()) {
+      setMessage({ text: 'Payer name and payment purpose are required.', type: 'error' });
+      return;
+    }
+    const gross = parseFloat(editForm.grossAmount);
+    const fee = parseFloat(editForm.swiftFeeAmount) || 0;
+    if (!gross || gross <= 0) {
+      setMessage({ text: 'Gross amount must be greater than zero.', type: 'error' });
+      return;
+    }
+    if (fee >= gross) {
+      setMessage({ text: 'SWIFT fee must be less than the gross amount.', type: 'error' });
+      return;
+    }
+    setSavingEdit(true);
+    setMessage(null);
+    try {
+      await api.updateReceipt(editingReceipt.id, {
+        payerName: editForm.payerName.trim(),
+        purpose: editForm.purpose.trim(),
+        referenceNumber: editForm.referenceNumber.trim() || null,
+        notes: editForm.notes.trim() || null,
+        issueDate: editForm.issueDate || undefined,
+        grossAmount: gross,
+        swiftFeeAmount: fee
+      });
+      setMessage({ text: `Receipt ${editingReceipt.receiptNumber} updated. Linked ledger credit and payment allocations were kept in sync.`, type: 'success' });
+      setShowEditModal(false);
+      setEditingReceipt(null);
+      await fetchReceipts();
+    } catch (err: any) {
+      setMessage({ text: err.message || 'Receipt update failed', type: 'error' });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeleteReceipt = async (r: any) => {
+    if (!canManageReceipts) {
+      setMessage({ text: 'Access Denied: Only Administrator or Finance Manager can delete treasury receipts.', type: 'error' });
+      return;
+    }
+    const net = Number(r.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (!confirm(
+      `Permanently delete receipt ${r.receiptNumber} (${net} USD from ${r.payerName})?\n\n` +
+      'This also removes the linked bank ledger credit and payment allocation, restores the invoice status, recalculates running balances, and cannot be undone.'
+    )) return;
+    setDeletingId(r.id);
+    setMessage(null);
+    try {
+      const result = await api.deleteReceipt(r.id);
+      setMessage({ text: `Receipt ${result?.deletedReceiptNumber || r.receiptNumber} deleted. Ledger credit reversed and payment allocations removed.`, type: 'success' });
+      if (selectedReceipt?.id === r.id) setSelectedReceipt(null);
+      await fetchReceipts();
+    } catch (err: any) {
+      setMessage({ text: err.message || 'Receipt deletion failed', type: 'error' });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handlePrintReceiptDirect = (r: any) => {
@@ -387,6 +480,25 @@ export const Receipts: React.FC = () => {
                           <Printer className="w-3.5 h-3.5" />
                           <span>{t('common.print', 'Print')}</span>
                         </button>
+                        {canManageReceipts && r.status !== 'VOIDED' && (
+                          <button
+                            onClick={() => openEditModal(r)}
+                            className="inline-flex items-center justify-center px-2 py-1 min-h-[32px] min-w-[32px] bg-slate-100 hover:bg-slate-200 text-sky-700 border border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-sky-400 dark:border-slate-700 text-xs font-medium rounded transition"
+                            title="Edit Receipt Details"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {canManageReceipts && (
+                          <button
+                            onClick={() => handleDeleteReceipt(r)}
+                            disabled={deletingId === r.id}
+                            className="inline-flex items-center justify-center px-2 py-1 min-h-[32px] min-w-[32px] bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 dark:text-rose-400 dark:border-rose-900 text-xs font-medium rounded transition disabled:opacity-50"
+                            title="Delete Receipt (reverses linked ledger credit & allocations)"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1041,6 +1153,112 @@ export const Receipts: React.FC = () => {
                   Sky Ariana Ltd. • Page 1 of 1 • Strict Confidential Treasury Instrument
                 </span>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT MODAL */}
+      {showEditModal && editingReceipt && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-white flex items-center gap-2 text-sky-400">
+                <Pencil className="w-4 h-4" /> Edit Receipt {editingReceipt.receiptNumber}
+              </h3>
+              <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-white" aria-label="Close">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              Amount changes are synced to the linked bank ledger credit and payment allocations, and running balances are recalculated.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Payer Name *</label>
+                <input
+                  value={editForm.payerName}
+                  onChange={e => setEditForm({ ...editForm, payerName: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Payment Purpose *</label>
+                <input
+                  value={editForm.purpose}
+                  onChange={e => setEditForm({ ...editForm, purpose: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Gross Invoiced (USD) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editForm.grossAmount}
+                  onChange={e => setEditForm({ ...editForm, grossAmount: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase mb-1">SWIFT Fee (USD)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editForm.swiftFeeAmount}
+                  onChange={e => setEditForm({ ...editForm, swiftFeeAmount: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Issue Date</label>
+                <input
+                  type="date"
+                  value={editForm.issueDate}
+                  onChange={e => setEditForm({ ...editForm, issueDate: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Bank Reference</label>
+                <input
+                  value={editForm.referenceNumber}
+                  onChange={e => setEditForm({ ...editForm, referenceNumber: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white font-mono"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Notes</label>
+                <textarea
+                  value={editForm.notes}
+                  onChange={e => setEditForm({ ...editForm, notes: e.target.value })}
+                  rows={2}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white"
+                />
+              </div>
+              <div className="sm:col-span-2 px-3 py-2 rounded-lg bg-slate-950/60 border border-slate-800 flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-400 uppercase">Net Credited</span>
+                <span className="text-sm font-bold text-emerald-400 font-mono" dir="ltr">
+                  ${(Math.max(parseFloat(editForm.grossAmount) || 0, 0) - Math.max(parseFloat(editForm.swiftFeeAmount) || 0, 0)).toFixed(2)}
+                </span>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-3 py-2 min-h-[44px] bg-slate-800 text-slate-300 rounded text-xs"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={handleEditSave}
+                disabled={savingEdit}
+                className="px-4 py-2 min-h-[44px] bg-sky-600 hover:bg-sky-500 text-white rounded text-xs font-semibold disabled:opacity-50"
+              >
+                {savingEdit ? t('common.loading') : t('common.save', 'Save Changes')}
+              </button>
             </div>
           </div>
         </div>

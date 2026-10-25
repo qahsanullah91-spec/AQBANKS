@@ -7,6 +7,51 @@ export interface User {
   permissions: string[];
 }
 
+export interface SystemUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  roles: string[];
+  permissions: string[];
+  isActive: boolean;
+  createdAt?: string;
+  lastLoginAt?: string | null;
+}
+
+export type LockUnlockMethod = 'pin' | 'password' | 'biometric';
+
+export interface LockSettings {
+  enabled: boolean;
+  inactivityMinutes: number;
+  pinEnabled: boolean;
+  passwordEnabled: boolean;
+  biometricEnabled: boolean;
+  pinHash: string | null;
+  masterPasswordHash: string | null;
+  biometricCredentialId: string | null;
+}
+
+export interface ChangelogEntry {
+  version: string;
+  releaseDate: string;
+  type: 'feature' | 'fix' | 'security' | 'release';
+  title: string;
+  items: string[];
+}
+
+export interface UpdateManifest {
+  version: string;
+  buildNumber?: number;
+  releaseDate?: string;
+  channel?: 'stable' | 'beta';
+  minimumRequired?: boolean;
+  restartRequired?: boolean;
+  notes?: string;
+  downloadUrl?: string;
+  changelog?: ChangelogEntry[];
+}
+
 export interface Customer {
   id: string;
   companyName: string;
@@ -72,10 +117,11 @@ export interface Invoice {
   taxAmount: number | string;
   totalAmount: number | string;
   status: 'DRAFT' | 'ISSUED' | 'VOID';
-  paymentStatus: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE';
+  paymentStatus: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELED';
   paymentTerms: string;
   bankAccountId?: string;
   remainingBalance?: number | string;
+  paidAmount?: number | string;
   lines?: InvoiceLine[];
   snapshots?: any[];
   paymentAllocations?: any[];

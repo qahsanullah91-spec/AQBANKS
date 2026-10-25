@@ -1,13 +1,16 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../prisma.js';
-import { calculateInvoiceTotals, toDecimal, calculateLedgerRunningBalances } from '../../utils/decimal.js';
+import { Decimal, calculateInvoiceTotals, toDecimal, calculateLedgerRunningBalances } from '../../utils/decimal.js';
 import { authenticate, AuthenticatedRequest } from '../../middleware/auth.js';
 import { requirePermission, requireRole } from '../../middleware/rbac.js';
 import { recordAuditEvent } from '../../middleware/audit.js';
 import { receiptsService } from '../receipts/receipts.service.js';
+import type { Prisma, Invoice as PrismaInvoice } from '@prisma/client';
 
 const router = Router();
+
+type TxClient = Prisma.TransactionClient;
 
 const lineItemSchema = z.object({
   description: z.string().min(1),
@@ -26,30 +29,51 @@ const createInvoiceSchema = z.object({
   bankAccountId: z.string().uuid().optional().nullable(),
   remittanceProfileId: z.string().uuid().optional().nullable(),
   sourceInvoiceRef: z.string().optional().nullable(),
-  paymentStatus: z.enum(['UNPAID', 'PARTIALLY_PAID', 'PAID']).optional(),
+  paymentStatus: z.enum(['UNPAID', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'CANCELED']).optional(),
   lines: z.array(lineItemSchema).min(1, 'At least one line item required')
 });
 
-// Helper to generate next unique invoice number: e.g. PI-2026-0009
-async function generateNextInvoiceNumber(): Promise<string> {
+// Helper to generate next unique invoice number: e.g. PI-2026-0009.
+// Zero-padded numbers order lexically, so the highest number is simply the
+// last one in descending order — no need to scan every invoice of the year.
+async function generateNextInvoiceNumber(tx: TxClient | typeof prisma = prisma): Promise<string> {
   const currentYear = new Date().getFullYear();
   const prefix = `PI-${currentYear}-`;
-  const allInvoices = await prisma.invoice.findMany({
+  const latest = await tx.invoice.findFirst({
     where: { invoiceNumber: { startsWith: prefix } },
+    orderBy: { invoiceNumber: 'desc' },
     select: { invoiceNumber: true }
   });
   let maxSeq = 0;
-  for (const inv of allInvoices) {
-    const parts = inv.invoiceNumber.split('-');
-    if (parts.length === 3) {
-      const num = parseInt(parts[2], 10);
-      if (!isNaN(num) && num > maxSeq) {
-        maxSeq = num;
-      }
-    }
+  if (latest) {
+    const num = parseInt(latest.invoiceNumber.slice(prefix.length), 10);
+    if (!isNaN(num)) maxSeq = num;
   }
   const nextNum = (maxSeq + 1).toString().padStart(4, '0');
   return `${prefix}${nextNum}`;
+}
+
+/**
+ * Derives paid/remaining figures from payment allocations (amount + SWIFT fee
+ * per allocation = gross allocated). Keeps the Prisma backend's responses in
+ * the same shape the frontend already consumes from the cloud engine.
+ */
+function computePaymentTotals(invoice: Pick<PrismaInvoice, 'totalAmount'> & { paymentAllocations?: Array<{ amount: any; swiftBankFee?: any }> }) {
+  const invoiceTotal = toDecimal(invoice.totalAmount);
+  const paid = (invoice.paymentAllocations || []).reduce(
+    (sum, a) => sum.plus(toDecimal(a.amount)).plus(toDecimal(a.swiftBankFee || 0)),
+    new Decimal(0)
+  );
+  const paidCapped = Decimal.min(paid, invoiceTotal);
+  return {
+    paidAmount: paidCapped.toDecimalPlaces(2).toNumber(),
+    remainingBalance: invoiceTotal.minus(paidCapped).toDecimalPlaces(2).toNumber()
+  };
+}
+
+function enrichInvoice<T extends { totalAmount: any; paymentAllocations?: any[] }>(invoice: T): T & { paidAmount: number; remainingBalance: number } {
+  const totals = computePaymentTotals(invoice as any);
+  return { ...invoice, ...totals };
 }
 
 // GET /api/invoices
@@ -96,10 +120,13 @@ router.get('/', authenticate, requirePermission('invoice:view'), async (req: Aut
           include: { shipment: true }
         }
       },
-      orderBy: { issueDate: 'desc' }
+      orderBy: [
+        { issueDate: 'desc' },
+        { invoiceNumber: 'desc' }
+      ]
     });
 
-    res.json(invoices);
+    res.json(invoices.map(enrichInvoice));
   } catch (err) {
     next(err);
   }
@@ -151,10 +178,10 @@ router.get('/:id', authenticate, requirePermission('invoice:view'), async (req: 
       } catch (e) {}
     }
 
-    res.json({
+    res.json(enrichInvoice({
       ...invoice,
       bankSnapshot: enrichedBankSnapshot
-    });
+    }));
   } catch (err) {
     next(err);
   }
@@ -174,7 +201,6 @@ router.post('/', authenticate, requirePermission('invoice:create_draft'), async 
 
     // Server-side calculation of line totals and grand totals
     const calc = calculateInvoiceTotals(data.lines);
-    const invoiceNumber = await generateNextInvoiceNumber();
 
     // Default active remittance profile if none passed
     let remittanceProfileId = data.remittanceProfileId;
@@ -199,6 +225,8 @@ router.post('/', authenticate, requirePermission('invoice:create_draft'), async 
     }
 
     const invoice = await prisma.$transaction(async (tx) => {
+      // Generated inside the transaction so concurrent creates cannot collide
+      const invoiceNumber = await generateNextInvoiceNumber(tx);
       const created = await tx.invoice.create({
         data: {
           customerId: data.customerId,
@@ -238,11 +266,11 @@ router.post('/', authenticate, requirePermission('invoice:create_draft'), async 
       action: 'INVOICE_DRAFT_CREATED',
       entityType: 'INVOICE',
       entityId: invoice.id,
-      newValues: { invoiceNumber, totalAmount: calc.grandTotal.toFixed(2), remittanceProfileId },
+      newValues: { invoiceNumber: invoice.invoiceNumber, totalAmount: calc.grandTotal.toFixed(2), remittanceProfileId },
       ipAddress: req.ip
     });
 
-    res.status(201).json(invoice);
+    res.status(201).json(enrichInvoice({ ...invoice, paymentAllocations: [] }));
   } catch (err) {
     next(err);
   }
@@ -314,7 +342,7 @@ router.put('/:id', authenticate, requirePermission('invoice:create_draft'), asyn
             }))
           }
         },
-        include: { lines: true, customer: true, bankAccount: true, remittanceProfile: true }
+        include: { lines: true, customer: true, bankAccount: true, remittanceProfile: true, paymentAllocations: true }
       });
 
       return inv;
@@ -329,7 +357,7 @@ router.put('/:id', authenticate, requirePermission('invoice:create_draft'), asyn
       ipAddress: req.ip
     });
 
-    res.json(updated);
+    res.json(enrichInvoice(updated));
   } catch (err) {
     next(err);
   }
@@ -350,11 +378,15 @@ router.post('/:id/record-payment', authenticate, requireRole(['ADMIN', 'FINANCE_
     const data = recordPaymentSchema.parse(req.body);
     const invoice = await prisma.invoice.findUnique({
       where: { id: req.params.id },
-      include: { customer: true, paymentAllocations: true, lines: true }
+      include: { customer: true, lines: true }
     });
 
     if (!invoice) {
       res.status(404).json({ error: 'NOT_FOUND', message: 'Invoice not found' });
+      return;
+    }
+    if (invoice.status === 'VOID') {
+      res.status(400).json({ error: 'INVOICE_VOID', message: 'Cannot record a payment against a voided invoice' });
       return;
     }
 
@@ -369,20 +401,44 @@ router.post('/:id/record-payment', authenticate, requireRole(['ADMIN', 'FINANCE_
 
     const netCredited = swiftFee.gt(0) ? payAmount.minus(swiftFee) : payAmount;
 
-    // Sum existing allocations
-    const currentAllocated = invoice.paymentAllocations.reduce((sum, a) => sum.plus(toDecimal(a.amount)), toDecimal(0));
-    const newTotalAllocated = currentAllocated.plus(payAmount);
-    const invoiceTotal = toDecimal(invoice.totalAmount);
-
-    const newPaymentStatus = newTotalAllocated.gte(invoiceTotal) ? 'PAID' : 'PARTIALLY_PAID';
+    let newPaymentStatus = 'PAID';
 
     const result = await prisma.$transaction(async (tx) => {
+      // Re-read inside the transaction so two concurrent payments cannot both
+      // allocate against the same previously-paid figure (double allocation).
+      const current = await tx.invoice.findUnique({
+        where: { id: invoice.id },
+        include: { paymentAllocations: true }
+      });
+      if (!current) {
+        throw Object.assign(new Error('Invoice not found'), { status: 404 });
+      }
+
+      // Allocation basis matches the payments module: amount + SWIFT fee per
+      // allocation equals the gross amount credited against the invoice.
+      const currentAllocated = current.paymentAllocations.reduce(
+        (sum, a) => sum.plus(toDecimal(a.amount)).plus(toDecimal(a.swiftBankFee || 0)),
+        new Decimal(0)
+      );
+      const invoiceTotal = toDecimal(current.totalAmount);
+      const newTotalAllocated = currentAllocated.plus(payAmount);
+
+      if (newTotalAllocated.gt(invoiceTotal.plus(new Decimal('0.005')))) {
+        const remaining = invoiceTotal.minus(currentAllocated).toDecimalPlaces(2);
+        throw Object.assign(
+          new Error(`Payment of $${payAmount.toFixed(2)} exceeds the outstanding balance of $${remaining.toFixed(2)}`),
+          { status: 400, code: 'OVERPAYMENT' }
+        );
+      }
+
+      newPaymentStatus = newTotalAllocated.gte(invoiceTotal) ? 'PAID' : 'PARTIALLY_PAID';
+
       // 1. Update invoice paymentStatus and status if draft
       const updatedInvoice = await tx.invoice.update({
         where: { id: invoice.id },
         data: {
           paymentStatus: newPaymentStatus,
-          status: invoice.status === 'DRAFT' ? 'ISSUED' : invoice.status
+          status: current.status === 'DRAFT' ? 'ISSUED' : current.status
         },
         include: { lines: true, customer: true, bankAccount: true, remittanceProfile: true, paymentAllocations: true }
       });
@@ -478,6 +534,12 @@ router.post('/:id/record-payment', authenticate, requireRole(['ADMIN', 'FINANCE_
       return { updatedInvoice, createdPayment, createdReceipt, createdLedger };
     });
 
+    // Re-read so the response reflects the allocation created above
+    const freshInvoice = await prisma.invoice.findUnique({
+      where: { id: invoice.id },
+      include: { lines: true, customer: true, paymentAllocations: true }
+    });
+
     await recordAuditEvent({
       actorId: req.user!.userId,
       action: 'INVOICE_PAYMENT_RECORDED',
@@ -493,7 +555,10 @@ router.post('/:id/record-payment', authenticate, requireRole(['ADMIN', 'FINANCE_
       ipAddress: req.ip
     });
 
-    res.json(result);
+    res.json({
+      ...result,
+      updatedInvoice: freshInvoice ? enrichInvoice(freshInvoice) : result.updatedInvoice
+    });
   } catch (err) {
     next(err);
   }
@@ -518,7 +583,8 @@ router.patch('/:id/toggle-payment', authenticate, requireRole(['ADMIN', 'FINANCE
 
     const updated = await prisma.invoice.update({
       where: { id: existing.id },
-      data: { paymentStatus: newStatus }
+      data: { paymentStatus: newStatus },
+      include: { paymentAllocations: true, lines: true, customer: true }
     });
 
     await recordAuditEvent({
@@ -530,7 +596,7 @@ router.patch('/:id/toggle-payment', authenticate, requireRole(['ADMIN', 'FINANCE
       ipAddress: req.ip
     });
 
-    res.json(updated);
+    res.json(enrichInvoice(updated));
   } catch (err) {
     next(err);
   }

@@ -141,6 +141,11 @@ export const api = {
     apiRequest('/auth/resend-2fa', { method: 'POST', body: JSON.stringify({ twoFactorToken }) }),
   getMe: () => apiRequest('/auth/me'),
   getUsers: () => apiRequest('/auth/users'),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    apiRequest('/auth/change-password', { method: 'POST', body: JSON.stringify(data) }),
+  createSystemUser: (data: any) => apiRequest('/auth/users', { method: 'POST', body: JSON.stringify(data) }),
+  updateSystemUser: (id: string, data: any) => apiRequest(`/auth/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteSystemUser: (id: string) => apiRequest(`/auth/users/${id}`, { method: 'DELETE' }),
 
   // Dashboard
   getDashboardOverview: () => apiRequest('/dashboard/overview'),
@@ -236,6 +241,8 @@ export const api = {
   getReceipts: (params: any = {}) => apiRequest(`/receipts${buildQueryString(params)}`),
   getReceiptById: (id: string) => apiRequest(`/receipts/${id}`),
   voidReceipt: (id: string, reason: string) => apiRequest(`/receipts/${id}/void`, { method: 'POST', body: JSON.stringify({ voidReason: reason }) }),
+  updateReceipt: (id: string, data: any) => apiRequest(`/receipts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteReceipt: (id: string) => apiRequest(`/receipts/${id}`, { method: 'DELETE' }),
 
   // Audit & Admin
   getAuditEvents: (params: any = {}) => {

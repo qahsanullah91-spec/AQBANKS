@@ -2,9 +2,17 @@ import pg from 'pg';
 import fs from 'fs';
 const { Pool } = pg;
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
 const connectionString = process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL;
+
+// Shared secret guard. Set SYNC_TOKEN in Vercel env vars (and VITE_SYNC_TOKEN on
+// the frontend) to lock this endpoint down; when unset the endpoint stays open
+// so existing deployments keep working.
+const SYNC_TOKEN = process.env.SYNC_TOKEN || '';
+
+const SYNC_COLLECTIONS = [
+  'invoices', 'receipts', 'ledger', 'customers', 'shipments',
+  'bankAccounts', 'remittanceProfiles', 'payments', 'auditEvents', 'users'
+];
 
 let pool;
 function getPool() {
@@ -30,76 +38,81 @@ function getSeedData() {
   }
 }
 
-async function ensureTable(client) {
-  await client.query(`
-    CREATE TABLE IF NOT EXISTS aq_online_state (
-      id VARCHAR(50) PRIMARY KEY,
-      state_data JSONB NOT NULL,
-      version INT NOT NULL DEFAULT 1,
-      updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-    );
+let tableReadyPromise = null;
+function ensureTable(client) {
+  if (!tableReadyPromise) {
+    tableReadyPromise = client.query(`
+      CREATE TABLE IF NOT EXISTS aq_online_state (
+        id VARCHAR(50) PRIMARY KEY,
+        state_data JSONB NOT NULL,
+        version INT NOT NULL DEFAULT 1,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
 
-    CREATE TABLE IF NOT EXISTS aq_state_history (
-      id SERIAL PRIMARY KEY,
-      version INT NOT NULL,
-      snapshot_data JSONB NOT NULL,
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-    );
-  `);
+      CREATE TABLE IF NOT EXISTS aq_state_history (
+        id SERIAL PRIMARY KEY,
+        version INT NOT NULL,
+        snapshot_data JSONB NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `).catch((err) => {
+      tableReadyPromise = null;
+      throw err;
+    });
+  }
+  return tableReadyPromise;
 }
 
-function mergeEntityArray(currentArr, incomingArr, idKey = 'id') {
-  if (!Array.isArray(incomingArr)) return currentArr || [];
-  if (!Array.isArray(currentArr) || currentArr.length === 0) return incomingArr;
-
-  const map = new Map();
-  for (const item of currentArr) {
-    if (item && item[idKey]) {
-      map.set(item[idKey], item);
-    }
-  }
-
-  for (const item of incomingArr) {
-    if (item && item[idKey]) {
-      const existing = map.get(item[idKey]);
-      if (existing) {
-        map.set(item[idKey], { ...existing, ...item });
-      } else {
-        map.set(item[idKey], item);
-      }
-    }
-  }
-
-  return Array.from(map.values());
+function isAuthorized(req) {
+  if (!SYNC_TOKEN) return true;
+  const headerToken = req.headers['x-sync-token'];
+  const queryToken = req.query?.token;
+  return headerToken === SYNC_TOKEN || queryToken === SYNC_TOKEN;
 }
 
+/**
+ * Last-writer-wins merge at the collection level, driven by the client's
+ * syncMeta stamps. Unlike the previous union merge this lets deletions
+ * propagate: a collection whose incoming stamp is newer replaces the stored
+ * one entirely, so entities removed on the client are removed in the cloud.
+ */
 function mergeStates(current, incoming) {
   if (!current) return incoming;
   if (!incoming) return current;
 
-  return {
-    ...current,
-    ...incoming,
-    invoices: mergeEntityArray(current.invoices, incoming.invoices, 'id'),
-    receipts: mergeEntityArray(current.receipts, incoming.receipts, 'receiptNumber'),
-    ledger: mergeEntityArray(current.ledger, incoming.ledger, 'id'),
-    customers: mergeEntityArray(current.customers, incoming.customers, 'id'),
-    shipments: mergeEntityArray(current.shipments, incoming.shipments, 'id'),
-    bankAccounts: mergeEntityArray(current.bankAccounts, incoming.bankAccounts, 'id'),
-    remittanceProfiles: mergeEntityArray(current.remittanceProfiles, incoming.remittanceProfiles, 'id'),
-    payments: mergeEntityArray(current.payments, incoming.payments, 'id'),
-    auditEvents: mergeEntityArray(current.auditEvents, incoming.auditEvents, 'id')
-  };
+  const curMeta = current.syncMeta || {};
+  const incMeta = incoming.syncMeta || {};
+  const merged = { ...current, ...incoming };
+
+  for (const key of SYNC_COLLECTIONS) {
+    const inc = incoming[key];
+    if (inc === undefined) continue; // incoming doesn't carry this collection at all
+    if (!Array.isArray(inc)) {
+      merged[key] = inc;
+      continue;
+    }
+    const incStamp = Date.parse(incMeta[key]) || 0;
+    const curStamp = Date.parse(curMeta[key]) || 0;
+    // No meta on either side (legacy payload): trust the writer.
+    merged[key] = incStamp >= curStamp ? inc : (current[key] || inc);
+  }
+
+  merged.syncMeta = { ...curMeta, ...incMeta };
+  return merged;
 }
 
 export default async function handler(req, res) {
   // CORS configuration
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control, X-Sync-Token');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  if (!isAuthorized(req)) {
+    return res.status(401).json({ error: 'Unauthorized sync request' });
   }
 
   const p = getPool();
@@ -123,12 +136,18 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
+      const sinceVersion = Number(req.query?.sinceVersion || 0);
+
       const result = await client.query(
         'SELECT state_data, version, updated_at FROM aq_online_state WHERE id = $1',
         ['primary_state']
       );
 
       if (result.rows.length === 0) {
+        // Delta poll against an empty cloud: nothing to send yet.
+        if (sinceVersion > 0) {
+          return res.status(200).json({ success: true, exists: false, unchanged: true, version: 0 });
+        }
         const seed = getSeedData();
         if (seed) {
           const insertRes = await client.query(`
@@ -162,11 +181,24 @@ export default async function handler(req, res) {
       }
 
       const row = result.rows[0];
+      const cloudVersion = Number(row.version || 0);
+
+      // Delta poll: client is already up to date, skip the heavy payload.
+      if (sinceVersion > 0 && cloudVersion <= sinceVersion) {
+        return res.status(200).json({
+          success: true,
+          exists: true,
+          unchanged: true,
+          version: cloudVersion,
+          updatedAt: row.updated_at
+        });
+      }
+
       return res.status(200).json({
         success: true,
         exists: true,
         data: row.state_data,
-        version: row.version,
+        version: cloudVersion,
         updatedAt: row.updated_at
       });
     }
@@ -179,7 +211,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid state payload' });
       }
 
-      // 1. Fetch current database state to perform conflict-free entity-level merge
+      // 1. Fetch current database state to perform collection-level merge
       const curRes = await client.query(
         'SELECT state_data, version FROM aq_online_state WHERE id = $1',
         ['primary_state']
@@ -187,13 +219,14 @@ export default async function handler(req, res) {
 
       let finalState = rawState;
       let nextVersion = 1;
+      let baseVersion = 0;
 
       if (curRes.rows.length > 0) {
         const currentState = curRes.rows[0].state_data;
-        const currentVersion = curRes.rows[0].version;
-        nextVersion = (currentVersion || 0) + 1;
+        baseVersion = Number(curRes.rows[0].version || 0);
+        nextVersion = baseVersion + 1;
 
-        // Perform smart conflict-free entity merge
+        // Perform conflict-free collection-level merge (deletion-aware)
         finalState = mergeStates(currentState, rawState);
       }
 
@@ -226,6 +259,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         success: true,
         version: row.version,
+        baseVersion,
         updatedAt: row.updated_at,
         data: finalState,
         message: 'Online cloud state successfully synchronized with PostgreSQL'

@@ -2,8 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import fs from 'node:fs';
+import path from 'node:path';
 import { prisma } from './prisma.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { rateLimit } from './utils/rateLimit.js';
+import { config } from './config/index.js';
 
 // Import domain routes
 import authRoutes from './modules/auth/auth.routes.js';
@@ -27,12 +31,33 @@ export function createApp() {
 
   app.use(helmet());
   app.use(cors({
-    origin: '*',
+    origin: config.corsOrigins.includes('*') ? '*' : (origin, callback) => {
+      // Allow non-browser requests (curl, same-origin) with no origin header
+      if (!origin || config.corsOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Origin not allowed by CORS policy'));
+      }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
   }));
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+  // Abuse protection: general per-IP budget, plus a much tighter budget on the
+  // credential endpoint on top of the per-account lockout in the auth module.
+  const apiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 300,
+    message: 'Too many API requests from this address. Please retry in a moment.'
+  });
+  const loginLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    message: 'Too many login attempts from this address. Please retry in a moment.',
+    errorCode: 'LOGIN_RATE_LIMITED'
+  });
 
   if (process.env.NODE_ENV !== 'test') {
     app.use(morgan('combined'));
@@ -57,6 +82,9 @@ export function createApp() {
     }
   });
 
+  app.use('/api', apiLimiter);
+  app.use('/api/auth/login', loginLimiter);
+
   // API modules
   app.use('/api/auth', authRoutes);
   app.use('/api/customers', customerRoutes);
@@ -73,6 +101,29 @@ export function createApp() {
   app.use('/api/audit', auditRoutes);
   app.use('/api/receipts', receiptRoutes);
   app.use('/api/admin', adminRoutes);
+
+  // Unknown API routes must return JSON 404, not the SPA HTML shell
+  app.use('/api', (req, res) => {
+    res.status(404).json({
+      error: 'ROUTE_NOT_FOUND',
+      message: `No API route matches ${req.method} ${req.originalUrl}`
+    });
+  });
+
+  // Serve the built frontend (repo-root/frontend/dist) when present, so the app
+  // is reachable at http://localhost:4000/ without a separate web server.
+  // Resolved from cwd to stay compatible with both CJS build output and tsx ESM.
+  const frontendDist = [
+    path.resolve(process.cwd(), '../frontend/dist'),
+    path.resolve(process.cwd(), 'frontend/dist')
+  ].find(dir => fs.existsSync(path.join(dir, 'index.html')));
+  if (frontendDist) {
+    app.use(express.static(frontendDist));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api/')) return next();
+      res.sendFile(path.join(frontendDist, 'index.html'));
+    });
+  }
 
   // Global Error Handler
   app.use(errorHandler);

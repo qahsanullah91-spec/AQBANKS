@@ -5,6 +5,17 @@ import { User, Customer, Invoice, Receipt, LedgerTransaction, Shipment, BankAcco
 
 const STORAGE_KEY = 'aq_standalone_db_v2';
 
+// Optional shared secret for the cloud sync endpoint. Set VITE_SYNC_TOKEN at
+// build time (and SYNC_TOKEN on the /api/sync serverless function) to lock the
+// online store down; when unset the endpoint accepts anonymous traffic.
+const SYNC_TOKEN = (import.meta as any).env?.VITE_SYNC_TOKEN || '';
+
+function syncHeaders(): Record<string, string> {
+  const h: Record<string, string> = { 'Cache-Control': 'no-cache' };
+  if (SYNC_TOKEN) h['X-Sync-Token'] = SYNC_TOKEN;
+  return h;
+}
+
 const ALL_PERMISSIONS = [
   'user:manage', 'settings:manage', 'invoice:create_draft', 'invoice:issue',
   'invoice:void', 'invoice:view', 'ledger:post_entry', 'ledger:reverse_entry',
@@ -25,7 +36,14 @@ interface DBState {
   remittanceProfiles: RemittanceProfile[];
   payments: any[];
   auditEvents: any[];
+  // Per-collection last-write timestamps that drive the cloud merge
+  syncMeta?: Record<string, string>;
 }
+
+const SYNCED_COLLECTIONS = [
+  'invoices', 'receipts', 'ledger', 'customers', 'shipments',
+  'bankAccounts', 'remittanceProfiles', 'payments', 'auditEvents'
+] as const;
 
 export function getInitialState(): DBState {
   const initialCustomers: Customer[] = [
@@ -660,6 +678,10 @@ class MockBackendEngine {
   private lastSyncedVersion = 0;
   private pendingPushTimer: any = null;
   private broadcastChannel: BroadcastChannel | null = null;
+  private pushInFlight = false;
+  private pushQueued = false;
+  private pushRetryAttempt = 0;
+  private pushRetryTimer: any = null;
 
   constructor() {
     this.state = this.loadState();
@@ -728,7 +750,7 @@ class MockBackendEngine {
         try {
           fetch('/api/sync', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...syncHeaders() },
             body: JSON.stringify({ state: this.state }),
             keepalive: true
           });
@@ -751,12 +773,24 @@ class MockBackendEngine {
     if (this.syncInProgress || typeof window === 'undefined') return;
     this.syncInProgress = true;
     try {
-      const res = await fetch('/api/sync', {
-        headers: { 'Cache-Control': 'no-cache' }
-      });
-      if (!res.ok) return;
+      const qs = this.lastSyncedVersion > 0 ? `?sinceVersion=${this.lastSyncedVersion}` : '';
+      const res = await fetch(`/api/sync${qs}`, { headers: syncHeaders() });
+      if (!res.ok) {
+        window.dispatchEvent(new CustomEvent('aq:cloud-sync-status', {
+          detail: { status: 'error', error: `Cloud responded ${res.status}` }
+        }));
+        return;
+      }
       const body = await res.json();
       if (!body.success) return;
+
+      // Delta poll: cloud version already matches local, nothing to do.
+      if (body.unchanged) {
+        window.dispatchEvent(new CustomEvent('aq:cloud-sync-status', {
+          detail: { status: 'synced', version: Number(body.version || this.lastSyncedVersion), source: 'cloud' }
+        }));
+        return;
+      }
 
       if (body.exists && body.data) {
         const cloudVersion = Number(body.version || 0);
@@ -783,6 +817,22 @@ class MockBackendEngine {
               parsed.users.push(u);
             }
           }
+
+          // Collection-level guard: never clobber a locally newer collection
+          // with a stale cloud copy (e.g. focus sync racing an in-flight push).
+          const cloudMeta = parsed.syncMeta || {};
+          const localMeta = this.state?.syncMeta || {};
+          const stamp = (m: any, k: string) => Date.parse(m?.[k]) || 0;
+          const finalMeta: Record<string, string> = {};
+          for (const key of SYNCED_COLLECTIONS) {
+            if (Array.isArray(this.state?.[key as keyof DBState]) && stamp(localMeta, key) > stamp(cloudMeta, key)) {
+              (parsed as any)[key] = this.state[key as keyof DBState];
+              finalMeta[key] = localMeta[key];
+            } else {
+              finalMeta[key] = cloudMeta[key] || localMeta[key] || new Date().toISOString();
+            }
+          }
+          parsed.syncMeta = finalMeta;
 
           this.state = parsed;
           this.lastSyncedVersion = cloudVersion;
@@ -823,6 +873,12 @@ class MockBackendEngine {
 
   public async pushToCloud(state = this.state): Promise<void> {
     if (typeof window === 'undefined') return;
+    // Coalesce overlapping pushes (saveState debounce + direct calls) into one
+    if (this.pushInFlight) {
+      this.pushQueued = true;
+      return;
+    }
+    this.pushInFlight = true;
     try {
       window.dispatchEvent(new CustomEvent('aq:cloud-sync-status', {
         detail: { status: 'saving' }
@@ -830,7 +886,7 @@ class MockBackendEngine {
 
       const res = await fetch('/api/sync', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...syncHeaders() },
         body: JSON.stringify({ state })
       });
 
@@ -839,8 +895,19 @@ class MockBackendEngine {
         if (body.version) {
           this.lastSyncedVersion = Number(body.version);
           if (body.data) {
-            this.state = body.data;
+            // Keep any locally newer collections (written while the POST was in flight)
+            const merged = body.data;
+            const localMeta = state?.syncMeta || {};
+            const cloudMeta = merged?.syncMeta || {};
+            const stamp = (m: any, k: string) => Date.parse(m?.[k]) || 0;
+            for (const key of SYNCED_COLLECTIONS) {
+              if (stamp(localMeta, key) > stamp(cloudMeta, key) && Array.isArray((state as any)[key])) {
+                (merged as any)[key] = (state as any)[key];
+              }
+            }
+            this.state = merged;
           }
+          this.pushRetryAttempt = 0;
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
             localStorage.setItem('aq_cloud_version', String(this.lastSyncedVersion));
@@ -862,12 +929,33 @@ class MockBackendEngine {
             detail: { status: 'synced', version: this.lastSyncedVersion, source: 'local' }
           }));
         }
+      } else {
+        throw new Error(`Cloud save failed (${res.status})`);
       }
     } catch (err) {
       console.warn('[AQ Cloud Sync] Failed to push to cloud:', err);
       window.dispatchEvent(new CustomEvent('aq:cloud-sync-status', {
         detail: { status: 'error', error: String(err) }
       }));
+      // Retry with backoff so a transient failure never leaves data stranded
+      // locally until the next mutation.
+      if (this.pushRetryAttempt < 5) {
+        const delay = Math.min(30000, 2000 * Math.pow(2, this.pushRetryAttempt));
+        this.pushRetryAttempt += 1;
+        if (this.pushRetryTimer) clearTimeout(this.pushRetryTimer);
+        this.pushRetryTimer = setTimeout(() => {
+          this.pushInFlight = false;
+          this.pushQueued = false;
+          this.pushToCloud(this.state);
+        }, delay);
+      }
+      return;
+    } finally {
+      this.pushInFlight = false;
+    }
+    if (this.pushQueued) {
+      this.pushQueued = false;
+      this.pushToCloud(this.state);
     }
   }
 
@@ -935,6 +1023,15 @@ class MockBackendEngine {
   }
 
   public saveState(state = this.state, immediate = false) {
+    // Stamp every synced collection so the cloud can merge per collection and
+    // deletions propagate instead of resurrecting.
+    const stamp = new Date().toISOString();
+    const meta = { ...(state.syncMeta || {}) };
+    for (const key of SYNCED_COLLECTIONS) {
+      meta[key] = stamp;
+    }
+    state.syncMeta = meta;
+
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) {
@@ -960,7 +1057,7 @@ class MockBackendEngine {
       } else {
         this.pendingPushTimer = setTimeout(() => {
           this.pushToCloud(state);
-        }, 150);
+        }, 400);
       }
     }
   }
@@ -1075,6 +1172,109 @@ class MockBackendEngine {
       })) as any;
     }
 
+    // Resolve the acting user from the mock JWT so password changes hit the right record
+    const authUser = (): any => {
+      const authHeader = (options.headers as any)?.Authorization || (options.headers as any)?.authorization || '';
+      const token = authHeader.replace(/^Bearer\s+/i, '');
+      if (token.startsWith('mock-jwt-')) {
+        try {
+          const payload = JSON.parse(atob(token.replace('mock-jwt-', '').split('-').slice(0, -1).join('-')));
+          return this.state.users.find((u: any) => u.email.toLowerCase() === String(payload.email || '').toLowerCase());
+        } catch {}
+      }
+      if (token.startsWith('demo-jwt-token-')) {
+        return this.state.users.find((u: any) => u.email.toLowerCase() === token.replace('demo-jwt-token-', '').toLowerCase());
+      }
+      return this.state.users[0];
+    };
+
+    if (pathname === '/auth/change-password' && method === 'POST') {
+      const user = authUser();
+      if (!user) {
+        const err = new Error('Session not recognized. Please sign in again.');
+        (err as any).status = 401;
+        throw err;
+      }
+      if ((body.currentPassword || '') !== user.password) {
+        const err = new Error('Current password is incorrect.');
+        (err as any).status = 400;
+        throw err;
+      }
+      user.password = body.newPassword;
+      this.saveState();
+      return { success: true, message: 'Password updated successfully.' } as any;
+    }
+
+    if (pathname === '/auth/users' && method === 'POST') {
+      const email = String(body.email || '').trim().toLowerCase();
+      if (!email || !body.firstName) {
+        const err = new Error('First name and email are required.');
+        (err as any).status = 400;
+        throw err;
+      }
+      if (this.state.users.some((u: any) => u.email.toLowerCase() === email)) {
+        const err = new Error('A user with this email already exists.');
+        (err as any).status = 400;
+        throw err;
+      }
+      const newUser = {
+        id: `usr-${Date.now().toString(36)}`,
+        email,
+        password: body.password || 'Welcome@2026',
+        firstName: body.firstName,
+        lastName: body.lastName || '',
+        roles: Array.isArray(body.roles) && body.roles.length ? body.roles : ['OPERATOR'],
+        permissions: Array.isArray(body.permissions) ? body.permissions : [],
+        isActive: body.isActive !== false
+      };
+      this.state.users.push(newUser);
+      this.saveState();
+      const { password, ...safe } = newUser;
+      return safe as any;
+    }
+
+    const userRouteMatch = pathname.match(/^\/auth\/users\/([^/]+)$/);
+    if (userRouteMatch) {
+      const targetId = decodeURIComponent(userRouteMatch[1]);
+      const idx = this.state.users.findIndex((u: any) => u.id === targetId);
+      if (idx === -1) {
+        const err = new Error('User not found.');
+        (err as any).status = 404;
+        throw err;
+      }
+
+      if (method === 'PUT') {
+        const target = this.state.users[idx];
+        if (body.firstName !== undefined) target.firstName = body.firstName;
+        if (body.lastName !== undefined) target.lastName = body.lastName;
+        if (body.email !== undefined) target.email = String(body.email).trim().toLowerCase();
+        if (Array.isArray(body.roles) && body.roles.length) target.roles = body.roles;
+        if (Array.isArray(body.permissions)) target.permissions = body.permissions;
+        if (body.isActive !== undefined) target.isActive = Boolean(body.isActive);
+        if (body.password) target.password = body.password;
+        this.saveState();
+        const { password, ...safe } = target;
+        return safe as any;
+      }
+
+      if (method === 'DELETE') {
+        if (this.state.users.length <= 1) {
+          const err = new Error('At least one active user must remain.');
+          (err as any).status = 400;
+          throw err;
+        }
+        const target = this.state.users[idx];
+        if (target.roles?.includes('ADMIN') && this.state.users.filter((u: any) => u.roles?.includes('ADMIN')).length <= 1) {
+          const err = new Error('Cannot delete the last administrator account.');
+          (err as any).status = 400;
+          throw err;
+        }
+        this.state.users.splice(idx, 1);
+        this.saveState();
+        return { success: true } as any;
+      }
+    }
+
     // 2. Dashboard Overview
     if (pathname === '/dashboard/overview') {
       const totalInvoiced = this.state.invoices.reduce((sum, inv) => sum + Number(inv.totalAmount || 0), 0);
@@ -1127,14 +1327,29 @@ class MockBackendEngine {
     if (pathname === '/invoices') {
       if (method === 'GET') {
         const querySearch = url.searchParams.get('search')?.toLowerCase();
+        const statusFilter = url.searchParams.get('status');
+        const invoiceSeq = (i: Invoice) => {
+          const m = /(\d+)\s*$/.exec(String(i.invoiceNumber || ''));
+          return m ? parseInt(m[1], 10) : 0;
+        };
+        const sortInvoices = (list: Invoice[]) =>
+          [...list].sort((a, b) => {
+            const dateDiff = new Date(b.issueDate || 0).getTime() - new Date(a.issueDate || 0).getTime();
+            if (dateDiff !== 0) return dateDiff;
+            return invoiceSeq(b) - invoiceSeq(a);
+          });
+        let result = this.state.invoices;
+        if (statusFilter) {
+          result = result.filter(inv => inv.status === statusFilter);
+        }
         if (querySearch) {
-          return this.state.invoices.filter(inv =>
+          result = result.filter(inv =>
             inv.invoiceNumber.toLowerCase().includes(querySearch) ||
             inv.customer?.companyName.toLowerCase().includes(querySearch) ||
             (inv.sourceInvoiceRef && inv.sourceInvoiceRef.toLowerCase().includes(querySearch))
-          ) as any;
+          );
         }
-        return this.state.invoices as any;
+        return sortInvoices(result) as any;
       }
       if (method === 'POST') {
         const lines = (body.lines || []).map((l: any, idx: number) => {
@@ -1155,9 +1370,17 @@ class MockBackendEngine {
         const calculatedTotal = lines.reduce((sum: number, l: any) => sum + l.lineTotal, 0);
         const finalTotal = calculatedTotal > 0 ? calculatedTotal : (Number(body.totalAmount) || 0);
 
+        // Derive the next PI number from the highest existing sequence rather
+        // than the array length so deletions never cause number collisions.
+        const maxSeq = this.state.invoices.reduce((max, i) => {
+          const m = /(\d+)\s*$/.exec(String(i.invoiceNumber || ''));
+          return m ? Math.max(max, parseInt(m[1], 10)) : max;
+        }, 0);
+        const nextSeq = maxSeq + 1;
+
         const newInvoice: Invoice = {
           id: `inv-${Date.now()}`,
-          invoiceNumber: body.invoiceNumber || `PI-2026-${String(this.state.invoices.length + 1).padStart(4, '0')}`,
+          invoiceNumber: body.invoiceNumber || `PI-${new Date().getFullYear()}-${String(nextSeq).padStart(4, '0')}`,
           sourceInvoiceRef: body.sourceInvoiceRef || '',
           customerId: body.customerId,
           customer: this.state.customers.find(c => c.id === body.customerId),
@@ -1170,6 +1393,7 @@ class MockBackendEngine {
           totalAmount: Number(finalTotal.toFixed(2)),
           status: 'ISSUED',
           paymentStatus: 'UNPAID',
+          paidAmount: 0,
           remainingBalance: Number(finalTotal.toFixed(2)),
           lines
         };
@@ -1187,13 +1411,26 @@ class MockBackendEngine {
       if (!inv) throw new Error('Invoice not found');
 
       const payAmount = Number(body.amount || body.paymentAmount || inv.totalAmount || 0);
+      if (!(payAmount > 0)) throw new Error('Payment amount must be greater than zero');
       const swiftFee = Number(body.swiftFeeDeducted || body.swiftFeeAmount || 0);
+      if (swiftFee < 0 || swiftFee >= payAmount) throw new Error('SWIFT fee must be between 0 and the payment amount');
       const netCredited = Math.max(0, Number((payAmount - swiftFee).toFixed(2)));
 
-      const totalAllocated = payAmount;
+      // Cumulative allocation: account for payments already recorded so a
+      // partial payment followed by the balance correctly settles the invoice.
       const invoiceTotal = Number(inv.totalAmount || 0);
-      inv.paymentStatus = totalAllocated >= invoiceTotal ? 'PAID' : 'PARTIALLY_PAID';
-      inv.remainingBalance = Math.max(0, Number((invoiceTotal - totalAllocated).toFixed(2)));
+      const previouslyPaid = Math.min(
+        invoiceTotal,
+        Math.max(0, Number((inv.paidAmount ?? (invoiceTotal - Number(inv.remainingBalance ?? invoiceTotal))) || 0))
+      );
+      const remainingBefore = Math.max(0, Number((invoiceTotal - previouslyPaid).toFixed(2)));
+      if (payAmount > remainingBefore + 0.005) {
+        throw new Error(`Payment of $${payAmount.toFixed(2)} exceeds the outstanding balance of $${remainingBefore.toFixed(2)}`);
+      }
+      const totalAllocated = Number((previouslyPaid + payAmount).toFixed(2));
+      inv.paymentStatus = totalAllocated >= invoiceTotal - 0.005 ? 'PAID' : 'PARTIALLY_PAID';
+      inv.paidAmount = Math.min(invoiceTotal, totalAllocated);
+      inv.remainingBalance = Number(Math.max(0, invoiceTotal - totalAllocated).toFixed(2));
       inv.status = 'ISSUED';
 
       let createdReceipt: Receipt | null = null;
@@ -1217,7 +1454,7 @@ class MockBackendEngine {
         };
         this.state.payments.unshift(createdPayment);
 
-        const rcpNumber = `RCP-2026-${String(this.state.receipts.length + 1).padStart(4, '0')}`;
+        const rcpNumber = `RCP-${new Date().getFullYear()}-${String(this.state.receipts.reduce((mx, r) => { const m = /(\d+)\s*$/.exec(String(r.receiptNumber || '')); return m ? Math.max(mx, parseInt(m[1], 10)) : mx; }, 0) + 1).padStart(4, '0')}`;
         createdReceipt = {
           id: `rcp-${Date.now()}`,
           receiptNumber: rcpNumber,
@@ -1291,12 +1528,23 @@ class MockBackendEngine {
       const id = togglePaymentMatch[1];
       const inv = this.state.invoices.find(i => i.id === id || i.invoiceNumber === id);
       if (!inv) throw new Error('Invoice not found');
+      const invoiceTotal = Number(inv.totalAmount || 0);
       if (body.paymentStatus) {
         inv.paymentStatus = body.paymentStatus;
       } else {
         inv.paymentStatus = inv.paymentStatus === 'PAID' ? 'UNPAID' : 'PAID';
       }
-      inv.remainingBalance = inv.paymentStatus === 'PAID' ? 0 : inv.totalAmount;
+      if (inv.paymentStatus === 'PAID') {
+        inv.paidAmount = invoiceTotal;
+        inv.remainingBalance = 0;
+      } else if (inv.paymentStatus === 'UNPAID') {
+        inv.paidAmount = 0;
+        inv.remainingBalance = invoiceTotal;
+      } else if (inv.paymentStatus === 'PARTIALLY_PAID') {
+        // Keep any previously recorded partial allocation
+        inv.paidAmount = Math.min(invoiceTotal, Math.max(0, Number(inv.paidAmount || 0)));
+        inv.remainingBalance = Number(Math.max(0, invoiceTotal - Number(inv.paidAmount)).toFixed(2));
+      }
       this.saveState();
       return { success: true, invoice: inv } as any;
     }
@@ -1372,7 +1620,12 @@ class MockBackendEngine {
           const grandTotal = (inv.lines || []).reduce((sum, l) => sum + Number(l.lineTotal || 0), 0);
           inv.subtotal = Number(grandTotal.toFixed(2));
           inv.totalAmount = Number(grandTotal.toFixed(2));
-          inv.remainingBalance = inv.paymentStatus === 'PAID' ? 0 : inv.totalAmount;
+          // Preserve any recorded partial allocation when the total changes
+          const paidSoFar = inv.paymentStatus === 'PAID'
+            ? inv.totalAmount
+            : Math.min(inv.totalAmount, Math.max(0, Number(inv.paidAmount || 0)));
+          inv.paidAmount = paidSoFar;
+          inv.remainingBalance = Number(Math.max(0, inv.totalAmount - paidSoFar).toFixed(2));
         }
         this.saveState();
         return inv as any;
@@ -1455,7 +1708,7 @@ class MockBackendEngine {
 
       let createdReceipt: Receipt | null = null;
       if (body.createReceipt) {
-        const rcpNumber = `RCP-2026-${String(this.state.receipts.length + 1).padStart(4, '0')}`;
+        const rcpNumber = `RCP-${new Date().getFullYear()}-${String(this.state.receipts.reduce((mx, r) => { const m = /(\d+)\s*$/.exec(String(r.receiptNumber || '')); return m ? Math.max(mx, parseInt(m[1], 10)) : mx; }, 0) + 1).padStart(4, '0')}`;
         createdReceipt = {
           id: `rcp-${Date.now()}`,
           receiptNumber: rcpNumber,

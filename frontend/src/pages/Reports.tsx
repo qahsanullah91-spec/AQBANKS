@@ -238,9 +238,11 @@ export const Reports: React.FC = () => {
                         <div className="flex items-center gap-3 font-mono">
                           <span className="text-slate-300 tabular-nums" dir="ltr">{formatCurrency(inv.totalAmount)}</span>
                           <span className={`px-2 py-0.5 rounded text-[10px] font-sans font-semibold ${
-                            inv.paymentStatus === 'PAID' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-amber-950 text-amber-300 border border-amber-800'
+                            inv.paymentStatus === 'PAID' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' :
+                            inv.paymentStatus === 'CANCELED' ? 'bg-rose-950 text-rose-300 border border-rose-800' :
+                            'bg-amber-950 text-amber-300 border border-amber-800'
                           }`}>
-                            {t(`status.${inv.paymentStatus === 'PAID' ? 'paid' : inv.paymentStatus === 'PARTIALLY_PAID' ? 'partiallyPaid' : 'unpaid'}` as any)}
+                            {t(`status.${inv.paymentStatus === 'PAID' ? 'paid' : inv.paymentStatus === 'PARTIALLY_PAID' ? 'partiallyPaid' : inv.paymentStatus === 'OVERDUE' ? 'overdue' : inv.paymentStatus === 'CANCELED' ? 'canceled' : 'unpaid'}` as any)}
                           </span>
                         </div>
                       </div>

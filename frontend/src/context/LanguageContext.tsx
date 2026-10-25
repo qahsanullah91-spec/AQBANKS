@@ -76,7 +76,7 @@ export const LanguageSelector: React.FC<{ className?: string }> = ({ className =
 
   return (
     <div className={`flex items-center gap-1 bg-slate-950/80 border border-slate-800 rounded-lg p-0.5 shadow-sm ${className}`}>
-      <div className="flex items-center gap-1 px-1.5 py-0.5 text-slate-400">
+      <div className="hidden sm:flex items-center gap-1 px-1.5 py-0.5 text-slate-400">
         <Languages className="w-3.5 h-3.5 text-emerald-400" />
       </div>
       <button

@@ -35,3 +35,6 @@ Thumbs.db
 .vercel/
 
 .vercel
+
+backend/server.log
+frontend/tsconfig.tsbuildinfo

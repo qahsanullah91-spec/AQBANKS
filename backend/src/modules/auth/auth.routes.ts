@@ -413,4 +413,236 @@ router.get('/users', authenticate, requireRole(['ADMIN']), async (req: Authentic
   }
 });
 
+// ============================================================
+// Settings Module: Password Change & User Administration
+// ============================================================
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8)
+});
+
+router.post('/change-password', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const parsed = changePasswordSchema.parse(req.body);
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'UNAUTHENTICATED', message: 'Session not recognized.' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      res.status(401).json({ error: 'UNAUTHENTICATED', message: 'Session not recognized.' });
+      return;
+    }
+
+    const currentOk = await bcrypt.compare(parsed.currentPassword, user.passwordHash);
+    if (!currentOk) {
+      res.status(400).json({ error: 'INVALID_CURRENT_PASSWORD', message: 'Current password is incorrect.' });
+      return;
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: await bcrypt.hash(parsed.newPassword, 10) }
+    });
+
+    await recordAuditEvent({
+      actorId: userId,
+      action: 'PASSWORD_CHANGED',
+      entityType: 'USER',
+      entityId: userId
+    });
+
+    res.json({ success: true, message: 'Password updated successfully.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const createUserSchema = z.object({
+  firstName: z.string().min(1),
+  lastName: z.string().optional().default(''),
+  email: z.string().email(),
+  password: z.string().min(8),
+  roles: z.array(z.string()).min(1).default(['VIEWER']),
+  isActive: z.boolean().optional().default(true)
+});
+
+router.post('/users', authenticate, requireRole(['ADMIN']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const parsed = createUserSchema.parse(req.body);
+    const email = sanitizeInput(parsed.email).toLowerCase();
+
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      res.status(400).json({ error: 'EMAIL_EXISTS', message: 'A user with this email already exists.' });
+      return;
+    }
+
+    const created = await prisma.user.create({
+      data: {
+        email,
+        passwordHash: await bcrypt.hash(parsed.password, 10),
+        firstName: sanitizeInput(parsed.firstName),
+        lastName: sanitizeInput(parsed.lastName),
+        isActive: parsed.isActive,
+        userRoles: {
+          create: parsed.roles.map(name => ({
+            role: {
+              connectOrCreate: {
+                where: { name },
+                create: { name, description: `Auto-provisioned role: ${name}` }
+              }
+            }
+          }))
+        }
+      },
+      include: { userRoles: { include: { role: true } } }
+    });
+
+    await recordAuditEvent({
+      actorId: req.user?.userId,
+      action: 'USER_CREATED',
+      entityType: 'USER',
+      entityId: created.id,
+      newValues: { email, roles: parsed.roles }
+    });
+
+    res.status(201).json({
+      id: created.id,
+      email: created.email,
+      firstName: created.firstName,
+      lastName: created.lastName,
+      isActive: created.isActive,
+      roles: created.userRoles.map(r => r.role.name),
+      createdAt: created.createdAt
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/users/:id', authenticate, requireRole(['ADMIN']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const targetId = req.params.id;
+    const target = await prisma.user.findUnique({
+      where: { id: targetId },
+      include: { userRoles: { include: { role: true } } }
+    });
+    if (!target) {
+      res.status(404).json({ error: 'NOT_FOUND', message: 'User not found.' });
+      return;
+    }
+
+    const body = req.body as {
+      firstName?: string; lastName?: string; email?: string;
+      roles?: string[]; isActive?: boolean; password?: string;
+    };
+
+    // Guardrail: never deactivate or demote the last active administrator
+    if (body.isActive === false) {
+      const wasAdmin = target.userRoles.some(r => r.role.name === 'ADMIN');
+      if (wasAdmin) {
+        const activeAdmins = await prisma.user.count({
+          where: { isActive: true, userRoles: { some: { role: { name: 'ADMIN' } } } }
+        });
+        if (activeAdmins <= 1) {
+          res.status(400).json({ error: 'LAST_ADMIN', message: 'Cannot deactivate the last administrator account.' });
+          return;
+        }
+      }
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: targetId },
+      data: {
+        ...(body.firstName !== undefined ? { firstName: sanitizeInput(body.firstName) } : {}),
+        ...(body.lastName !== undefined ? { lastName: sanitizeInput(body.lastName) } : {}),
+        ...(body.email !== undefined ? { email: sanitizeInput(body.email).toLowerCase() } : {}),
+        ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
+        ...(body.password ? { passwordHash: await bcrypt.hash(body.password, 10) } : {}),
+        ...(Array.isArray(body.roles) && body.roles.length ? {
+          userRoles: {
+            deleteMany: {},
+            create: body.roles.map(name => ({
+              role: {
+                connectOrCreate: {
+                  where: { name },
+                  create: { name, description: `Auto-provisioned role: ${name}` }
+                }
+              }
+            }))
+          }
+        } : {})
+      },
+      include: { userRoles: { include: { role: true } } }
+    });
+
+    await recordAuditEvent({
+      actorId: req.user?.userId,
+      action: 'USER_UPDATED',
+      entityType: 'USER',
+      entityId: targetId,
+      newValues: { isActive: updated.isActive, roles: updated.userRoles.map(r => r.role.name) }
+    });
+
+    res.json({
+      id: updated.id,
+      email: updated.email,
+      firstName: updated.firstName,
+      lastName: updated.lastName,
+      isActive: updated.isActive,
+      roles: updated.userRoles.map(r => r.role.name),
+      createdAt: updated.createdAt
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/users/:id', authenticate, requireRole(['ADMIN']), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const targetId = req.params.id;
+    if (targetId === req.user?.userId) {
+      res.status(400).json({ error: 'SELF_DELETE', message: 'You cannot delete your own account while signed in.' });
+      return;
+    }
+
+    const target = await prisma.user.findUnique({
+      where: { id: targetId },
+      include: { userRoles: { include: { role: true } } }
+    });
+    if (!target) {
+      res.status(404).json({ error: 'NOT_FOUND', message: 'User not found.' });
+      return;
+    }
+
+    const wasAdmin = target.userRoles.some(r => r.role.name === 'ADMIN');
+    if (wasAdmin) {
+      const activeAdmins = await prisma.user.count({
+        where: { isActive: true, userRoles: { some: { role: { name: 'ADMIN' } } } }
+      });
+      if (activeAdmins <= 1) {
+        res.status(400).json({ error: 'LAST_ADMIN', message: 'Cannot delete the last administrator account.' });
+        return;
+      }
+    }
+
+    await prisma.user.delete({ where: { id: targetId } });
+    await recordAuditEvent({
+      actorId: req.user?.userId,
+      action: 'USER_DELETED',
+      entityType: 'USER',
+      entityId: targetId,
+      oldValues: { email: target.email }
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

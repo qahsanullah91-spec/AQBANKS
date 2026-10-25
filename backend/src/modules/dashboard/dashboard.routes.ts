@@ -58,8 +58,8 @@ router.get('/overview', authenticate, async (req: AuthenticatedRequest, res: Res
     });
     const totalSwiftFees = toDecimal(swiftFeeAgg._sum.swiftBankFee || 0);
 
-    // Pending receivables = invoices where paymentStatus != 'PAID'
-    const pendingInvoices = allInvoices.filter(inv => inv.paymentStatus !== 'PAID');
+    // Pending receivables = invoices still owed money (excludes PAID and CANCELED)
+    const pendingInvoices = allInvoices.filter(inv => inv.paymentStatus !== 'PAID' && inv.paymentStatus !== 'CANCELED');
     const totalPending = pendingInvoices.reduce((sum, inv) => {
       const invTotal = toDecimal(inv.totalAmount);
       const paid = inv.paymentAllocations.reduce(

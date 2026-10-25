@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { useAutoSave } from '../utils/useAutoSave';
 import { AutoSaveIndicator, DraftRecoveryBanner } from '../components/AutoSaveIndicator';
+import { SearchableSelect } from '../components/SearchableSelect';
 import {
   FileText,
   Plus,
@@ -455,7 +456,10 @@ export const Invoices: React.FC = () => {
 
   const handleOpenRecordPayment = (inv: Invoice) => {
     setPaymentModalInvoice(inv);
-    setPaymentAmount(Number(inv.totalAmount).toFixed(2));
+    const total = Number(inv.totalAmount) || 0;
+    const remaining = Math.max(0, Number(inv.remainingBalance ?? total) || 0);
+    // Prefill with the outstanding balance, not the full invoice total
+    setPaymentAmount(remaining > 0 ? remaining.toFixed(2) : '0.00');
     setSwiftFeeDeducted('0');
     setPaymentDate(new Date().toISOString().split('T')[0]);
     setBankReference(`AUB-${inv.invoiceNumber}`);
@@ -479,6 +483,11 @@ export const Invoices: React.FC = () => {
     }
     if (numFee >= numAmt) {
       setPaymentError('SWIFT fee cannot be greater than or equal to the payment amount');
+      return;
+    }
+    const remainingDue = Math.max(0, Number(paymentModalInvoice.remainingBalance ?? paymentModalInvoice.totalAmount) || 0);
+    if (numAmt > remainingDue + 0.005) {
+      setPaymentError(`Payment of $${numAmt.toFixed(2)} exceeds the outstanding balance of $${remainingDue.toFixed(2)}. Record the exact amount received.`);
       return;
     }
     try {
@@ -721,7 +730,7 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
         const totalInvoiced = issuedInvoices.reduce((sum, i) => sum + Number(i.totalAmount || 0), 0);
         const paidInvoices = issuedInvoices.filter(i => i.paymentStatus === 'PAID');
         const totalPaid = paidInvoices.reduce((sum, i) => sum + Number(i.totalAmount || 0), 0);
-        const unpaidInvoices = issuedInvoices.filter(i => i.paymentStatus !== 'PAID');
+        const unpaidInvoices = issuedInvoices.filter(i => i.paymentStatus !== 'PAID' && i.paymentStatus !== 'CANCELED');
         const totalUnpaid = unpaidInvoices.reduce((sum, i) => sum + Number(i.totalAmount || 0), 0);
 
         return (
@@ -879,6 +888,18 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
                     <span dir="ltr" className="font-mono font-extrabold text-emerald-700 dark:text-emerald-400 text-sm block tabular-nums">
                       ${Number(inv.totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
+                    {(() => {
+                      const total = Number(inv.totalAmount) || 0;
+                      const rem = Math.max(0, Number(inv.remainingBalance ?? total) || 0);
+                      if (inv.status !== 'VOID' && rem > 0 && rem < total - 0.005) {
+                        return (
+                          <span dir="ltr" className="block text-[10px] text-amber-700 dark:text-amber-400 font-semibold">
+                            Due: ${rem.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
                     <div className="flex gap-1 justify-end rtl:justify-start mt-1">
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                         inv.status === 'ISSUED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' :
@@ -893,6 +914,8 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
                         className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                           inv.paymentStatus === 'PAID' ? 'bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800' :
                           inv.paymentStatus === 'PARTIALLY_PAID' ? 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800' :
+                          inv.paymentStatus === 'OVERDUE' ? 'bg-orange-100 text-orange-800 border border-orange-300 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800' :
+                          inv.paymentStatus === 'CANCELED' ? 'bg-rose-100 text-rose-700 border border-rose-300 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800' :
                           'bg-slate-100 text-slate-600 border border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
                         }`}
                       >
@@ -1091,14 +1114,45 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
                           className={`px-2 py-0.5 rounded text-[10px] font-sans font-semibold transition hover:opacity-80 ${
                             inv.paymentStatus === 'PAID' ? 'bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800' :
                             inv.paymentStatus === 'PARTIALLY_PAID' ? 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800' :
+                            inv.paymentStatus === 'OVERDUE' ? 'bg-orange-100 text-orange-800 border border-orange-300 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800' :
+                            inv.paymentStatus === 'CANCELED' ? 'bg-rose-100 text-rose-700 border border-rose-300 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800' :
                             'bg-slate-100 text-slate-600 border border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
                           }`}
                         >
                           {t(`status.${inv.paymentStatus.toLowerCase().replace('_', '')}`, inv.paymentStatus)}
                         </button>
                       </td>
-                      <td className={`py-3 px-3.5 font-bold text-emerald-700 dark:text-emerald-400 font-mono tabular-nums ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
-                        ${Number(inv.totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <td className={`py-3 px-3.5 ${isRtl ? 'text-left' : 'text-right'}`} dir="ltr">
+                        <span className="font-bold text-emerald-700 dark:text-emerald-400 font-mono tabular-nums">
+                          ${Number(inv.totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        {(() => {
+                          const total = Number(inv.totalAmount) || 0;
+                          const rem = Math.max(0, Number(inv.remainingBalance ?? total) || 0);
+                          const rows: JSX.Element[] = [];
+                          if (inv.status !== 'VOID' && rem > 0 && rem < total - 0.005) {
+                            rows.push(
+                              <span key="due" className="block text-[10px] text-amber-700 dark:text-amber-400 font-sans font-semibold mt-0.5">
+                                Due: ${rem.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            );
+                          }
+                          if (inv.status === 'ISSUED' && rem > 0) {
+                            const days = Math.floor((Date.now() - new Date(inv.issueDate).getTime()) / 86400000);
+                            if (days >= 30) {
+                              rows.push(
+                                <span key="aging" className={`inline-block mt-0.5 px-1.5 py-0 rounded text-[9px] font-sans font-bold border ${
+                                  days >= 60
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800'
+                                    : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                                }`}>
+                                  {days}d Outstanding
+                                </span>
+                              );
+                            }
+                          }
+                          return rows;
+                        })()}
                       </td>
                       <td className="py-3 px-3 text-center font-sans">
                         <div className="flex items-center justify-center gap-1.5">
@@ -1233,30 +1287,23 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
                         <span>{t('invoices.addNewCustomer')}</span>
                       </button>
                     </div>
-                    <select
+                    <SearchableSelect
                       value={customerId}
-                      onChange={e => {
-                        if (e.target.value === '__NEW_CUSTOMER__') {
-                          setAddCustomerTarget('create');
-                          setNewCustError(null);
-                          setShowAddCustomerModal(true);
-                          return;
-                        }
-                        setCustomerId(e.target.value);
-                      }}
-                      required
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                    >
-                      <option value="">-- {t('invoices.selectCustomer')} --</option>
-                      {customers.map(c => (
-                        <option key={c.id} value={c.id}>
-                          {c.companyName} {c.country ? `(${c.country})` : ''}
-                        </option>
-                      ))}
-                      <option value="__NEW_CUSTOMER__" className="text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40">
-                        {t('invoices.addNewCustomerOption')}
-                      </option>
-                    </select>
+                      onChange={val => setCustomerId(val)}
+                      placeholder={`-- ${t('invoices.selectCustomer')} --`}
+                      searchPlaceholder="Search clients / consignees…"
+                      emptyMessage="No clients found"
+                      options={customers.map(c => ({
+                        value: c.id,
+                        label: `${c.companyName}${c.country ? ` (${c.country})` : ''}`,
+                        description: [c.addressLine1, c.addressLine2].filter(Boolean).join(', ') || undefined
+                      }))}
+                      actionItem={{ label: t('invoices.addNewCustomerOption'), onSelect: () => {
+                        setAddCustomerTarget('create');
+                        setNewCustError(null);
+                        setShowAddCustomerModal(true);
+                      } }}
+                    />
 
                     {/* Quick Selected Customer Detail Card */}
                     {(() => {
@@ -1307,17 +1354,17 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     {t('invoices.paymentInstructions')}
                   </label>
-                  <select
+                  <SearchableSelect
                     value={remittanceProfileId}
-                    onChange={e => setRemittanceProfileId(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-2.5 min-h-[44px] text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                  >
-                    {remittanceProfiles.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.profileType === 'LOCAL' ? 'Local Wire - Da Afghanistan Bank' : 'International Wire - Al Salam / JPMorgan'}) {p.isDefault ? '★ Default' : ''}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={val => setRemittanceProfileId(val)}
+                    placeholder="-- Select payment instructions --"
+                    searchPlaceholder="Search remittance profiles…"
+                    options={remittanceProfiles.map(p => ({
+                      value: p.id,
+                      label: `${p.name}${p.isDefault ? ' ★ Default' : ''}`,
+                      description: p.profileType === 'LOCAL' ? 'Local Wire - Da Afghanistan Bank' : 'International Wire - Al Salam / JPMorgan'
+                    }))}
+                  />
 
                   {/* Dynamic Remittance Preview in Modal - High Contrast Bank Instructions */}
                   {(() => {
@@ -1971,24 +2018,37 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
       )}
 
       {/* RECORD PAYMENT MODAL */}
-      {paymentModalInvoice && (
+      {paymentModalInvoice && (() => {
+        const invTotal = Number(paymentModalInvoice.totalAmount) || 0;
+        const paidSoFar = Math.min(
+          invTotal,
+          Math.max(0, Number(paymentModalInvoice.paidAmount ?? (invTotal - Number(paymentModalInvoice.remainingBalance ?? invTotal))) || 0)
+        );
+        const balanceDue = Math.max(0, Number((invTotal - paidSoFar).toFixed(2)));
+        const grossAmt = Number(paymentAmount) || 0;
+        const feeAmt = Number(swiftFeeDeducted) || 0;
+
+        return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl max-h-[92vh] overflow-y-auto p-5 sm:p-6 shadow-2xl space-y-4">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 shrink-0">
                   <Banknote className="w-5 h-5 text-emerald-400" />
-                  <h3 className="text-base font-bold text-white">
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-white leading-snug">
                     {t('invoices.paymentModalTitle', 'Record Invoice Payment & Auto-Receipt')}
                   </h3>
+                  <span className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 tracking-wider whitespace-nowrap">
+                    AFGHAN UNITED BANK • USD
+                  </span>
                 </div>
-                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 tracking-wider">
-                  AFGHAN UNITED BANK • USD
-                </span>
               </div>
               <button
                 onClick={() => setPaymentModalInvoice(null)}
-                className="p-1 rounded text-slate-400 hover:text-white"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 shrink-0 transition"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2006,25 +2066,39 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
               <div className="flex justify-between">
                 <span className="text-slate-400">Total Invoice Amount:</span>
                 <span className="font-bold text-emerald-400 font-mono">
-                  ${Number(paymentModalInvoice.totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ${invTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              {paidSoFar > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Already Paid:</span>
+                  <span className="font-semibold text-blue-400 font-mono">
+                    ${paidSoFar.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-slate-800/80 pt-1">
+                <span className="text-slate-400 font-medium">Balance Due:</span>
+                <span className={`font-bold font-mono ${balanceDue > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  ${balanceDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
 
             {/* Live Financial Settlement Breakdown */}
-            {Number(paymentAmount) > 0 && (
+            {grossAmt > 0 && (
               <div className="bg-slate-950/90 p-3.5 rounded-xl border border-emerald-900/40 text-xs space-y-2">
                 <div className="flex items-center justify-between text-slate-400 font-medium pb-1.5 border-b border-slate-800/80">
                   <span className="flex items-center gap-1.5 text-slate-300 font-semibold">
                     <Building2 className="w-3.5 h-3.5 text-emerald-400" />
                     Settlement & Wire Deposit Breakdown
                   </span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    Number(paymentAmount) >= Number(paymentModalInvoice.totalAmount)
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                    grossAmt + 0.005 >= balanceDue
                       ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                       : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                   }`}>
-                    {Number(paymentAmount) >= Number(paymentModalInvoice.totalAmount) ? 'FULL SETTLEMENT (PAID)' : 'PARTIAL SETTLEMENT'}
+                    {grossAmt + 0.005 >= balanceDue ? 'FULL SETTLEMENT (PAID)' : 'PARTIAL SETTLEMENT'}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 pt-0.5">
@@ -2032,13 +2106,13 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
                     <div className="flex justify-between text-[11px]">
                       <span className="text-slate-400">Gross Settlement:</span>
                       <span className="font-mono font-semibold text-slate-200">
-                        ${(Number(paymentAmount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ${grossAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                     <div className="flex justify-between text-[11px]">
                       <span className="text-slate-400">SWIFT Fee Deducted:</span>
-                      <span className="font-mono text-rose-400 font-semibold">
-                        -${(Number(swiftFeeDeducted) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <span className={`font-mono font-semibold ${feeAmt > 0 ? 'text-rose-400' : 'text-slate-500'}`}>
+                        {feeAmt > 0 ? '-' : ''}${feeAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>
@@ -2046,13 +2120,15 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
                     <div className="flex justify-between text-[11px]">
                       <span className="text-slate-400">Net Wire Credited:</span>
                       <span className="font-mono font-bold text-emerald-400">
-                        ${Math.max(0, (Number(paymentAmount) || 0) - (Number(swiftFeeDeducted) || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ${Math.max(0, grossAmt - feeAmt).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                     <div className="flex justify-between text-[11px]">
                       <span className="text-slate-400">Remaining Balance:</span>
-                      <span className="font-mono font-semibold text-amber-400">
-                        ${Math.max(0, Number(paymentModalInvoice.totalAmount) - (Number(paymentAmount) || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <span className={`font-mono font-semibold ${
+                        Math.max(0, balanceDue - grossAmt) <= 0.005 ? 'text-emerald-400' : 'text-amber-400'
+                      }`}>
+                        ${Math.max(0, balanceDue - grossAmt).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>
@@ -2147,7 +2223,7 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
                 </button>
                 <button
                   type="submit"
-                  disabled={paymentSubmitting}
+                  disabled={paymentSubmitting || !(Number(paymentAmount) > 0)}
                   className="flex items-center gap-2 px-5 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-lg shadow-emerald-950 transition disabled:opacity-50"
                 >
                   {paymentSubmitting ? <RotateCcw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
@@ -2157,7 +2233,8 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
             </form>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* EDIT INVOICE MODAL (Non-clipping, Mobile & Desktop Optimized) */}
       {editingInvoice && (
@@ -2221,29 +2298,23 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
                         <span>{t('invoices.addNewCustomer')}</span>
                       </button>
                     </div>
-                    <select
+                    <SearchableSelect
                       value={editCustomerId}
-                      onChange={e => {
-                        if (e.target.value === '__NEW_CUSTOMER__') {
-                          setAddCustomerTarget('edit');
-                          setNewCustError(null);
-                          setShowAddCustomerModal(true);
-                          return;
-                        }
-                        setEditCustomerId(e.target.value);
-                      }}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2.5 text-xs text-slate-900 dark:text-white"
-                    >
-                      <option value="">-- {t('invoices.selectCustomer')} --</option>
-                      {customers.map(c => (
-                        <option key={c.id} value={c.id}>
-                          {c.companyName} {c.country ? `(${c.country})` : ''}
-                        </option>
-                      ))}
-                      <option value="__NEW_CUSTOMER__" className="text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40">
-                        {t('invoices.addNewCustomerOption')}
-                      </option>
-                    </select>
+                      onChange={val => setEditCustomerId(val)}
+                      placeholder={`-- ${t('invoices.selectCustomer')} --`}
+                      searchPlaceholder="Search clients / consignees…"
+                      emptyMessage="No clients found"
+                      options={customers.map(c => ({
+                        value: c.id,
+                        label: `${c.companyName}${c.country ? ` (${c.country})` : ''}`,
+                        description: [c.addressLine1, c.addressLine2].filter(Boolean).join(', ') || undefined
+                      }))}
+                      actionItem={{ label: t('invoices.addNewCustomerOption'), onSelect: () => {
+                        setAddCustomerTarget('edit');
+                        setNewCustError(null);
+                        setShowAddCustomerModal(true);
+                      } }}
+                    />
 
                     {/* Quick Selected Customer Detail Card for Edit Modal */}
                     {(() => {
@@ -2317,6 +2388,8 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
                       <option value="UNPAID">UNPAID</option>
                       <option value="PARTIALLY_PAID">PARTIALLY PAID</option>
                       <option value="PAID">PAID</option>
+                      <option value="OVERDUE">OVERDUE</option>
+                      <option value="CANCELED">CANCELED</option>
                     </select>
                   </div>
                 </div>
@@ -2468,16 +2541,16 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-[70] animate-in fade-in duration-150">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
+            <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 shrink-0">
+              <div className="flex items-start gap-3 min-w-0 flex-1">
+                <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shrink-0">
                   <UserPlus className="w-5 h-5" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
                     {t('invoices.addCustomerModalTitle')}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     {t('invoices.addCustomerModalSubtitle')}
                   </p>
                 </div>
@@ -2488,7 +2561,7 @@ Local Clearing: DA AFGHANISTAN BANK (DAB) • SWIFT: AFGBAFKA • A/C: 300020502
                   setShowAddCustomerModal(false);
                   resetNewCustomerForm();
                 }}
-                className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
+                className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>

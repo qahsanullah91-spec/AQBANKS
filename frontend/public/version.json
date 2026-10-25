@@ -1,0 +1,36 @@
+{
+  "version": "AQ-SYS-V2.1-PRO",
+  "buildNumber": 21,
+  "releaseDate": "2026-10-25",
+  "channel": "stable",
+  "minimumRequired": false,
+  "restartRequired": true,
+  "notes": "Baseline release of the Settings & Passlock suite. Deploy a new build with an incremented version tag (e.g. AQ-SYS-V2.2-PRO) in this file and connected clients will surface an Update Available banner automatically.",
+  "changelog": [
+    {
+      "version": "AQ-SYS-V2.1-PRO",
+      "releaseDate": "2026-10-25",
+      "type": "release",
+      "title": "System Settings & Passlock Suite",
+      "items": [
+        "Full User Management panel with role assignment, activation control and audit-ready records",
+        "Password & Account Security center with strength metering and change-password flow",
+        "App Passlock: quick PIN, master password and WebAuthn biometric (Windows Hello / Touch ID) unlock",
+        "Configurable auto-lock on startup and idle timeout (5 / 15 / 30 minutes) plus Ctrl+L / Cmd+L manual lock",
+        "Live software update engine polling a remote version.json release manifest",
+        "System Info & developer attribution signature"
+      ]
+    },
+    {
+      "version": "AQ-SYS-V2.0-PRO",
+      "releaseDate": "2026-09-30",
+      "type": "feature",
+      "title": "Logistics & Reporting Expansion",
+      "items": [
+        "Comprehensive print option for freight shipments & logistics tracking",
+        "Official receipts register redesign with routing details and dual signatures",
+        "Direct print and summary register report for Official Deposit Receipts"
+      ]
+    }
+  ]
+}
